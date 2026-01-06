@@ -1,0 +1,190 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DomainVerificationStatus {
+  pending
+  verified
+  failed
+}
+
+enum EmailStatus {
+  received
+  forwarded
+  failed
+}
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions         Session[]
+  accounts         Account[]
+  twoFactorEnabled Boolean?    @default(false)
+  twofactors       TwoFactor[]
+
+  passkeys  Passkey[]
+  domains   Domain[]
+  aliases   Alias[]
+  emailLogs EmailLog[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model TwoFactor {
+  id          String @id
+  secret      String
+  backupCodes String
+  userId      String
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([secret])
+  @@index([userId])
+  @@map("twoFactor")
+}
+
+model Passkey {
+  id           String    @id
+  name         String?
+  publicKey    String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime?
+  aaguid       String?
+
+  @@index([userId])
+  @@index([credentialID])
+  @@map("passkey")
+}
+
+model Domain {
+  id                 String                   @id @default(cuid())
+  userId             String
+  domain             String
+  sesIdentityArn     String?
+  verificationStatus DomainVerificationStatus @default(pending)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aliases Alias[]
+  logs    EmailLog[]
+
+  @@unique([userId, domain])
+  @@index([userId])
+  @@map("domains")
+}
+
+model Alias {
+  id        String  @id @default(cuid())
+  userId    String
+  domainId  String
+  localPart String
+  forwardTo String
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain Domain     @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  logs   EmailLog[]
+
+  @@unique([domainId, localPart])
+  @@index([userId])
+  @@index([domainId])
+  @@map("aliases")
+}
+
+model EmailLog {
+  id       String  @id @default(cuid())
+  userId   String
+  domainId String
+  aliasId  String?
+
+  fromEmail String
+  toEmail   String
+  status    EmailStatus
+  error     String?
+
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  alias  Alias? @relation(fields: [aliasId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([domainId])
+  @@index([aliasId])
+  @@map("email_logs")
+}
