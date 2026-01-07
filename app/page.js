@@ -29,8 +29,13 @@ export default function Home() {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link href="/profile">
-                    <Button className="w-full sm:w-auto">
+                    <Button>
                       Go to Profile
+                    </Button>
+                  </Link>
+                  <Link href="/domains">
+                    <Button variant="outline">
+                      Go to Domains
                     </Button>
                   </Link>
                   <Button variant="destructive" onClick={() => authClient.signOut()} className="w-full sm:w-auto">

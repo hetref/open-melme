@@ -129,9 +129,16 @@ model Passkey {
 model Domain {
   id                 String                   @id @default(cuid())
   userId             String
-  domain             String
+  domain             String? // Keep for migration compatibility
+  rootDomain         String                   @default("")
+  subdomain          String?
+  fullDomain         String                   @default("")
   sesIdentityArn     String?
   verificationStatus DomainVerificationStatus @default(pending)
+  dkimStatus         String?                  @default("pending")
+  mxStatus           String?                  @default("pending")
+  verificationError  String?
+  dnsRecords         String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -140,7 +147,7 @@ model Domain {
   aliases Alias[]
   logs    EmailLog[]
 
-  @@unique([userId, domain])
+  @@unique([userId, fullDomain])
   @@index([userId])
   @@map("domains")
 }
