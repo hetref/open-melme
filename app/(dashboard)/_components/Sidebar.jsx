@@ -17,7 +17,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { User, Globe, LogOut } from 'lucide-react'
+import { User, Globe, LogOut, Mail } from 'lucide-react'
 
 const AppSidebar = () => {
   const pathname = usePathname()
@@ -51,6 +51,11 @@ const AppSidebar = () => {
       name: 'Domains',
       path: '/domains',
       icon: Globe,
+    },
+    {
+      name: 'Aliases',
+      path: '/aliases',
+      icon: Mail,
     },
   ]
 
@@ -96,7 +101,7 @@ const AppSidebar = () => {
                       tooltip={item.name}
                     >
                       <Link href={item.path} className="flex items-center gap-2">
-                        <Icon className="w-[30px] h-[30px] text-[28px]" />
+                        <Icon className="w-7.5 h-7.5 text-[28px]" />
                         <span>{item.name}</span>
                       </Link>
                     </SidebarMenuButton>

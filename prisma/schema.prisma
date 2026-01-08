@@ -181,8 +181,13 @@ model EmailLog {
 
   fromEmail String
   toEmail   String
+  subject   String?
   status    EmailStatus
   error     String?
+
+  s3Bucket String?
+  s3Key    String? @unique
+  size     Int?
 
   createdAt DateTime @default(now())
 
@@ -193,5 +198,6 @@ model EmailLog {
   @@index([userId])
   @@index([domainId])
   @@index([aliasId])
+  @@index([s3Key])
   @@map("email_logs")
 }
