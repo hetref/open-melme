@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import Loading from '@/components/Loading'
+import AppSidebar from './_components/Sidebar'
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 
 const layout = ({ children }) => {
   const { data: session, isPending } = authClient.useSession();
@@ -27,11 +29,20 @@ const layout = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="container mx-auto px-4 py-8">
-        {children}
-      </div>
-    </div>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-18 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <div className="flex-1" />
+        </header>
+        <div className="flex-1 bg-linear-to-br from-gray-50 to-gray-100 p-4 md:p-8">
+          <div className="container mx-auto">
+            {children}
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }
 
