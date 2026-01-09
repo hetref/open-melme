@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma'
 import { fetchEmailFromS3 } from '@/lib/s3'
 import { simpleParser } from 'mailparser'
 import { cookies } from 'next/headers'
+import { generateSafeEmailVariants } from '@/lib/email-sanitizer'
 
 export async function GET(req, { params }) {
   try {
@@ -113,6 +114,11 @@ export async function GET(req, { params }) {
     // Count attachments from parsed email
     const attachmentsCount = parsed.attachments?.length || 0
 
+    // Generate BOTH safe HTML variants from raw HTML
+    // CRITICAL: Never re-sanitize already sanitized HTML
+    const rawHtml = parsed.html || parsed.textAsHtml || ''
+    const { safeHtmlNoImages, safeHtmlWithImages, hasImages } = generateSafeEmailVariants(rawHtml)
+
     return NextResponse.json({
       email: {
         id: email.id,
@@ -135,7 +141,9 @@ export async function GET(req, { params }) {
         },
         body: {
           text: parsed.text || '',
-          html: parsed.html || parsed.textAsHtml || '',
+          safeHtmlNoImages,
+          safeHtmlWithImages,
+          hasImages,
         },
       },
     })

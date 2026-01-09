@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Mail, Lock, LogOut, AlertCircle, Clock, CheckCircle, XCircle, ArrowLeft, X, RefreshCw, Download } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Mail, Lock, LogOut, AlertCircle, Clock, CheckCircle, XCircle, ArrowLeft, X, RefreshCw, Download, Search, Filter, Paperclip, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 const MyMailboxPage = () => {
@@ -25,6 +26,19 @@ const MyMailboxPage = () => {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [downloadingAttachment, setDownloadingAttachment] = useState(null)
   const [processingAttachments, setProcessingAttachments] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [showImages, setShowImages] = useState(false)
+  const [emailView, setEmailView] = useState('html') // 'html' or 'text'
+  const [aliases, setAliases] = useState([])
+
+  const [filters, setFilters] = useState({
+    query: '',
+    from: '',
+    aliasId: '',
+    hasAttachments: false,
+    dateFrom: '',
+    dateTo: '',
+  })
 
   const [loginData, setLoginData] = useState({
     mailboxId: '',
@@ -45,9 +59,16 @@ const MyMailboxPage = () => {
 
   useEffect(() => {
     if (session) {
+      fetchAliases()
       fetchEmails(1)
     }
   }, [session])
+
+  useEffect(() => {
+    if (session) {
+      fetchEmails(1)
+    }
+  }, [filters])
 
   // ESC key handler to close preview
   useEffect(() => {
@@ -95,6 +116,18 @@ const MyMailboxPage = () => {
     } catch (error) {
       console.error('Error fetching mailboxes:', error)
       toast.error('Failed to load mailboxes')
+    }
+  }
+
+  const fetchAliases = async () => {
+    try {
+      const response = await fetch('/api/aliases')
+      if (!response.ok) return
+
+      const data = await response.json()
+      setAliases(data.aliases || [])
+    } catch (error) {
+      console.error('Error fetching aliases:', error)
     }
   }
 
@@ -160,7 +193,20 @@ const MyMailboxPage = () => {
   const fetchEmails = async (page = 1) => {
     setEmailsLoading(true)
     try {
-      const response = await fetch(`/api/my-mailbox/emails?page=${page}&limit=20`)
+      // Build query params
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '20',
+      })
+
+      if (filters.query) params.append('query', filters.query)
+      if (filters.from) params.append('from', filters.from)
+      if (filters.aliasId) params.append('aliasId', filters.aliasId)
+      if (filters.hasAttachments) params.append('hasAttachments', 'true')
+      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom)
+      if (filters.dateTo) params.append('dateTo', filters.dateTo)
+
+      const response = await fetch(`/api/my-mailbox/emails?${params.toString()}`)
 
       if (response.status === 401) {
         // Session expired
@@ -212,13 +258,44 @@ const MyMailboxPage = () => {
   }
 
   const handleEmailClick = (email) => {
+    // If clicking the same email, close it
+    if (selectedEmail?.id === email.id) {
+      setSelectedEmail(null)
+      setSelectedEmailDetail(null)
+      setIsMobilePreview(false)
+      return
+    }
+
     setSelectedEmail(email)
+    setShowImages(false) // Reset image display state
+    setEmailView('html') // Reset to HTML view
     fetchEmailDetail(email.id)
 
     // On mobile, show preview instead of list
     if (window.innerWidth < 768) {
       setIsMobilePreview(true)
     }
+  }
+
+  const handleLoadImages = () => {
+    if (!selectedEmailDetail) return
+    setShowImages(true)
+    toast.success('Images loaded')
+  }
+
+  const handleClearFilters = () => {
+    setFilters({
+      query: '',
+      from: '',
+      aliasId: '',
+      hasAttachments: false,
+      dateFrom: '',
+      dateTo: '',
+    })
+  }
+
+  const hasActiveFilters = () => {
+    return filters.query || filters.from || filters.aliasId || filters.hasAttachments || filters.dateFrom || filters.dateTo
   }
 
   const handleBackToList = () => {
@@ -553,24 +630,109 @@ const MyMailboxPage = () => {
         {/* Email List - Hidden on mobile when preview is shown */}
         <div className={`${isMobilePreview ? 'hidden md:block' : 'block'} w-full md:w-96 shrink-0`}>
           <Card className="h-full flex flex-col">
-            <CardHeader>
-              <div className="flex items-center justify-between">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between mb-3">
                 <div>
                   <CardTitle>Emails</CardTitle>
                   <CardDescription>
-                    {pagination.totalCount} emails in this mailbox
+                    {pagination.totalCount} emails
+                    {hasActiveFilters() && ' (filtered)'}
                   </CardDescription>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleRefreshEmails}
-                  disabled={isRefreshing || emailsLoading}
-                  title="Refresh email list"
-                >
-                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowFilters(!showFilters)}
+                    title="Toggle filters"
+                  >
+                    <Filter className={`w-4 h-4 ${hasActiveFilters() ? 'text-blue-600' : ''}`} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleRefreshEmails}
+                    disabled={isRefreshing || emailsLoading}
+                    title="Refresh email list"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
               </div>
+
+              {/* Search & Filters */}
+              {showFilters && (
+                <div className="space-y-3 pt-3 border-t">
+                  <div>
+                    <Input
+                      placeholder="Search subject or from..."
+                      value={filters.query}
+                      onChange={(e) => setFilters({ ...filters, query: e.target.value })}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <select
+                      value={filters.aliasId}
+                      onChange={(e) => setFilters({ ...filters, aliasId: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">All aliases</option>
+                      {aliases.map((alias) => (
+                        <option key={alias.id} value={alias.id}>
+                          {alias.localPart}@{alias.domain?.fullDomain}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="hasAttachments"
+                      checked={filters.hasAttachments}
+                      onChange={(e) => setFilters({ ...filters, hasAttachments: e.target.checked })}
+                      className="rounded"
+                    />
+                    <label htmlFor="hasAttachments" className="text-sm cursor-pointer">
+                      Has attachments
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">From date</Label>
+                      <Input
+                        type="date"
+                        value={filters.dateFrom}
+                        onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">To date</Label>
+                      <Input
+                        type="date"
+                        value={filters.dateTo}
+                        onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {hasActiveFilters() && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearFilters}
+                      className="w-full"
+                    >
+                      Clear filters
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto">
               {emailsLoading ? (
@@ -600,6 +762,9 @@ const MyMailboxPage = () => {
                           <h3 className="font-medium text-gray-900 truncate flex-1 text-sm">
                             {email.subject || '(No Subject)'}
                           </h3>
+                          {email._count?.attachments > 0 && (
+                            <Paperclip className="w-3 h-3 text-gray-400 shrink-0" />
+                          )}
                         </div>
                         <div className="text-xs text-gray-600 truncate">
                           {email.fromEmail}
@@ -711,15 +876,68 @@ const MyMailboxPage = () => {
                     </div>
 
                     {/* Body */}
-                    <div className="border rounded p-4 bg-white">
-                      {selectedEmailDetail.body.html ? (
-                        <div
-                          dangerouslySetInnerHTML={{ __html: selectedEmailDetail.body.html }}
-                          className="prose max-w-none"
-                        />
-                      ) : (
-                        <pre className="whitespace-pre-wrap text-sm font-sans">{selectedEmailDetail.body.text}</pre>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-sm">Message</h4>
+                        <div className="flex gap-2 items-center">
+                          {selectedEmailDetail.body.hasImages && !showImages && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleLoadImages}
+                              className="text-xs"
+                            >
+                              <ImageIcon className="w-3 h-3 mr-1" />
+                              Load images
+                            </Button>
+                          )}
+                          <Tabs value={emailView} onValueChange={setEmailView} className="w-auto">
+                            <TabsList className="h-8">
+                              <TabsTrigger value="html" className="text-xs px-3 py-1">
+                                Safe HTML
+                              </TabsTrigger>
+                              <TabsTrigger value="text" className="text-xs px-3 py-1">
+                                Plain text
+                              </TabsTrigger>
+                            </TabsList>
+                          </Tabs>
+                        </div>
+                      </div>
+
+                      {selectedEmailDetail.body.hasImages && !showImages && (
+                        <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="font-medium">Images are blocked for your privacy</p>
+                            <p className="mt-1 text-xs">Images can reveal your IP address and location. Click "Load images" above if you trust the sender.</p>
+                          </div>
+                        </div>
                       )}
+
+                      <div className="border rounded p-4 bg-white">
+                        {emailView === 'html' ? (
+                          (() => {
+                            const htmlToRender = showImages
+                              ? selectedEmailDetail.body.safeHtmlWithImages
+                              : selectedEmailDetail.body.safeHtmlNoImages
+
+                            return htmlToRender ? (
+                              <div
+                                dangerouslySetInnerHTML={{ __html: htmlToRender }}
+                                className="prose max-w-none text-sm"
+                              />
+                            ) : (
+                              <pre className="whitespace-pre-wrap text-sm font-sans text-gray-600">
+                                {selectedEmailDetail.body.text || '(No content)'}
+                              </pre>
+                            )
+                          })()
+                        ) : (
+                          <pre className="whitespace-pre-wrap text-sm font-sans">
+                            {selectedEmailDetail.body.text || '(No text content)'}
+                          </pre>
+                        )}
+                      </div>
                     </div>
 
                     {/* Attachments */}

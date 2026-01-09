@@ -28,8 +28,16 @@ export async function GET(req) {
     // Get pagination parameters
     const { searchParams } = new URL(req.url)
     const page = parseInt(searchParams.get('page') || '1', 10)
-    const limit = parseInt(searchParams.get('limit') || '20', 10)
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100) // Max 100
     const skip = (page - 1) * limit
+
+    // Get filter parameters
+    const query = searchParams.get('query') || '' // Search in subject + from
+    const fromEmail = searchParams.get('from') || ''
+    const filterAliasId = searchParams.get('aliasId') || ''
+    const hasAttachments = searchParams.get('hasAttachments')
+    const dateFrom = searchParams.get('dateFrom')
+    const dateTo = searchParams.get('dateTo')
 
     // Get aliases for this mailbox
     const aliases = await prisma.alias.findMany({
@@ -56,22 +64,68 @@ export async function GET(req) {
       })
     }
 
+    // Build filter conditions
+    const whereConditions = {
+      aliasId: {
+        in: aliasIds,
+      },
+    }
+
+    // Apply filters
+    if (query) {
+      whereConditions.OR = [
+        {
+          subject: {
+            contains: query,
+            mode: 'insensitive',
+          },
+        },
+        {
+          fromEmail: {
+            contains: query,
+            mode: 'insensitive',
+          },
+        },
+      ]
+    }
+
+    if (fromEmail) {
+      whereConditions.fromEmail = {
+        contains: fromEmail,
+        mode: 'insensitive',
+      }
+    }
+
+    if (filterAliasId && aliasIds.includes(filterAliasId)) {
+      whereConditions.aliasId = filterAliasId
+    }
+
+    if (hasAttachments === 'true') {
+      whereConditions.attachmentsStatus = 'completed'
+    }
+
+    if (dateFrom) {
+      whereConditions.createdAt = {
+        ...whereConditions.createdAt,
+        gte: new Date(dateFrom),
+      }
+    }
+
+    if (dateTo) {
+      whereConditions.createdAt = {
+        ...whereConditions.createdAt,
+        lte: new Date(dateTo),
+      }
+    }
+
     // Get total count
     const totalCount = await prisma.emailLog.count({
-      where: {
-        aliasId: {
-          in: aliasIds,
-        },
-      },
+      where: whereConditions,
     })
 
     // Get emails
     const emails = await prisma.emailLog.findMany({
-      where: {
-        aliasId: {
-          in: aliasIds,
-        },
-      },
+      where: whereConditions,
       select: {
         id: true,
         fromEmail: true,
@@ -80,9 +134,16 @@ export async function GET(req) {
         status: true,
         size: true,
         createdAt: true,
+        attachmentsStatus: true,
         alias: {
           select: {
+            id: true,
             localPart: true,
+          },
+        },
+        _count: {
+          select: {
+            attachments: true,
           },
         },
       },
