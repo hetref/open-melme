@@ -37,7 +37,7 @@ export async function GET(request, { params }) {
       )
     }
 
-    // Get aliases with email log counts
+    // Get aliases with email log counts and mailbox info
     const aliases = await prisma.alias.findMany({
       where: {
         domainId,
@@ -46,6 +46,13 @@ export async function GET(request, { params }) {
         _count: {
           select: {
             logs: true,
+          },
+        },
+        mailbox: {
+          select: {
+            id: true,
+            emailAlias: true,
+            isActive: true,
           },
         },
       },
@@ -66,7 +73,10 @@ export async function GET(request, { params }) {
     const aliasesWithCounts = aliases.map((alias) => ({
       id: alias.id,
       localPart: alias.localPart,
+      mode: alias.mode,
       forwardTo: alias.forwardTo,
+      mailboxId: alias.mailboxId,
+      mailbox: alias.mailbox,
       isActive: alias.isActive,
       emailCount: alias._count.logs,
       createdAt: alias.createdAt,

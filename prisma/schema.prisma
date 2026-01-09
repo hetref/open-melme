@@ -26,6 +26,11 @@ enum EmailStatus {
   invalid
 }
 
+enum AliasMode {
+  forward
+  mailbox
+}
+
 model User {
   id            String   @id
   name          String
@@ -40,10 +45,12 @@ model User {
   twoFactorEnabled Boolean?    @default(false)
   twofactors       TwoFactor[]
 
-  passkeys  Passkey[]
-  domains   Domain[]
-  aliases   Alias[]
-  emailLogs EmailLog[]
+  passkeys        Passkey[]
+  domains         Domain[]
+  aliases         Alias[]
+  emailLogs       EmailLog[]
+  mailboxes       Mailbox[]
+  mailboxSessions MailboxSession[]
 
   @@map("user")
 }
@@ -146,9 +153,10 @@ model Domain {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  aliases Alias[]
-  logs    EmailLog[]
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aliases   Alias[]
+  logs      EmailLog[]
+  mailboxes Mailbox[]
 
   @@unique([userId, fullDomain])
   @@index([userId])
@@ -156,23 +164,27 @@ model Domain {
 }
 
 model Alias {
-  id        String  @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
   domainId  String
   localPart String
-  forwardTo String
-  isActive  Boolean @default(true)
+  forwardTo String?
+  mode      AliasMode @default(forward)
+  mailboxId String?
+  isActive  Boolean   @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  domain Domain     @relation(fields: [domainId], references: [id], onDelete: Cascade)
-  logs   EmailLog[]
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain  Domain     @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  mailbox Mailbox?   @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
+  logs    EmailLog[]
 
   @@unique([domainId, localPart])
   @@index([userId])
   @@index([domainId])
+  @@index([mailboxId])
   @@map("aliases")
 }
 
@@ -204,4 +216,44 @@ model EmailLog {
   @@index([aliasId])
   @@index([s3Key])
   @@map("email_logs")
+}
+
+model Mailbox {
+  id           String  @id @default(cuid())
+  userId       String
+  domainId     String
+  emailAlias   String  @unique
+  passwordHash String
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain   Domain           @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  aliases  Alias[]
+  sessions MailboxSession[]
+
+  @@index([userId])
+  @@index([domainId])
+  @@map("mailboxes")
+}
+
+model MailboxSession {
+  id        String    @id @default(cuid())
+  mailboxId String
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+
+  createdAt DateTime @default(now())
+
+  mailbox Mailbox @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([mailboxId])
+  @@index([userId])
+  @@map("mailbox_sessions")
 }

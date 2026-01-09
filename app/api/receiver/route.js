@@ -154,6 +154,14 @@ export async function POST(req) {
           localPart: localPart,
         },
       },
+      include: {
+        mailbox: {
+          select: {
+            id: true,
+            isActive: true,
+          },
+        },
+      },
     });
 
     if (!alias) {
@@ -279,6 +287,92 @@ export async function POST(req) {
     // ====================
 
     console.log('Domain is connected, processing email normally');
+
+    // Check alias mode
+    if (alias.mode === 'mailbox') {
+      console.log('Alias is in mailbox mode - storing email, not forwarding');
+
+      // Check if mailbox is active
+      if (!alias.mailbox || !alias.mailbox.isActive) {
+        console.log('Mailbox is inactive or not found');
+
+        // Log as failed
+        const emailLog = await logEmail({
+          userId: domainRecord.userId,
+          domainId: domainRecord.id,
+          aliasId: alias.id,
+          fromEmail,
+          toEmail,
+          subject,
+          s3Bucket: s3.bucket,
+          s3Key: s3.key,
+          size: s3.size,
+          status: 'failed',
+          error: 'Mailbox inactive or not found',
+          pendingReason: null,
+        });
+
+        return Response.json({
+          received: true,
+          status: 'failed',
+          reason: 'mailbox_inactive',
+          emailId: emailLog.id,
+        });
+      }
+
+      // Log as received (email stored in mailbox)
+      const emailLog = await logEmail({
+        userId: domainRecord.userId,
+        domainId: domainRecord.id,
+        aliasId: alias.id,
+        fromEmail,
+        toEmail,
+        subject,
+        s3Bucket: s3.bucket,
+        s3Key: s3.key,
+        size: s3.size,
+        status: 'received',
+        error: null,
+        pendingReason: null,
+      });
+
+      console.log('Email stored in mailbox successfully:', toEmail);
+
+      return Response.json({
+        received: true,
+        status: 'received',
+        mode: 'mailbox',
+        emailId: emailLog.id,
+      });
+    }
+
+    // Forward mode - continue with normal forwarding
+    if (!alias.forwardTo) {
+      console.log('Forward mode but no forwardTo address configured');
+
+      // Log as failed
+      const emailLog = await logEmail({
+        userId: domainRecord.userId,
+        domainId: domainRecord.id,
+        aliasId: alias.id,
+        fromEmail,
+        toEmail,
+        subject,
+        s3Bucket: s3.bucket,
+        s3Key: s3.key,
+        size: s3.size,
+        status: 'failed',
+        error: 'No forwarding address configured',
+        pendingReason: null,
+      });
+
+      return Response.json({
+        received: true,
+        status: 'failed',
+        reason: 'no_forward_address',
+        emailId: emailLog.id,
+      });
+    }
 
     // 11. Log as received
     const emailLog = await logEmail({

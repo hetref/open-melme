@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Trash2, Edit2, Power, PowerOff, ArrowLeft, Mail, RefreshCw, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, Edit2, Power, PowerOff, ArrowLeft, Mail, RefreshCw, AlertCircle, Inbox } from 'lucide-react'
 import { toast } from 'sonner'
 
 const DomainAliasesPage = () => {
@@ -18,6 +18,7 @@ const DomainAliasesPage = () => {
 
   const [domain, setDomain] = useState(null)
   const [aliases, setAliases] = useState([])
+  const [mailboxes, setMailboxes] = useState([])
   const [loading, setLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -28,11 +29,14 @@ const DomainAliasesPage = () => {
   const [formData, setFormData] = useState({
     localPart: '',
     forwardTo: '',
+    mode: 'forward', // 'forward' or 'mailbox'
+    mailboxId: '',
   })
 
   useEffect(() => {
     if (domainId) {
       fetchAliases()
+      fetchMailboxes()
     }
   }, [domainId])
 
@@ -58,27 +62,67 @@ const DomainAliasesPage = () => {
     }
   }
 
+  const fetchMailboxes = async () => {
+    try {
+      const response = await fetch('/api/mailboxes')
+      if (!response.ok) throw new Error('Failed to fetch mailboxes')
+      const data = await response.json()
+      // Filter mailboxes for this domain
+      const domainMailboxes = data.mailboxes.filter(m => m.domainId === domainId && m.isActive)
+      setMailboxes(domainMailboxes)
+    } catch (error) {
+      console.error('Error fetching mailboxes:', error)
+    }
+  }
+
   const handleCreateAlias = async (e) => {
     e.preventDefault()
 
-    if (!formData.localPart.trim() || !formData.forwardTo.trim()) {
-      toast.error('Please fill in all fields')
+    if (!formData.localPart.trim()) {
+      toast.error('Local part is required')
+      return
+    }
+
+    // Check if alias already exists
+    const aliasExists = aliases.some(
+      a => a.localPart.toLowerCase() === formData.localPart.trim().toLowerCase()
+    )
+    if (aliasExists) {
+      toast.error('An alias with this name already exists for this domain')
+      return
+    }
+
+    if (formData.mode === 'forward' && !formData.forwardTo.trim()) {
+      toast.error('Forward to email is required for forward mode')
+      return
+    }
+
+    if (formData.mode === 'mailbox' && !formData.mailboxId) {
+      toast.error('Please select a mailbox')
       return
     }
 
     setIsSubmitting(true)
 
     try {
+      const body = {
+        domainId,
+        localPart: formData.localPart.trim(),
+        mode: formData.mode,
+      }
+
+      if (formData.mode === 'forward') {
+        body.forwardTo = formData.forwardTo.trim()
+      } else {
+        body.mailboxId = formData.mailboxId
+      }
+
       const response = await fetch('/api/aliases', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          domainId,
-          localPart: formData.localPart.trim(),
-          forwardTo: formData.forwardTo.trim(),
-        }),
+        body: JSON.stringify(body),
       })
 
       const data = await response.json()
@@ -89,7 +133,7 @@ const DomainAliasesPage = () => {
 
       toast.success('Alias created successfully!')
       setIsCreateDialogOpen(false)
-      setFormData({ localPart: '', forwardTo: '' })
+      setFormData({ localPart: '', forwardTo: '', mode: 'forward', mailboxId: '' })
       fetchAliases()
     } catch (error) {
       console.error('Error creating alias:', error)
@@ -102,22 +146,37 @@ const DomainAliasesPage = () => {
   const handleUpdateAlias = async (e) => {
     e.preventDefault()
 
-    if (!formData.forwardTo.trim()) {
+    if (formData.mode === 'forward' && !formData.forwardTo.trim()) {
       toast.error('Forward to email is required')
+      return
+    }
+
+    if (formData.mode === 'mailbox' && !formData.mailboxId) {
+      toast.error('Please select a mailbox')
       return
     }
 
     setIsSubmitting(true)
 
     try {
+      const body = {
+        mode: formData.mode,
+      }
+
+      if (formData.mode === 'forward') {
+        body.forwardTo = formData.forwardTo.trim()
+        body.mailboxId = null
+      } else {
+        body.mailboxId = formData.mailboxId
+        body.forwardTo = null
+      }
+
       const response = await fetch(`/api/aliases/${editingAlias.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          forwardTo: formData.forwardTo.trim(),
-        }),
+        body: JSON.stringify(body),
       })
 
       const data = await response.json()
@@ -129,7 +188,7 @@ const DomainAliasesPage = () => {
       toast.success('Alias updated successfully!')
       setIsEditDialogOpen(false)
       setEditingAlias(null)
-      setFormData({ localPart: '', forwardTo: '' })
+      setFormData({ localPart: '', forwardTo: '', mode: 'forward', mailboxId: '' })
       fetchAliases()
     } catch (error) {
       console.error('Error updating alias:', error)
@@ -191,7 +250,9 @@ const DomainAliasesPage = () => {
     setEditingAlias(alias)
     setFormData({
       localPart: alias.localPart,
-      forwardTo: alias.forwardTo,
+      forwardTo: alias.forwardTo || '',
+      mode: alias.mode,
+      mailboxId: alias.mailboxId || '',
     })
     setIsEditDialogOpen(true)
   }
@@ -325,80 +386,123 @@ const DomainAliasesPage = () => {
                     Use lowercase letters, numbers, and hyphens only (no dots)
                   </p>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="forwardTo">Forward To Email</Label>
-                  <Input
-                    id="forwardTo"
-                    type="email"
-                    placeholder="your-email@gmail.com"
-                    value={formData.forwardTo}
-                    onChange={(e) =>
-                      setFormData({ ...formData, forwardTo: e.target.value })
-                    }
-                    disabled={isSubmitting} />
-
-                  {/* Domain Status Info */}
-                  <div className="flex items-center gap-4 mt-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">Status:</span>
-                      <Badge
-                        variant={domain.verificationStatus === 'verified' ? 'default' : 'secondary'}
-                        className={
-                          domain.verificationStatus === 'verified'
-                            ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                            : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
-                        }
-                      >
-                        {domain.verificationStatus === 'verified' ? 'Connected' : 'Disconnected'}
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      Last checked: {formatDate(domain.lastCheckedAt)}
-                    </div>
-                    {domain.pendingEmailCount > 0 && (
-                      <div className="flex items-center gap-1 text-sm text-yellow-700">
-                        <AlertCircle className="w-4 h-4" />
-                        <span>{domain.pendingEmailCount} pending emails</span>
-                      </div>
-                    )}
+                  <Label>Alias Mode</Label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        value="forward"
+                        checked={formData.mode === 'forward'}
+                        onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
+                        disabled={isSubmitting}
+                      />
+                      <span className="text-sm">Forward to email</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        value="mailbox"
+                        checked={formData.mode === 'mailbox'}
+                        onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
+                        disabled={isSubmitting}
+                      />
+                      <span className="text-sm">Store in mailbox</span>
+                    </label>
                   </div>
+                </div>
 
-                  {/* Warning Message */}
-                  {domain.verificationStatus === 'pending' && domain.pendingEmailCount > 0 && (
-                    <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-sm text-yellow-800">
-                        Emails were paused because the domain connection was lost.
-                        Recheck the domain to resume delivery and process pending emails.
-                      </p>
+                {formData.mode === 'forward' ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="forwardTo">Forward To Email</Label>
+                    <Input
+                      id="forwardTo"
+                      type="email"
+                      placeholder="your-email@gmail.com"
+                      value={formData.forwardTo}
+                      onChange={(e) =>
+                        setFormData({ ...formData, forwardTo: e.target.value })
+                      }
+                      disabled={isSubmitting}
+                      autoComplete="off"
+                    />
+                    <p className="text-sm text-gray-500">
+                      Emails will be forwarded to this address
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="mailboxId">Select Mailbox</Label>
+                    {mailboxes.length === 0 ? (
+                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                        No mailboxes available for this domain. Create a mailbox first.
+                      </div>
+                    ) : (
+                      <select
+                        id="mailboxId"
+                        value={formData.mailboxId}
+                        onChange={(e) => setFormData({ ...formData, mailboxId: e.target.value })}
+                        disabled={isSubmitting}
+                        className="w-full px-3 py-2 border rounded-md"
+                      >
+                        <option value="">Select a mailbox...</option>
+                        {mailboxes.map((mailbox) => (
+                          <option key={mailbox.id} value={mailbox.id}>
+                            {mailbox.emailAlias}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <p className="text-sm text-gray-500">
+                      Emails will be stored in the selected mailbox (not forwarded)
+                    </p>
+                  </div>
+                )}
+
+                {/* Domain Status Info */}
+                <div className="flex items-center gap-4 mt-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Status:</span>
+                    <Badge
+                      variant={domain.verificationStatus === 'verified' ? 'default' : 'secondary'}
+                      className={
+                        domain.verificationStatus === 'verified'
+                          ? 'bg-green-100 text-green-800 hover:bg-green-100'
+                          : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+                      }
+                    >
+                      {domain.verificationStatus === 'verified' ? 'Connected' : 'Disconnected'}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Last checked: {formatDate(domain.lastCheckedAt)}
+                  </div>
+                  {domain.pendingEmailCount > 0 && (
+                    <div className="flex items-center gap-1 text-sm text-yellow-700">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>{domain.pendingEmailCount} pending emails</span>
                     </div>
                   )}
                 </div>
 
-                <div className="flex gap-2">
-                  {/* Recheck Button */}
-                  {domain.verificationStatus === 'pending' && domain.pendingEmailCount > 0 && (
-                    <Button
-                      onClick={handleRecheckDomain}
-                      disabled={isRechecking}
-                      variant="outline"
-                      className="gap-2"
-                    >
-                      <RefreshCw className={`w-4 h-4 ${isRechecking ? 'animate-spin' : ''}`} />
-                      {isRechecking ? 'Rechecking...' : 'Recheck & Process'}
-                    </Button>
-                  )}
+                {/* Warning Message */}
+                {domain.verificationStatus === 'pending' && domain.pendingEmailCount > 0 && (
+                  <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      Emails were paused because the domain connection was lost.
+                      Recheck the domain to resume delivery and process pending emails.
+                    </p>
+                  </div>
+                )}
 
-                  <p className="text-sm text-gray-500">
-                    Emails will be forwarded to this address
-                  </p>
-                </div>
                 <div className="flex justify-end gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => {
                       setIsCreateDialogOpen(false)
-                      setFormData({ localPart: '', forwardTo: '' })
+                      setFormData({ localPart: '', forwardTo: '', mode: 'forward', mailboxId: '' })
                     }}
                     disabled={isSubmitting}
                   >
@@ -446,6 +550,20 @@ const DomainAliasesPage = () => {
                         {alias.localPart}@{domain.fullDomain}
                       </CardTitle>
                       <Badge
+                        variant={alias.mode === 'mailbox' ? 'outline' : 'default'}
+                        className={
+                          alias.mode === 'mailbox'
+                            ? 'bg-purple-100 text-purple-800 border-purple-300'
+                            : 'bg-blue-100 text-blue-800'
+                        }
+                      >
+                        {alias.mode === 'mailbox' ? (
+                          <><Inbox className="w-3 h-3 mr-1 inline" />Mailbox</>
+                        ) : (
+                          <><Mail className="w-3 h-3 mr-1 inline" />Forward</>
+                        )}
+                      </Badge>
+                      <Badge
                         variant={alias.isActive ? 'default' : 'secondary'}
                         className={
                           alias.isActive
@@ -457,7 +575,11 @@ const DomainAliasesPage = () => {
                       </Badge>
                     </div>
                     <CardDescription>
-                      Forwards to: <span className="font-medium">{alias.forwardTo}</span>
+                      {alias.mode === 'forward' ? (
+                        <>Forwards to: <span className="font-medium">{alias.forwardTo}</span></>
+                      ) : (
+                        <>Stored in mailbox: <span className="font-medium">{alias.mailbox?.emailAlias || 'Unknown'}</span></>
+                      )}
                     </CardDescription>
                   </div>
                   <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -509,27 +631,83 @@ const DomainAliasesPage = () => {
           <DialogHeader>
             <DialogTitle>Edit Alias</DialogTitle>
             <DialogDescription>
-              Update forwarding email for {editingAlias?.localPart}@{domain.fullDomain}
+              Update destination for {editingAlias?.localPart}@{domain.fullDomain}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateAlias} className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="editForwardTo">Forward To Email</Label>
-              <Input
-                id="editForwardTo"
-                type="email"
-                placeholder="your-email@gmail.com"
-                value={formData.forwardTo}
-                onChange={(e) =>
-                  setFormData({ ...formData, forwardTo: e.target.value })
-                }
-                disabled={isSubmitting}
-                autoComplete="off"
-              />
-              <p className="text-sm text-gray-500">
-                Emails will be forwarded to this address
-              </p>
+              <Label>Alias Mode</Label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="forward"
+                    checked={formData.mode === 'forward'}
+                    onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
+                    disabled={isSubmitting}
+                  />
+                  <span className="text-sm">Forward to email</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="mailbox"
+                    checked={formData.mode === 'mailbox'}
+                    onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
+                    disabled={isSubmitting}
+                  />
+                  <span className="text-sm">Store in mailbox</span>
+                </label>
+              </div>
             </div>
+
+            {formData.mode === 'forward' ? (
+              <div className="space-y-2">
+                <Label htmlFor="editForwardTo">Forward To Email</Label>
+                <Input
+                  id="editForwardTo"
+                  type="email"
+                  placeholder="your-email@gmail.com"
+                  value={formData.forwardTo}
+                  onChange={(e) =>
+                    setFormData({ ...formData, forwardTo: e.target.value })
+                  }
+                  disabled={isSubmitting}
+                  autoComplete="off"
+                />
+                <p className="text-sm text-gray-500">
+                  Emails will be forwarded to this address
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="editMailboxId">Select Mailbox</Label>
+                {mailboxes.length === 0 ? (
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                    No mailboxes available for this domain. Create a mailbox first.
+                  </div>
+                ) : (
+                  <select
+                    id="editMailboxId"
+                    value={formData.mailboxId}
+                    onChange={(e) => setFormData({ ...formData, mailboxId: e.target.value })}
+                    disabled={isSubmitting}
+                    className="w-full px-3 py-2 border rounded-md"
+                  >
+                    <option value="">Select a mailbox...</option>
+                    {mailboxes.map((mailbox) => (
+                      <option key={mailbox.id} value={mailbox.id}>
+                        {mailbox.emailAlias}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-sm text-gray-500">
+                  Emails will be stored in the selected mailbox (not forwarded)
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
@@ -537,7 +715,7 @@ const DomainAliasesPage = () => {
                 onClick={() => {
                   setIsEditDialogOpen(false)
                   setEditingAlias(null)
-                  setFormData({ localPart: '', forwardTo: '' })
+                  setFormData({ localPart: '', forwardTo: '', mode: 'forward', mailboxId: '' })
                 }}
                 disabled={isSubmitting}
               >

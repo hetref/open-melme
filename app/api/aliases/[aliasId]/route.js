@@ -38,6 +38,13 @@ export async function GET(request, { params }) {
             lastCheckedAt: true,
           },
         },
+        mailbox: {
+          select: {
+            id: true,
+            emailAlias: true,
+            isActive: true,
+          },
+        },
         _count: {
           select: {
             logs: true,
@@ -77,7 +84,10 @@ export async function GET(request, { params }) {
       alias: {
         id: alias.id,
         localPart: alias.localPart,
+        mode: alias.mode,
         forwardTo: alias.forwardTo,
+        mailboxId: alias.mailboxId,
+        mailbox: alias.mailbox,
         isActive: alias.isActive,
         createdAt: alias.createdAt,
         updatedAt: alias.updatedAt,
@@ -121,7 +131,7 @@ export async function PATCH(request, { params }) {
 
     const { aliasId } = await params
     const body = await request.json()
-    const { forwardTo, isActive } = body
+    const { forwardTo, isActive, mode, mailboxId } = body
 
     // Verify alias belongs to user
     const alias = await prisma.alias.findFirst({
@@ -141,15 +151,112 @@ export async function PATCH(request, { params }) {
     // Prepare update data
     const updateData = {}
 
-    if (forwardTo !== undefined) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(forwardTo)) {
+    // Handle mode change
+    if (mode !== undefined) {
+      if (mode !== 'forward' && mode !== 'mailbox') {
         return NextResponse.json(
-          { error: 'Invalid forward to email address' },
+          { error: 'Mode must be either "forward" or "mailbox"' },
           { status: 400 }
         )
       }
-      updateData.forwardTo = forwardTo.toLowerCase().trim()
+      updateData.mode = mode
+
+      // When switching to mailbox mode, clear forwardTo and set mailboxId
+      if (mode === 'mailbox') {
+        if (!mailboxId) {
+          return NextResponse.json(
+            { error: 'mailboxId is required when switching to mailbox mode' },
+            { status: 400 }
+          )
+        }
+
+        // Verify mailbox exists and belongs to user
+        const mailbox = await prisma.mailbox.findFirst({
+          where: {
+            id: mailboxId,
+            userId: session.user.id,
+            isActive: true,
+          },
+        })
+
+        if (!mailbox) {
+          return NextResponse.json(
+            { error: 'Mailbox not found or inactive' },
+            { status: 404 }
+          )
+        }
+
+        updateData.mailboxId = mailboxId
+        updateData.forwardTo = null
+      }
+
+      // When switching to forward mode, clear mailboxId and require forwardTo
+      if (mode === 'forward') {
+        if (!forwardTo) {
+          return NextResponse.json(
+            { error: 'forwardTo is required when switching to forward mode' },
+            { status: 400 }
+          )
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(forwardTo)) {
+          return NextResponse.json(
+            { error: 'Invalid forward to email address' },
+            { status: 400 }
+          )
+        }
+
+        updateData.forwardTo = forwardTo.toLowerCase().trim()
+        updateData.mailboxId = null
+      }
+    } else {
+      // If not changing mode, only allow updating forwardTo if in forward mode
+      if (forwardTo !== undefined) {
+        if (alias.mode !== 'forward') {
+          return NextResponse.json(
+            { error: 'Cannot update forwardTo for mailbox mode aliases' },
+            { status: 400 }
+          )
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(forwardTo)) {
+          return NextResponse.json(
+            { error: 'Invalid forward to email address' },
+            { status: 400 }
+          )
+        }
+        updateData.forwardTo = forwardTo.toLowerCase().trim()
+      }
+
+      // Only allow updating mailboxId if in mailbox mode
+      if (mailboxId !== undefined) {
+        if (alias.mode !== 'mailbox') {
+          return NextResponse.json(
+            { error: 'Cannot update mailboxId for forward mode aliases' },
+            { status: 400 }
+          )
+        }
+
+        // Verify mailbox exists and belongs to user
+        const mailbox = await prisma.mailbox.findFirst({
+          where: {
+            id: mailboxId,
+            userId: session.user.id,
+            isActive: true,
+          },
+        })
+
+        if (!mailbox) {
+          return NextResponse.json(
+            { error: 'Mailbox not found or inactive' },
+            { status: 404 }
+          )
+        }
+
+        updateData.mailboxId = mailboxId
+      }
     }
 
     if (isActive !== undefined) {
@@ -181,7 +288,9 @@ export async function PATCH(request, { params }) {
       alias: {
         id: updatedAlias.id,
         localPart: updatedAlias.localPart,
+        mode: updatedAlias.mode,
         forwardTo: updatedAlias.forwardTo,
+        mailboxId: updatedAlias.mailboxId,
         isActive: updatedAlias.isActive,
         updatedAt: updatedAlias.updatedAt,
       },

@@ -17,7 +17,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { User, Globe, LogOut, Mail } from 'lucide-react'
+import { User, Globe, LogOut, Mail, Inbox, MailOpen } from 'lucide-react'
 
 const AppSidebar = () => {
   const pathname = usePathname()
@@ -56,6 +56,16 @@ const AppSidebar = () => {
       name: 'Aliases',
       path: '/aliases',
       icon: Mail,
+    },
+    {
+      name: 'Mailboxes',
+      path: '/mailboxes',
+      icon: Inbox,
+    },
+    {
+      name: 'My Mailbox',
+      path: '/my-mailbox',
+      icon: MailOpen,
     },
   ]
 

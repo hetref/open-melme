@@ -33,6 +33,8 @@ const AliasDetailPage = () => {
 
   const [formData, setFormData] = useState({
     forwardTo: '',
+    mode: 'forward',
+    mailboxId: '',
   })
 
   useEffect(() => {
@@ -55,7 +57,11 @@ const AliasDetailPage = () => {
       }
       const data = await response.json()
       setAlias(data.alias)
-      setFormData({ forwardTo: data.alias.forwardTo })
+      setFormData({
+        forwardTo: data.alias.forwardTo || '',
+        mode: data.alias.mode,
+        mailboxId: data.alias.mailboxId || '',
+      })
     } catch (error) {
       console.error('Error fetching alias:', error)
       toast.error('Failed to load alias')
@@ -85,22 +91,37 @@ const AliasDetailPage = () => {
   const handleUpdateAlias = async (e) => {
     e.preventDefault()
 
-    if (!formData.forwardTo.trim()) {
+    if (formData.mode === 'forward' && !formData.forwardTo.trim()) {
       toast.error('Forward to email is required')
+      return
+    }
+
+    if (formData.mode === 'mailbox' && !formData.mailboxId) {
+      toast.error('Please select a mailbox')
       return
     }
 
     setIsSubmitting(true)
 
     try {
+      const body = {
+        mode: formData.mode,
+      }
+
+      if (formData.mode === 'forward') {
+        body.forwardTo = formData.forwardTo.trim()
+        body.mailboxId = null
+      } else {
+        body.mailboxId = formData.mailboxId
+        body.forwardTo = null
+      }
+
       const response = await fetch(`/api/aliases/${aliasId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          forwardTo: formData.forwardTo.trim(),
-        }),
+        body: JSON.stringify(body),
       })
 
       const data = await response.json()
@@ -298,7 +319,19 @@ const AliasDetailPage = () => {
 
         <div className="flex justify-between items-start mb-6">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-900 font-mono">{alias.fullEmail}</h1>
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="text-3xl font-bold text-gray-900 font-mono">{alias.fullEmail}</h1>
+              <Badge
+                variant={alias.mode === 'mailbox' ? 'outline' : 'default'}
+                className={
+                  alias.mode === 'mailbox'
+                    ? 'bg-purple-100 text-purple-800 border-purple-300'
+                    : 'bg-blue-100 text-blue-800'
+                }
+              >
+                {alias.mode === 'mailbox' ? 'Mailbox' : 'Forward'}
+              </Badge>
+            </div>
             <p className="text-gray-600 mt-2">Alias details and email logs</p>
 
             {/* Domain Connection Status */}
@@ -414,12 +447,37 @@ const AliasDetailPage = () => {
                 <p className="text-sm font-mono mt-1">{alias.fullEmail}</p>
               </div>
               <div>
-                <Label className="text-sm text-gray-600">Forwards To</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <Forward className="w-4 h-4 text-gray-400" />
-                  <p className="text-sm font-medium">{alias.forwardTo}</p>
+                <Label className="text-sm text-gray-600">Mode</Label>
+                <div className="mt-1">
+                  <Badge
+                    variant={alias.mode === 'mailbox' ? 'outline' : 'default'}
+                    className={
+                      alias.mode === 'mailbox'
+                        ? 'bg-purple-100 text-purple-800 border-purple-300'
+                        : 'bg-blue-100 text-blue-800'
+                    }
+                  >
+                    {alias.mode === 'mailbox' ? 'Store in Mailbox' : 'Forward to Email'}
+                  </Badge>
                 </div>
               </div>
+              {alias.mode === 'forward' ? (
+                <div>
+                  <Label className="text-sm text-gray-600">Forwards To</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Forward className="w-4 h-4 text-gray-400" />
+                    <p className="text-sm font-medium">{alias.forwardTo}</p>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <Label className="text-sm text-gray-600">Mailbox</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    <p className="text-sm font-medium">{alias.mailbox?.emailAlias || 'Unknown'}</p>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div>
                   <Label className="text-sm text-gray-600">Created</Label>
@@ -602,22 +660,60 @@ const AliasDetailPage = () => {
           </DialogHeader>
           <form onSubmit={handleUpdateAlias} className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="forwardTo">Forward To Email</Label>
-              <Input
-                id="forwardTo"
-                type="email"
-                placeholder="your-email@gmail.com"
-                value={formData.forwardTo}
-                onChange={(e) =>
-                  setFormData({ ...formData, forwardTo: e.target.value })
-                }
-                disabled={isSubmitting}
-                autoComplete="off"
-              />
-              <p className="text-sm text-gray-500">
-                Emails will be forwarded to this address
-              </p>
+              <Label>Alias Mode</Label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="forward"
+                    checked={formData.mode === 'forward'}
+                    onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
+                    disabled={isSubmitting}
+                  />
+                  <span className="text-sm">Forward to email</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="mailbox"
+                    checked={formData.mode === 'mailbox'}
+                    onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
+                    disabled={isSubmitting}
+                  />
+                  <span className="text-sm">Store in mailbox</span>
+                </label>
+              </div>
             </div>
+
+            {formData.mode === 'forward' ? (
+              <div className="space-y-2">
+                <Label htmlFor="forwardTo">Forward To Email</Label>
+                <Input
+                  id="forwardTo"
+                  type="email"
+                  placeholder="your-email@gmail.com"
+                  value={formData.forwardTo}
+                  onChange={(e) =>
+                    setFormData({ ...formData, forwardTo: e.target.value })
+                  }
+                  disabled={isSubmitting}
+                  autoComplete="off"
+                />
+                <p className="text-sm text-gray-500">
+                  Emails will be forwarded to this address
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="mailboxId">Select Mailbox</Label>
+                <p className="text-sm text-gray-500">
+                  Note: Mailbox cannot be changed after creation. To use a different mailbox, create a new alias.
+                </p>
+                <div className="p-3 bg-gray-50 border rounded text-sm">
+                  <strong>Current Mailbox:</strong> {alias.mailbox?.emailAlias || 'Unknown'}
+                </div>
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Button
                 type="button"

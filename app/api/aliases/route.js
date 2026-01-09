@@ -77,31 +77,74 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { domainId, localPart, forwardTo } = body
+    const { domainId, localPart, mode, forwardTo, mailboxId } = body
 
-    if (!domainId || !localPart || !forwardTo) {
+    if (!domainId || !localPart || !mode) {
       return NextResponse.json(
-        { error: 'domainId, localPart, and forwardTo are required' },
+        { error: 'domainId, localPart, and mode are required' },
         { status: 400 }
       )
+    }
+
+    // Validate mode
+    if (mode !== 'forward' && mode !== 'mailbox') {
+      return NextResponse.json(
+        { error: 'Mode must be either "forward" or "mailbox"' },
+        { status: 400 }
+      )
+    }
+
+    // Validate mode-specific fields
+    if (mode === 'forward') {
+      if (!forwardTo) {
+        return NextResponse.json(
+          { error: 'forwardTo is required for forward mode' },
+          { status: 400 }
+        )
+      }
+
+      // Validate forwardTo email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(forwardTo)) {
+        return NextResponse.json(
+          { error: 'Invalid forward to email address' },
+          { status: 400 }
+        )
+      }
+    }
+
+    if (mode === 'mailbox') {
+      if (!mailboxId) {
+        return NextResponse.json(
+          { error: 'mailboxId is required for mailbox mode' },
+          { status: 400 }
+        )
+      }
+
+      // Verify mailbox belongs to user and is active
+      const mailbox = await prisma.mailbox.findFirst({
+        where: {
+          id: mailboxId,
+          userId: session.user.id,
+          isActive: true,
+        },
+      })
+
+      if (!mailbox) {
+        return NextResponse.json(
+          { error: 'Mailbox not found or inactive' },
+          { status: 404 }
+        )
+      }
     }
 
     // Validate localPart format
     const cleanLocalPart = localPart.toLowerCase().trim()
-    const localPartRegex = /^[a-z0-9-]+$/
+    const localPartRegex = /^[a-z0-9._-]+$/
 
     if (!localPartRegex.test(cleanLocalPart)) {
       return NextResponse.json(
-        { error: 'Local part must contain only lowercase letters, numbers, and hyphens' },
-        { status: 400 }
-      )
-    }
-
-    // Validate forwardTo email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(forwardTo)) {
-      return NextResponse.json(
-        { error: 'Invalid forward to email address' },
+        { error: 'Local part must contain only lowercase letters, numbers, dots, hyphens, and underscores' },
         { status: 400 }
       )
     }
@@ -169,7 +212,9 @@ export async function POST(request) {
         userId: session.user.id,
         domainId,
         localPart: cleanLocalPart,
-        forwardTo: forwardTo.toLowerCase().trim(),
+        mode,
+        forwardTo: mode === 'forward' ? forwardTo.toLowerCase().trim() : null,
+        mailboxId: mode === 'mailbox' ? mailboxId : null,
         isActive: true,
       },
     })
@@ -179,7 +224,9 @@ export async function POST(request) {
         alias: {
           id: alias.id,
           localPart: alias.localPart,
+          mode: alias.mode,
           forwardTo: alias.forwardTo,
+          mailboxId: alias.mailboxId,
           isActive: alias.isActive,
           createdAt: alias.createdAt,
         },
