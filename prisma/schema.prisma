@@ -22,6 +22,8 @@ enum EmailStatus {
   received
   forwarded
   failed
+  pending
+  invalid
 }
 
 model User {
@@ -139,6 +141,7 @@ model Domain {
   mxStatus           String?                  @default("pending")
   verificationError  String?
   dnsRecords         String?
+  lastCheckedAt      DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -179,11 +182,12 @@ model EmailLog {
   domainId String
   aliasId  String?
 
-  fromEmail String
-  toEmail   String
-  subject   String?
-  status    EmailStatus
-  error     String?
+  fromEmail     String
+  toEmail       String
+  subject       String?
+  status        EmailStatus
+  error         String?
+  pendingReason String?
 
   s3Bucket String?
   s3Key    String? @unique

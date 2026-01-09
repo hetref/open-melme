@@ -33,6 +33,9 @@ export async function GET(request, { params }) {
           select: {
             id: true,
             fullDomain: true,
+            verificationStatus: true,
+            dkimStatus: true,
+            lastCheckedAt: true,
           },
         },
         _count: {
@@ -51,7 +54,7 @@ export async function GET(request, { params }) {
     }
 
     // Get email status statistics
-    const [forwardedCount, failedCount, receivedCount] = await Promise.all([
+    const [forwardedCount, failedCount, receivedCount, pendingCount] = await Promise.all([
       prisma.emailLog.count({
         where: { aliasId, status: 'forwarded' },
       }),
@@ -60,6 +63,13 @@ export async function GET(request, { params }) {
       }),
       prisma.emailLog.count({
         where: { aliasId, status: 'received' },
+      }),
+      prisma.emailLog.count({
+        where: {
+          aliasId,
+          status: 'pending',
+          pendingReason: 'domain_disconnected',
+        },
       }),
     ])
 
@@ -79,6 +89,7 @@ export async function GET(request, { params }) {
           forwarded: forwardedCount,
           failed: failedCount,
           received: receivedCount,
+          pending: pendingCount,
         },
       },
     })

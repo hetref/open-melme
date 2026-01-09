@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Trash2, Edit2, Power, PowerOff, ArrowLeft, Mail } from 'lucide-react'
+import { Plus, Trash2, Edit2, Power, PowerOff, ArrowLeft, Mail, RefreshCw, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 const DomainAliasesPage = () => {
@@ -23,6 +23,7 @@ const DomainAliasesPage = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingAlias, setEditingAlias] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRechecking, setIsRechecking] = useState(false)
 
   const [formData, setFormData] = useState({
     localPart: '',
@@ -195,6 +196,55 @@ const DomainAliasesPage = () => {
     setIsEditDialogOpen(true)
   }
 
+  const handleRecheckDomain = async () => {
+    setIsRechecking(true)
+
+    try {
+      const response = await fetch(`/api/domains/${domainId}/recheck`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to recheck domain')
+      }
+
+      if (data.pendingEmailsProcessed) {
+        toast.success(data.message || `Processed ${data.processedCount} pending emails!`)
+      } else {
+        if (data.newStatus === 'verified') {
+          toast.success('Domain is connected and verified!')
+        } else {
+          toast.warning('Domain is still disconnected. Please verify your DNS records.')
+        }
+      }
+
+      // Refresh data
+      fetchAliases()
+    } catch (error) {
+      console.error('Error rechecking domain:', error)
+      toast.error(error.message)
+    } finally {
+      setIsRechecking(false)
+    }
+  }
+
+  const formatDate = (date) => {
+    if (!date) return 'Never'
+    return new Date(date).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -285,9 +335,59 @@ const DomainAliasesPage = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, forwardTo: e.target.value })
                     }
-                    disabled={isSubmitting}
-                    autoComplete="off"
-                  />
+                    disabled={isSubmitting} />
+
+                  {/* Domain Status Info */}
+                  <div className="flex items-center gap-4 mt-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Status:</span>
+                      <Badge
+                        variant={domain.verificationStatus === 'verified' ? 'default' : 'secondary'}
+                        className={
+                          domain.verificationStatus === 'verified'
+                            ? 'bg-green-100 text-green-800 hover:bg-green-100'
+                            : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+                        }
+                      >
+                        {domain.verificationStatus === 'verified' ? 'Connected' : 'Disconnected'}
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Last checked: {formatDate(domain.lastCheckedAt)}
+                    </div>
+                    {domain.pendingEmailCount > 0 && (
+                      <div className="flex items-center gap-1 text-sm text-yellow-700">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>{domain.pendingEmailCount} pending emails</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Warning Message */}
+                  {domain.verificationStatus === 'pending' && domain.pendingEmailCount > 0 && (
+                    <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        Emails were paused because the domain connection was lost.
+                        Recheck the domain to resume delivery and process pending emails.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  {/* Recheck Button */}
+                  {domain.verificationStatus === 'pending' && domain.pendingEmailCount > 0 && (
+                    <Button
+                      onClick={handleRecheckDomain}
+                      disabled={isRechecking}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isRechecking ? 'animate-spin' : ''}`} />
+                      {isRechecking ? 'Rechecking...' : 'Recheck & Process'}
+                    </Button>
+                  )}
+
                   <p className="text-sm text-gray-500">
                     Emails will be forwarded to this address
                   </p>

@@ -54,6 +54,15 @@ export async function GET(request, { params }) {
       },
     })
 
+    // Get pending email count for this domain
+    const pendingEmailCount = await prisma.emailLog.count({
+      where: {
+        domainId,
+        status: 'pending',
+        pendingReason: 'domain_disconnected',
+      },
+    })
+
     const aliasesWithCounts = aliases.map((alias) => ({
       id: alias.id,
       localPart: alias.localPart,
@@ -70,6 +79,10 @@ export async function GET(request, { params }) {
         fullDomain: domain.fullDomain,
         rootDomain: domain.rootDomain,
         subdomain: domain.subdomain,
+        verificationStatus: domain.verificationStatus,
+        dkimStatus: domain.dkimStatus,
+        lastCheckedAt: domain.lastCheckedAt,
+        pendingEmailCount,
       },
       aliases: aliasesWithCounts,
     })

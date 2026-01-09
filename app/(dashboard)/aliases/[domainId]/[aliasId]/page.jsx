@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Edit2, Power, PowerOff, Trash2, Mail, CheckCircle, XCircle, Clock, Calendar, Forward, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Edit2, Power, PowerOff, Trash2, Mail, CheckCircle, XCircle, Clock, Calendar, Forward, AlertCircle, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 
 const AliasDetailPage = () => {
@@ -22,6 +22,7 @@ const AliasDetailPage = () => {
   const [emailsLoading, setEmailsLoading] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRechecking, setIsRechecking] = useState(false)
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -167,11 +168,61 @@ const AliasDetailPage = () => {
     }
   }
 
+  const handleRecheckDomain = async () => {
+    setIsRechecking(true)
+
+    try {
+      const response = await fetch(`/api/domains/${domainId}/recheck`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ aliasId }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to recheck domain')
+      }
+
+      if (data.pendingEmailsProcessed) {
+        toast.success(data.message || `Processed ${data.processedCount} pending emails for this alias!`)
+      } else {
+        if (data.newStatus === 'verified') {
+          toast.success('Domain is connected and verified!')
+        } else {
+          toast.warning('Domain is still disconnected. Please verify your DNS records.')
+        }
+      }
+
+      // Refresh data
+      fetchAliasDetails()
+      fetchEmails(pagination.page)
+    } catch (error) {
+      console.error('Error rechecking domain:', error)
+      toast.error(error.message)
+    } finally {
+      setIsRechecking(false)
+    }
+  }
+
   const formatDate = (date) => {
     return new Date(date).toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  const formatLastChecked = (date) => {
+    if (!date) return 'Never'
+    return new Date(date).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     })
@@ -202,6 +253,8 @@ const AliasDetailPage = () => {
       forwarded: 'bg-green-100 text-green-800 hover:bg-green-100',
       failed: 'bg-red-100 text-red-800 hover:bg-red-100',
       received: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
+      pending: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
+      invalid: 'bg-gray-100 text-gray-800 hover:bg-gray-100',
     }
     return variants[status] || 'bg-gray-100 text-gray-800 hover:bg-gray-100'
   }
@@ -244,12 +297,61 @@ const AliasDetailPage = () => {
         </Button>
 
         <div className="flex justify-between items-start mb-6">
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900 font-mono">{alias.fullEmail}</h1>
             <p className="text-gray-600 mt-2">Alias details and email logs</p>
+
+            {/* Domain Connection Status */}
+            <div className="flex items-center gap-4 mt-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Domain Status:</span>
+                <Badge
+                  variant={alias.domain.verificationStatus === 'verified' ? 'default' : 'secondary'}
+                  className={
+                    alias.domain.verificationStatus === 'verified'
+                      ? 'bg-green-100 text-green-800 hover:bg-green-100'
+                      : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+                  }
+                >
+                  {alias.domain.verificationStatus === 'verified' ? 'Connected' : 'Disconnected'}
+                </Badge>
+              </div>
+              <div className="text-sm text-gray-600">
+                Last checked: {formatLastChecked(alias.domain.lastCheckedAt)}
+              </div>
+              {alias.statistics.pending > 0 && (
+                <div className="flex items-center gap-1 text-sm text-yellow-700">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>{alias.statistics.pending} pending emails</span>
+                </div>
+              )}
+            </div>
+
+            {/* Warning Message */}
+            {alias.domain.verificationStatus === 'pending' && alias.statistics.pending > 0 && (
+              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  Emails were paused because the domain connection was lost.
+                  Recheck the domain to resume delivery and process pending emails.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">
+            {/* Recheck Button */}
+            {alias.domain.verificationStatus === 'pending' && alias.statistics.pending > 0 && (
+              <Button
+                onClick={handleRecheckDomain}
+                disabled={isRechecking}
+                variant="outline"
+                className="gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRechecking ? 'animate-spin' : ''}`} />
+                {isRechecking ? 'Rechecking...' : 'Recheck & Process'}
+              </Button>
+            )}
+
             <Button
               variant="outline"
               onClick={handleToggleStatus}
@@ -380,6 +482,17 @@ const AliasDetailPage = () => {
                     <Clock className="w-8 h-8 text-blue-400" />
                   </div>
                 </div>
+                {alias.statistics.pending > 0 && (
+                  <div className="bg-yellow-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-2xl font-bold text-yellow-700">{alias.statistics.pending}</p>
+                        <p className="text-sm text-gray-600">Pending</p>
+                      </div>
+                      <AlertCircle className="w-8 h-8 text-yellow-400" />
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

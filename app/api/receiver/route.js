@@ -1,7 +1,8 @@
 import { simpleParser } from "mailparser";
 import prisma from "@/lib/prisma";
 import { SESClient, SendRawEmailCommand } from '@aws-sdk/client-ses'
-import { fetchEmailFromS3 } from '@/lib/s3'
+import { fetchEmailFromS3, deleteEmailFromS3 } from '@/lib/s3'
+import { verifyDomainConnection } from '@/lib/ses'
 
 const sesClient = new SESClient({
   region: process.env.AWS_REGION || 'ap-south-1',
@@ -101,16 +102,21 @@ export async function POST(req) {
       return Response.json({ error: 'Invalid email format' }, { status: 400 });
     }
 
-    // 8. Find domain in database
+    // ====================
+    // STEP 1: RESOLVE DOMAIN & ALIAS (PRIMARY CHECKS)
+    // ====================
+
+    // 8. Find domain in database (ANY status - we'll check connection separately)
     const domainRecord = await prisma.domain.findFirst({
       where: {
         fullDomain: domain,
-        verificationStatus: 'verified',
       },
     });
 
     if (!domainRecord) {
-      console.log('Domain not found or not verified:', domain);
+      console.log('Domain not found:', domain);
+
+      // Log as invalid
       await logEmail({
         userId: null,
         domainId: null,
@@ -121,12 +127,21 @@ export async function POST(req) {
         s3Bucket: s3.bucket,
         s3Key: s3.key,
         size: s3.size,
-        status: 'failed',
-        error: 'Domain not found or not verified',
+        status: 'invalid',
+        error: 'Domain not found',
+        pendingReason: null,
       });
+
+      // DELETE S3 object for invalid emails
+      try {
+        await deleteEmailFromS3(s3.bucket, s3.key);
+      } catch (deleteError) {
+        console.error('Failed to delete S3 object:', deleteError);
+      }
+
       return Response.json({
         received: true,
-        status: 'rejected',
+        status: 'invalid',
         reason: 'domain_not_found'
       });
     }
@@ -143,6 +158,8 @@ export async function POST(req) {
 
     if (!alias) {
       console.log('Alias not found:', localPart, '@', domain);
+
+      // Log as invalid
       await logEmail({
         userId: domainRecord.userId,
         domainId: domainRecord.id,
@@ -153,12 +170,21 @@ export async function POST(req) {
         s3Bucket: s3.bucket,
         s3Key: s3.key,
         size: s3.size,
-        status: 'failed',
+        status: 'invalid',
         error: 'Alias not found',
+        pendingReason: null,
       });
+
+      // DELETE S3 object for invalid emails
+      try {
+        await deleteEmailFromS3(s3.bucket, s3.key);
+      } catch (deleteError) {
+        console.error('Failed to delete S3 object:', deleteError);
+      }
+
       return Response.json({
         received: true,
-        status: 'rejected',
+        status: 'invalid',
         reason: 'alias_not_found'
       });
     }
@@ -166,6 +192,8 @@ export async function POST(req) {
     // 10. Check if alias is active
     if (!alias.isActive) {
       console.log('Alias is inactive:', localPart, '@', domain);
+
+      // Log as invalid
       await logEmail({
         userId: domainRecord.userId,
         domainId: domainRecord.id,
@@ -176,15 +204,81 @@ export async function POST(req) {
         s3Bucket: s3.bucket,
         s3Key: s3.key,
         size: s3.size,
-        status: 'failed',
+        status: 'invalid',
         error: 'Alias inactive',
+        pendingReason: null,
       });
+
+      // DELETE S3 object for invalid emails
+      try {
+        await deleteEmailFromS3(s3.bucket, s3.key);
+      } catch (deleteError) {
+        console.error('Failed to delete S3 object:', deleteError);
+      }
+
       return Response.json({
         received: true,
-        status: 'rejected',
+        status: 'invalid',
         reason: 'alias_inactive'
       });
     }
+
+    // ====================
+    // STEP 2: CHECK DOMAIN CONNECTION STATUS (CRITICAL)
+    // ====================
+
+    console.log('Checking domain connection status for:', domain);
+    const connectionStatus = await verifyDomainConnection(domainRecord.fullDomain);
+
+    // Update domain status in database
+    await prisma.domain.update({
+      where: { id: domainRecord.id },
+      data: {
+        verificationStatus: connectionStatus.verificationStatus,
+        dkimStatus: connectionStatus.dkimStatus,
+        lastCheckedAt: new Date(),
+      },
+    });
+
+    // ====================
+    // STEP 3: HANDLE DOMAIN DISCONNECTED CASE
+    // ====================
+
+    if (!connectionStatus.isConnected) {
+      console.log('Domain is disconnected:', domain);
+
+      // Log as pending
+      const emailLog = await logEmail({
+        userId: domainRecord.userId,
+        domainId: domainRecord.id,
+        aliasId: alias.id,
+        fromEmail,
+        toEmail,
+        subject,
+        s3Bucket: s3.bucket,
+        s3Key: s3.key,
+        size: s3.size,
+        status: 'pending',
+        error: 'Domain disconnected - waiting for reconnection',
+        pendingReason: 'domain_disconnected',
+      });
+
+      // KEEP S3 object for pending emails
+      console.log('Email marked as pending, S3 object preserved');
+
+      return Response.json({
+        received: true,
+        status: 'pending',
+        reason: 'domain_disconnected',
+        emailId: emailLog.id,
+      });
+    }
+
+    // ====================
+    // STEP 4: NORMAL PROCESSING (DOMAIN VERIFIED)
+    // ====================
+
+    console.log('Domain is connected, processing email normally');
 
     // 11. Log as received
     const emailLog = await logEmail({
@@ -199,6 +293,7 @@ export async function POST(req) {
       size: s3.size,
       status: 'received',
       error: null,
+      pendingReason: null,
     });
 
     // 12. Forward email
@@ -279,17 +374,14 @@ async function logEmail({
   size,
   status,
   error,
+  pendingReason,
 }) {
   try {
-    if (!userId || !domainId) {
-      console.log('Skipping log - missing userId or domainId');
-      return null;
-    }
-
+    // Allow logging even without userId/domainId for invalid emails
     const emailLog = await prisma.emailLog.create({
       data: {
-        userId,
-        domainId,
+        userId: userId || 'unknown',
+        domainId: domainId || 'unknown',
         aliasId,
         fromEmail: fromEmail || 'unknown',
         toEmail: toEmail || 'unknown',
@@ -299,6 +391,7 @@ async function logEmail({
         size,
         status,
         error,
+        pendingReason,
       },
     });
 
@@ -309,7 +402,8 @@ async function logEmail({
   }
 }
 
-/** with proper header rewriting
+/**
+ * Forward email with proper header rewriting
  * CRITICAL: FROM must be alias@domain (SES verified), Reply-To is original sender
  */
 async function forwardEmail(rawEmailBuffer, forwardTo, parsed, aliasEmail, originalFrom) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import prisma from '@/lib/prisma'
+import { verifyDomainConnection } from '@/lib/ses'
 
 /**
  * GET /api/aliases
@@ -117,6 +118,31 @@ export async function POST(request) {
       return NextResponse.json(
         { error: 'Domain not found' },
         { status: 404 }
+      )
+    }
+
+    // Verify domain connection status before creating alias
+    console.log('Checking domain connection status for:', domain.fullDomain);
+    const connectionStatus = await verifyDomainConnection(domain.fullDomain);
+
+    // Update domain status in database
+    await prisma.domain.update({
+      where: { id: domain.id },
+      data: {
+        verificationStatus: connectionStatus.verificationStatus,
+        dkimStatus: connectionStatus.dkimStatus,
+        lastCheckedAt: new Date(),
+      },
+    });
+
+    // Reject alias creation if domain is not connected
+    if (!connectionStatus.isConnected) {
+      return NextResponse.json(
+        {
+          error: 'Domain is not connected or verified. Please verify your DNS records before creating aliases.',
+          details: connectionStatus.error || 'Domain verification failed',
+        },
+        { status: 400 }
       )
     }
 
