@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Mail, Lock, LogOut, AlertCircle, Clock, CheckCircle, XCircle, ArrowLeft, X, RefreshCw } from 'lucide-react'
+import { Mail, Lock, LogOut, AlertCircle, Clock, CheckCircle, XCircle, ArrowLeft, X, RefreshCw, Download } from 'lucide-react'
 import { toast } from 'sonner'
 
 const MyMailboxPage = () => {
@@ -23,6 +23,8 @@ const MyMailboxPage = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [isMobilePreview, setIsMobilePreview] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [downloadingAttachment, setDownloadingAttachment] = useState(null)
+  const [processingAttachments, setProcessingAttachments] = useState(false)
 
   const [loginData, setLoginData] = useState({
     mailboxId: '',
@@ -238,6 +240,124 @@ const MyMailboxPage = () => {
     }
   }
 
+  const handleDownloadAttachment = async (attachmentIndex, filename) => {
+    setDownloadingAttachment(attachmentIndex)
+    try {
+      const response = await fetch(
+        `/api/my-mailbox/emails/${selectedEmail.id}/attachment/${attachmentIndex}`
+      )
+
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.')
+        setSession(null)
+        setIsLoginDialogOpen(true)
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to generate download URL')
+      }
+
+      const data = await response.json()
+
+      // Create a temporary link and trigger download
+      const link = document.createElement('a')
+      link.href = data.downloadUrl
+      link.download = data.filename
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      toast.success(`Downloading ${data.filename}`)
+    } catch (error) {
+      console.error('Error downloading attachment:', error)
+      toast.error('Failed to download attachment')
+    } finally {
+      setDownloadingAttachment(null)
+    }
+  }
+
+  const handleProcessAttachments = async () => {
+    if (!selectedEmail) return
+
+    setProcessingAttachments(true)
+    try {
+      const response = await fetch(
+        `/api/my-mailbox/emails/${selectedEmail.id}/process-attachments`,
+        {
+          method: 'POST',
+        }
+      )
+
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.')
+        setSession(null)
+        setIsLoginDialogOpen(true)
+        return
+      }
+
+      if (response.status === 409) {
+        toast.error('Attachments are currently being processed. Please wait.')
+        return
+      }
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to process attachments')
+      }
+
+      const data = await response.json()
+      toast.success(data.message)
+
+      // Refresh email detail to get updated attachment info
+      await fetchEmailDetail(selectedEmail.id)
+    } catch (error) {
+      console.error('Error processing attachments:', error)
+      toast.error(error.message || 'Failed to process attachments')
+    } finally {
+      setProcessingAttachments(false)
+    }
+  }
+
+  const handleDownloadProcessedAttachment = async (attachmentId, filename) => {
+    setDownloadingAttachment(attachmentId)
+    try {
+      const response = await fetch(
+        `/api/my-mailbox/attachments/${attachmentId}/download`
+      )
+
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.')
+        setSession(null)
+        setIsLoginDialogOpen(true)
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to generate download URL')
+      }
+
+      const data = await response.json()
+
+      // Create a temporary link and trigger download
+      const link = document.createElement('a')
+      link.href = data.downloadUrl
+      link.download = data.filename
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      toast.success(`Downloading ${data.filename}`)
+    } catch (error) {
+      console.error('Error downloading attachment:', error)
+      toast.error('Failed to download attachment')
+    } finally {
+      setDownloadingAttachment(null)
+    }
+  }
+
   const formatDate = (date) => {
     return new Date(date).toLocaleString('en-US', {
       year: 'numeric',
@@ -294,7 +414,7 @@ const MyMailboxPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
@@ -417,7 +537,7 @@ const MyMailboxPage = () => {
         {/* Info Banner */}
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
           <div className="flex gap-3">
-            <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="text-sm font-medium text-yellow-900">Mailbox Mode</p>
               <p className="text-sm text-yellow-700 mt-1">
@@ -431,7 +551,7 @@ const MyMailboxPage = () => {
       {/* Desktop: Split View | Mobile: Toggle View */}
       <div className="flex gap-4 h-[calc(100%-12rem)]">
         {/* Email List - Hidden on mobile when preview is shown */}
-        <div className={`${isMobilePreview ? 'hidden md:block' : 'block'} w-full md:w-96 flex-shrink-0`}>
+        <div className={`${isMobilePreview ? 'hidden md:block' : 'block'} w-full md:w-96 shrink-0`}>
           <Card className="h-full flex flex-col">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -545,7 +665,7 @@ const MyMailboxPage = () => {
                       <ArrowLeft className="w-4 h-4 mr-2" />
                       Back to list
                     </Button>
-                    <CardTitle className="text-xl break-words">
+                    <CardTitle className="text-xl wrap-break-word">
                       {selectedEmail.subject || '(No Subject)'}
                     </CardTitle>
                     <CardDescription className="mt-2">
@@ -603,18 +723,105 @@ const MyMailboxPage = () => {
                     </div>
 
                     {/* Attachments */}
-                    {selectedEmailDetail.attachments && selectedEmailDetail.attachments.length > 0 && (
+                    {selectedEmailDetail.attachmentsCount > 0 && (
                       <div>
-                        <h4 className="font-medium mb-2">Attachments ({selectedEmailDetail.attachments.length})</h4>
-                        <div className="space-y-2">
-                          {selectedEmailDetail.attachments.map((att, idx) => (
-                            <div key={idx} className="flex items-center gap-2 text-sm border rounded p-2 bg-gray-50">
-                              <Mail className="w-4 h-4 text-gray-400" />
-                              <span className="flex-1">{att.filename}</span>
-                              <span className="text-gray-500">({formatSize(att.size)})</span>
-                            </div>
-                          ))}
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium">
+                            Attachments ({selectedEmailDetail.attachmentsCount})
+                          </h4>
+                          {selectedEmailDetail.attachmentsStatus === 'not_processed' && (
+                            <Button
+                              size="sm"
+                              onClick={handleProcessAttachments}
+                              disabled={processingAttachments}
+                            >
+                              {processingAttachments ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                  Processing...
+                                </>
+                              ) : (
+                                'Process attachments'
+                              )}
+                            </Button>
+                          )}
+                          {selectedEmailDetail.attachmentsStatus === 'processing' && (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700 mr-2"></div>
+                              Processing attachments...
+                            </Badge>
+                          )}
+                          {selectedEmailDetail.attachmentsStatus === 'failed' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleProcessAttachments}
+                              disabled={processingAttachments}
+                            >
+                              {processingAttachments ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mr-2"></div>
+                                  Retrying...
+                                </>
+                              ) : (
+                                'Retry attachment processing'
+                              )}
+                            </Button>
+                          )}
                         </div>
+
+                        {selectedEmailDetail.attachmentsStatus === 'not_processed' && (
+                          <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+                            <AlertCircle className="w-4 h-4 inline mr-2" />
+                            Attachments are processed only when needed. Click "Process attachments" to extract them.
+                          </div>
+                        )}
+
+                        {selectedEmailDetail.attachmentsStatus === 'processing' && (
+                          <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+                            <Clock className="w-4 h-4 inline mr-2" />
+                            Processing attachments may take a few seconds. Please wait...
+                          </div>
+                        )}
+
+                        {selectedEmailDetail.attachmentsStatus === 'failed' && (
+                          <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                            <XCircle className="w-4 h-4 inline mr-2" />
+                            Failed to process attachments: {selectedEmailDetail.attachmentsError || 'Unknown error'}
+                          </div>
+                        )}
+
+                        {selectedEmailDetail.attachmentsStatus === 'completed' &&
+                          selectedEmailDetail.processedAttachments &&
+                          selectedEmailDetail.processedAttachments.length > 0 && (
+                            <div className="space-y-2">
+                              {selectedEmailDetail.processedAttachments.map((att) => (
+                                <div key={att.id} className="flex items-center gap-2 text-sm border rounded p-2 bg-gray-50">
+                                  <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium truncate">{att.filename}</p>
+                                    <p className="text-xs text-gray-500">{formatSize(att.size)}</p>
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDownloadProcessedAttachment(att.id, att.filename)}
+                                    disabled={downloadingAttachment === att.id}
+                                    className="shrink-0"
+                                  >
+                                    {downloadingAttachment === att.id ? (
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                                    ) : (
+                                      <>
+                                        <Download className="w-4 h-4 mr-1" />
+                                        Download
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                       </div>
                     )}
                   </div>

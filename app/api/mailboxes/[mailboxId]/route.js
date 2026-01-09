@@ -11,7 +11,7 @@ export async function GET(req, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { mailboxId } = params
+    const { mailboxId } = await params
 
     const mailbox = await prisma.mailbox.findFirst({
       where: {
@@ -30,25 +30,17 @@ export async function GET(req, { params }) {
           select: {
             id: true,
             localPart: true,
+            mode: true,
+            domainId: true,
             isActive: true,
           },
-        },
-        sessions: {
           where: {
-            revokedAt: null,
-            expiresAt: {
-              gt: new Date(),
-            },
+            mode: 'mailbox',
           },
+        },
+        _count: {
           select: {
-            id: true,
-            expiresAt: true,
-            userAgent: true,
-            ipAddress: true,
-            createdAt: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
+            sessions: true,
           },
         },
       },
@@ -77,7 +69,7 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { mailboxId } = params
+    const { mailboxId } = await params
     const { isActive } = await req.json()
 
     // Verify mailbox belongs to user
@@ -127,7 +119,7 @@ export async function DELETE(req, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { mailboxId } = params
+    const { mailboxId } = await params
 
     // Verify mailbox belongs to user
     const mailbox = await prisma.mailbox.findFirst({

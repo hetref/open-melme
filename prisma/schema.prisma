@@ -26,6 +26,13 @@ enum EmailStatus {
   invalid
 }
 
+enum AttachmentsStatus {
+  not_processed
+  processing
+  completed
+  failed
+}
+
 enum AliasMode {
   forward
   mailbox
@@ -205,11 +212,15 @@ model EmailLog {
   s3Key    String? @unique
   size     Int?
 
+  attachmentsStatus AttachmentsStatus @default(not_processed)
+  attachmentsError  String?
+
   createdAt DateTime @default(now())
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
-  alias  Alias? @relation(fields: [aliasId], references: [id], onDelete: SetNull)
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain      Domain            @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  alias       Alias?            @relation(fields: [aliasId], references: [id], onDelete: SetNull)
+  attachments EmailAttachment[]
 
   @@index([userId])
   @@index([domainId])
@@ -256,4 +267,20 @@ model MailboxSession {
   @@index([mailboxId])
   @@index([userId])
   @@map("mailbox_sessions")
+}
+
+model EmailAttachment {
+  id         String   @id @default(cuid())
+  emailLogId String
+  filename   String
+  mimeType   String
+  size       Int
+  s3Bucket   String
+  s3Key      String   @unique
+  createdAt  DateTime @default(now())
+
+  emailLog EmailLog @relation(fields: [emailLogId], references: [id], onDelete: Cascade)
+
+  @@index([emailLogId])
+  @@map("email_attachments")
 }

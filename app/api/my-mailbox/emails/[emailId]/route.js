@@ -55,6 +55,17 @@ export async function GET(req, { params }) {
             localPart: true,
           },
         },
+        attachments: {
+          select: {
+            id: true,
+            filename: true,
+            mimeType: true,
+            size: true,
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
       },
     })
 
@@ -76,6 +87,9 @@ export async function GET(req, { params }) {
           status: email.status,
           createdAt: email.createdAt,
           size: email.size,
+          attachmentsStatus: email.attachmentsStatus,
+          attachmentsError: email.attachmentsError,
+          processedAttachments: email.attachments || [],
           body: {
             text: 'Email content not available',
             html: '<p>Email content not available</p>',
@@ -96,13 +110,8 @@ export async function GET(req, { params }) {
       headers[key] = value
     }
 
-    // Handle attachments
-    const attachments = parsed.attachments?.map((att) => ({
-      filename: att.filename,
-      contentType: att.contentType,
-      size: att.size,
-      // Don't send actual content, just metadata
-    })) || []
+    // Count attachments from parsed email
+    const attachmentsCount = parsed.attachments?.length || 0
 
     return NextResponse.json({
       email: {
@@ -113,6 +122,10 @@ export async function GET(req, { params }) {
         status: email.status,
         createdAt: email.createdAt,
         size: email.size,
+        attachmentsStatus: email.attachmentsStatus,
+        attachmentsError: email.attachmentsError,
+        attachmentsCount,
+        processedAttachments: email.attachments || [],
         headers: {
           from: parsed.from?.text,
           to: parsed.to?.text,
@@ -124,7 +137,6 @@ export async function GET(req, { params }) {
           text: parsed.text || '',
           html: parsed.html || parsed.textAsHtml || '',
         },
-        attachments,
       },
     })
   } catch (error) {

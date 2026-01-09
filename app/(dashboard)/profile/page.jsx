@@ -14,7 +14,7 @@ import { Loader2Icon } from 'lucide-react'
 const page = async () => {
   const session = await auth.api.getSession({ headers: await headers() })
   if (session === null) return redirect('/login')
-  else console.log("SESSION:", session)
+  // else console.log("SESSION:", session)
 
   return (
     <div className="max-w-4xl mx-auto">
