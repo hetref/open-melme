@@ -39,7 +39,7 @@ export function ReplyDialog({
   const [uploadingAttachment, setUploadingAttachment] = useState(false)
   const [sending, setSending] = useState(false)
   const [showBcc, setShowBcc] = useState(false)
-  const [draftId, setDraftId] = useState(null) // Draft EmailLog ID for attachments
+  const [uploadId] = useState(() => crypto.randomUUID()) // Temp ID for attachment uploads
 
   const fileInputRef = useRef(null)
 
@@ -94,34 +94,6 @@ export function ReplyDialog({
     })
   }, [originalEmail, aliases, open, replyAll])
 
-  // Create draft when dialog opens (for attachment uploads)
-  useEffect(() => {
-    if (open && mailbox && formData.aliasId && !draftId) {
-      createDraft()
-    }
-  }, [open, mailbox, formData.aliasId, draftId])
-
-  const createDraft = async () => {
-    try {
-      const response = await fetch('/api/mailbox/draft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mailboxId: mailbox.id,
-          aliasId: formData.aliasId,
-        }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setDraftId(data.draftId)
-      }
-    } catch (error) {
-      console.error('Error creating draft:', error)
-      // Non-blocking - user can still compose without attachments
-    }
-  }
-
   const handleClose = () => {
     if (sending || uploadingAttachment) {
       toast.error('Cannot close while sending or uploading')
@@ -142,7 +114,6 @@ export function ReplyDialog({
     })
     setAttachments([])
     setShowBcc(false)
-    setDraftId(null) // Reset draft ID
   }
 
   const handleFileSelect = async (e) => {
@@ -155,19 +126,13 @@ export function ReplyDialog({
       return
     }
 
-    // Ensure we have a draft ID before uploading
-    if (!draftId) {
-      toast.error('Please wait while draft is being created...')
-      return
-    }
-
     setUploadingAttachment(true)
 
     try {
       for (const file of files) {
         const formData = new FormData()
         formData.append('file', file)
-        formData.append('emailLogId', draftId) // CRITICAL: Pass draft ID
+        formData.append('uploadId', uploadId) // Use temp upload ID
 
         const response = await fetch('/api/mailbox/attachments/upload', {
           method: 'POST',

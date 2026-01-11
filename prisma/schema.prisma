@@ -216,6 +216,12 @@ model EmailLog {
   attachmentsStatus AttachmentsStatus @default(not_processed)
   attachmentsError  String?
 
+  // Conversation threading fields
+  conversationId String?
+  messageId      String? @unique
+  inReplyTo      String?
+  references     String?
+
   createdAt DateTime @default(now())
 
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -227,6 +233,7 @@ model EmailLog {
   @@index([domainId])
   @@index([aliasId])
   @@index([s3Key])
+  @@index([conversationId])
   @@map("email_logs")
 }
 

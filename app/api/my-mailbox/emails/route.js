@@ -145,12 +145,7 @@ export async function GET(req) {
       })
     }
 
-    // Get total count
-    const totalCount = await prisma.emailLog.count({
-      where: whereConditions,
-    })
-
-    // Get emails
+    // Get emails (for conversation grouping)
     const emails = await prisma.emailLog.findMany({
       where: whereConditions,
       select: {
@@ -162,6 +157,7 @@ export async function GET(req) {
         size: true,
         createdAt: true,
         attachmentsStatus: true,
+        conversationId: true,
         alias: {
           select: {
             id: true,
@@ -177,18 +173,47 @@ export async function GET(req) {
       orderBy: {
         createdAt: 'desc',
       },
-      skip,
-      take: limit,
     })
 
-    const totalPages = Math.ceil(totalCount / limit)
+    // Group emails by conversation
+    const conversationMap = new Map()
+    for (const email of emails) {
+      const convId = email.conversationId || email.id // Fallback to email ID for null conversationId
+      if (!conversationMap.has(convId)) {
+        conversationMap.set(convId, {
+          conversationId: convId,
+          emails: [],
+          lastEmail: null,
+          messageCount: 0,
+          hasAttachments: false,
+        })
+      }
+      const conversation = conversationMap.get(convId)
+      conversation.emails.push(email)
+      conversation.messageCount++
+      if (email.attachmentsStatus === 'completed') {
+        conversation.hasAttachments = true
+      }
+      // Track latest email for display
+      if (!conversation.lastEmail || email.createdAt > conversation.lastEmail.createdAt) {
+        conversation.lastEmail = email
+      }
+    }
+
+    // Convert to array and sort by last email time
+    const conversations = Array.from(conversationMap.values())
+      .sort((a, b) => b.lastEmail.createdAt - a.lastEmail.createdAt)
+      .slice(skip, skip + limit) // Apply pagination to conversations
+
+    const totalConversations = conversationMap.size
+    const totalPages = Math.ceil(totalConversations / limit)
 
     return NextResponse.json({
-      emails,
+      conversations,
       pagination: {
         page,
         limit,
-        totalCount,
+        totalCount: totalConversations,
         totalPages,
         hasMore: page < totalPages,
       },

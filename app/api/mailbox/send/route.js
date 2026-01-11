@@ -11,6 +11,7 @@ import {
   isValidEmail,
   sanitizeEmailList
 } from '@/lib/email-builder'
+import { resolveConversationId, generateMessageId } from '@/lib/email'
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import prisma from '@/lib/prisma'
@@ -75,7 +76,6 @@ export async function POST(req) {
       text, // TEXT ONLY - NO HTML ALLOWED
       replyToEmailLogId,
       attachmentKeys = [],
-      draftId, // Optional: Draft EmailLog ID created for attachments
     } = body
 
     // Validate mailbox ownership
@@ -210,7 +210,14 @@ export async function POST(req) {
 
     // Handle reply threading
     let replyToMessageId = null
+    let replyReferences = null
+    let conversationId = null
+    let messageId = null
     let finalSubject = subject
+
+    // Generate Message-ID for this email
+    const domain = alias.domain.fullDomain
+    messageId = generateMessageId(domain)
 
     if (replyToEmailLogId) {
       // Fetch original email
@@ -240,23 +247,26 @@ export async function POST(req) {
         )
       }
 
-      // Fetch original email from S3 to extract Message-ID
-      if (originalEmail.s3Key && originalEmail.s3Bucket) {
-        try {
-          const rawEmail = await fetchEmailFromS3(
-            originalEmail.s3Bucket,
-            originalEmail.s3Key
-          )
-          const parsed = await simpleParser(rawEmail)
-          replyToMessageId = extractMessageId(parsed.headers)
-        } catch (error) {
-          console.error('Error fetching original email for threading:', error)
-          // Continue without threading if we can't get Message-ID
-        }
+      // Use conversation ID from parent
+      conversationId = originalEmail.conversationId
+      replyToMessageId = originalEmail.messageId
+
+      // Build References header (parent's references + parent's message-id)
+      if (originalEmail.references) {
+        replyReferences = `${originalEmail.references} ${originalEmail.messageId}`
+      } else {
+        replyReferences = originalEmail.messageId
       }
 
       // Build reply subject
       finalSubject = buildReplySubject(originalEmail.subject || subject)
+    } else {
+      // New conversation - generate new conversation ID
+      conversationId = await resolveConversationId({
+        messageId,
+        inReplyTo: null,
+        references: null,
+      })
     }
 
     // Fetch attachments from S3 and prepare metadata
@@ -333,7 +343,9 @@ export async function POST(req) {
         text: finalText,
         html: '', // NO HTML - text only
         attachments,
-        replyToMessageId,
+        messageId,
+        inReplyTo: replyToMessageId,
+        references: replyReferences,
         domain: alias.domain.fullDomain,
       })
     } catch (error) {
@@ -347,49 +359,33 @@ export async function POST(req) {
     // Generate body preview (first 200 chars)
     const bodyPreview = finalText.slice(0, 200)
 
-    // Use existing draft or create new EmailLog
-    let emailLog
-    if (draftId) {
-      // Update existing draft with actual email data
-      emailLog = await prisma.emailLog.update({
-        where: { id: draftId },
-        data: {
-          fromEmail,
-          toEmail: allRecipients.join(', '),
-          subject: finalSubject,
-          status: 'pending',
-          pendingReason: 'Building email',
-          size: Buffer.byteLength(rawMessage, 'utf8'),
-          s3Bucket: S3_BUCKET,
-          s3Key: `emails-sent/${draftId}.eml`,
-          attachmentsStatus: attachments.length > 0 ? 'completed' : 'not_processed',
-        },
-      })
-    } else {
-      // Create new EmailLog entry
-      emailLog = await prisma.emailLog.create({
-        data: {
-          userId: session.user.id,
-          domainId: alias.domainId,
-          aliasId: aliasId.startsWith('mailbox-') ? null : aliasId,
-          fromEmail,
-          toEmail: allRecipients.join(', '),
-          subject: finalSubject,
-          status: 'pending',
-          pendingReason: 'Building email',
-          size: Buffer.byteLength(rawMessage, 'utf8'),
-          s3Bucket: S3_BUCKET,
-          s3Key: `emails-sent/${null}.eml`, // Will update after creation
-          attachmentsStatus: attachments.length > 0 ? 'completed' : 'not_processed',
-        },
-      })
+    // Create new EmailLog entry
+    const emailLog = await prisma.emailLog.create({
+      data: {
+        userId: session.user.id,
+        domainId: alias.domainId,
+        aliasId: aliasId.startsWith('mailbox-') ? null : aliasId,
+        fromEmail,
+        toEmail: allRecipients.join(', '),
+        subject: finalSubject,
+        status: 'pending',
+        pendingReason: 'Building email',
+        size: Buffer.byteLength(rawMessage, 'utf8'),
+        s3Bucket: S3_BUCKET,
+        s3Key: `emails-sent/${null}.eml`, // Will update after creation
+        attachmentsStatus: attachments.length > 0 ? 'completed' : 'not_processed',
+        conversationId,
+        messageId,
+        inReplyTo: replyToMessageId,
+        references: replyReferences,
+      },
+    })
 
-      // Update S3 key with actual emailLog ID if created new
-      await prisma.emailLog.update({
-        where: { id: emailLog.id },
-        data: { s3Key: `emails-sent/${emailLog.id}.eml` },
-      })
-    }
+    // Update S3 key with actual emailLog ID
+    await prisma.emailLog.update({
+      where: { id: emailLog.id },
+      data: { s3Key: `emails-sent/${emailLog.id}.eml` },
+    })
 
     // Prepare S3 key for .eml file
     const s3Key = `emails-sent/${emailLog.id}.eml`

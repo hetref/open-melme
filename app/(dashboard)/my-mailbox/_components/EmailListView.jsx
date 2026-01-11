@@ -30,7 +30,7 @@ import { ReplyDialog } from '@/components/ReplyDialog'
 
 export function EmailListView({ emailType = 'received' }) {
   const { session } = useMailbox()
-  const [emails, setEmails] = useState([])
+  const [conversations, setConversations] = useState([])
   const [selectedEmail, setSelectedEmail] = useState(null)
   const [selectedEmailDetail, setSelectedEmailDetail] = useState(null)
   const [emailsLoading, setEmailsLoading] = useState(false)
@@ -169,7 +169,7 @@ export function EmailListView({ emailType = 'received' }) {
       }
 
       const data = await response.json()
-      setEmails(data.emails)
+      setConversations(data.conversations || [])
       setPagination(data.pagination)
     } catch (error) {
       console.error('Error fetching emails:', error)
@@ -194,7 +194,8 @@ export function EmailListView({ emailType = 'received' }) {
       }
 
       const data = await response.json()
-      setSelectedEmailDetail(data.email)
+      // API now returns conversation with emails array
+      setSelectedEmailDetail(data.conversation)
     } catch (error) {
       console.error('Error fetching email:', error)
       toast.error('Failed to load email')
@@ -509,7 +510,7 @@ export function EmailListView({ emailType = 'received' }) {
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                 </div>
-              ) : emails.length === 0 ? (
+              ) : conversations.length === 0 ? (
                 <div className="text-center py-12">
                   <Mail className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-600">No emails yet</p>
@@ -517,35 +518,43 @@ export function EmailListView({ emailType = 'received' }) {
               ) : (
                 <>
                   <div className="space-y-2">
-                    {emails.map((email) => (
-                      <div
-                        key={email.id}
-                        className={`border rounded-lg p-3 hover:bg-gray-50 transition-colors cursor-pointer ${selectedEmail?.id === email.id ? 'bg-blue-50 border-blue-300' : ''
-                          }`}
-                        onClick={() => handleEmailClick(email)}
-                      >
-                        <div className="flex items-start gap-2 mb-1">
-                          {getStatusIcon(email.status)}
-                          <h3 className="font-medium text-gray-900 truncate flex-1 text-sm">
-                            {email.subject || '(No Subject)'}
-                          </h3>
-                          {email._count?.attachments > 0 && (
-                            <Paperclip className="w-3 h-3 text-gray-400 shrink-0" />
-                          )}
+                    {conversations.map((conversation) => {
+                      const lastEmail = conversation.lastEmail
+                      return (
+                        <div
+                          key={conversation.conversationId}
+                          className={`border rounded-lg p-3 hover:bg-gray-50 transition-colors cursor-pointer ${selectedEmail?.id === lastEmail.id ? 'bg-blue-50 border-blue-300' : ''
+                            }`}
+                          onClick={() => handleEmailClick(lastEmail)}
+                        >
+                          <div className="flex items-start gap-2 mb-1">
+                            {getStatusIcon(lastEmail.status)}
+                            <h3 className="font-medium text-gray-900 truncate flex-1 text-sm">
+                              {lastEmail.subject || '(No Subject)'}
+                            </h3>
+                            {conversation.messageCount > 1 && (
+                              <Badge variant="secondary" className="text-xs shrink-0">
+                                {conversation.messageCount}
+                              </Badge>
+                            )}
+                            {conversation.hasAttachments && (
+                              <Paperclip className="w-3 h-3 text-gray-400 shrink-0" />
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-600 truncate">
+                            {emailType === 'sent' ? `To: ${lastEmail.toEmail}` : lastEmail.fromEmail}
+                          </div>
+                          <div className="flex items-center justify-between mt-1">
+                            <Badge variant="secondary" className={`text-xs ${getStatusBadge(lastEmail.status)}`}>
+                              {lastEmail.status}
+                            </Badge>
+                            <span className="text-xs text-gray-500">
+                              {new Date(lastEmail.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-600 truncate">
-                          {emailType === 'sent' ? `To: ${email.toEmail}` : email.fromEmail}
-                        </div>
-                        <div className="flex items-center justify-between mt-1">
-                          <Badge variant="secondary" className={`text-xs ${getStatusBadge(email.status)}`}>
-                            {email.status}
-                          </Badge>
-                          <span className="text-xs text-gray-500">
-                            {new Date(email.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
 
                   {/* Pagination */}

@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { SESClient, SendRawEmailCommand } from '@aws-sdk/client-ses'
 import { fetchEmailFromS3, deleteEmailFromS3 } from '@/lib/s3'
 import { verifyDomainConnection } from '@/lib/ses'
+import { resolveConversationId } from '@/lib/email'
 
 const sesClient = new SESClient({
   region: process.env.AWS_REGION || 'ap-south-1',
@@ -89,6 +90,18 @@ export async function POST(req) {
     const fromEmail = extractEmailAddress(fromText);
     const subject = parsed.subject || '(No Subject)';
 
+    // 6b. Extract threading headers
+    const messageId = parsed.messageId || parsed.headers.get('message-id');
+    const inReplyTo = parsed.inReplyTo || parsed.headers.get('in-reply-to');
+    const references = parsed.references?.join(' ') || parsed.headers.get('references');
+
+    // 6c. Resolve conversation ID
+    const conversationId = await resolveConversationId({
+      messageId,
+      inReplyTo,
+      references,
+    });
+
     if (!toEmail) {
       console.error('Could not extract TO email address');
       return Response.json({ error: 'Invalid TO address' }, { status: 400 });
@@ -167,6 +180,10 @@ export async function POST(req) {
         status: 'invalid',
         error: 'Alias not found',
         pendingReason: null,
+        conversationId,
+        messageId,
+        inReplyTo,
+        references,
       });
 
       // DELETE S3 object for invalid emails
@@ -201,6 +218,10 @@ export async function POST(req) {
         status: 'invalid',
         error: 'Alias inactive',
         pendingReason: null,
+        conversationId,
+        messageId,
+        inReplyTo,
+        references,
       });
 
       // DELETE S3 object for invalid emails
@@ -255,6 +276,10 @@ export async function POST(req) {
         status: 'pending',
         error: 'Domain disconnected - waiting for reconnection',
         pendingReason: 'domain_disconnected',
+        conversationId,
+        messageId,
+        inReplyTo,
+        references,
       });
 
       // KEEP S3 object for pending emails
@@ -296,6 +321,10 @@ export async function POST(req) {
           status: 'failed',
           error: 'Mailbox inactive or not found',
           pendingReason: null,
+          conversationId,
+          messageId,
+          inReplyTo,
+          references,
         });
 
         return Response.json({
@@ -320,6 +349,10 @@ export async function POST(req) {
         status: 'received',
         error: null,
         pendingReason: null,
+        conversationId,
+        messageId,
+        inReplyTo,
+        references,
       });
 
       console.log('Email stored in mailbox successfully:', toEmail);
@@ -350,6 +383,10 @@ export async function POST(req) {
         status: 'failed',
         error: 'No forwarding address configured',
         pendingReason: null,
+        conversationId,
+        messageId,
+        inReplyTo,
+        references,
       });
 
       return Response.json({
@@ -374,6 +411,10 @@ export async function POST(req) {
       status: 'received',
       error: null,
       pendingReason: null,
+      conversationId,
+      messageId,
+      inReplyTo,
+      references,
     });
 
     // 12. Forward email
@@ -455,6 +496,10 @@ async function logEmail({
   status,
   error,
   pendingReason,
+  conversationId,
+  messageId,
+  inReplyTo,
+  references,
 }) {
   try {
     // MUST have valid userId and domainId for foreign key constraints
@@ -477,6 +522,10 @@ async function logEmail({
         status,
         error,
         pendingReason,
+        conversationId,
+        messageId,
+        inReplyTo,
+        references,
       },
     });
 

@@ -20,7 +20,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024
  * 
  * Body (multipart/form-data):
  * - file: File to upload
- * - emailLogId: Optional - if provided, use for S3 key path
+ * - uploadId: Temporary upload ID (generated client-side)
  */
 export async function POST(req) {
   try {
@@ -45,16 +45,15 @@ export async function POST(req) {
     // Parse form data
     const formData = await req.formData()
     const file = formData.get('file')
-    const emailLogId = formData.get('emailLogId')
+    const uploadId = formData.get('uploadId')
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // emailLogId is REQUIRED - attachments must be associated with an EmailLog
-    if (!emailLogId) {
+    if (!uploadId) {
       return NextResponse.json(
-        { error: 'emailLogId is required. Attachments must be associated with an email.' },
+        { error: 'uploadId is required' },
         { status: 400 }
       )
     }
@@ -89,10 +88,10 @@ export async function POST(req) {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // Generate unique S3 key
+    // Generate unique S3 key using uploadId (for outbound email attachments)
     const timestamp = Date.now()
     const randomStr = randomUUID().split('-')[0]
-    const s3Key = `sent-attachments/${emailLogId}/${timestamp}-${randomStr}-${sanitizedFilenameStr}`
+    const s3Key = `sent-attachments/${uploadId}/${timestamp}-${randomStr}-${sanitizedFilenameStr}`
 
     // Upload to S3
     await uploadAttachmentToS3(
@@ -110,7 +109,6 @@ export async function POST(req) {
         originalFilename,
         contentType: file.type || 'application/octet-stream',
         size: file.size,
-        emailLogId,
       },
     })
   } catch (error) {
