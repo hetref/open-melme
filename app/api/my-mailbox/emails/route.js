@@ -164,7 +164,7 @@ export async function GET(req) {
     const conversationMap = new Map()
     for (const email of allEmails) {
       const convKey = email.conversationId || email.id
-      
+
       if (!conversationMap.has(convKey)) {
         conversationMap.set(convKey, {
           conversationKey: convKey,
@@ -195,7 +195,7 @@ export async function GET(req) {
     const paginatedConversations = sortedConversations.slice(skip, skip + limit)
 
     // STEP 5: Fetch full details only for paginated conversations' last emails
-    const lastEmailIds = paginatedConversations.map(conv => 
+    const lastEmailIds = paginatedConversations.map(conv =>
       // Find the email with the latest createdAt from emailIds
       allEmails
         .filter(e => conv.emailIds.includes(e.id))
@@ -240,7 +240,7 @@ export async function GET(req) {
       const lastEmailId = allEmails
         .filter(e => conv.emailIds.includes(e.id))
         .sort((a, b) => b.createdAt - a.createdAt)[0].id
-      
+
       return {
         conversationId: conv.conversationKey,
         lastEmail: emailMap.get(lastEmailId),
