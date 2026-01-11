@@ -69,13 +69,14 @@ export function EmailListView({ emailType = 'received' }) {
       fetchAliases()
       fetchEmails(1)
     }
-  }, [session])
+  }, [session?.mailbox?.id]) // Only re-run when session mailbox ID changes
 
   useEffect(() => {
+    // Skip the initial render since we already fetch in the first useEffect
     if (session) {
       fetchEmails(1)
     }
-  }, [filters])
+  }, [filters.query, filters.from, filters.aliasId, filters.hasAttachments, filters.dateFrom, filters.dateTo, filters.status])
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -194,7 +195,7 @@ export function EmailListView({ emailType = 'received' }) {
       }
 
       const data = await response.json()
-      // API now returns conversation with emails array
+      // API returns conversation with emails array
       setSelectedEmailDetail(data.conversation)
     } catch (error) {
       console.error('Error fetching email:', error)
@@ -400,9 +401,9 @@ export function EmailListView({ emailType = 'received' }) {
       <div className="flex gap-4 h-full">
         {/* Email List */}
         <div className={`${isMobilePreview ? 'hidden md:block' : 'block'} w-full md:w-96 shrink-0`}>
-          <Card className="h-full flex flex-col">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between mb-3">
+          <Card className="h-full flex flex-col gap-4">
+            <CardHeader>
+              <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>{emailType === 'sent' ? 'Sent Emails' : 'Inbox'}</CardTitle>
                   <CardDescription>
@@ -592,7 +593,7 @@ export function EmailListView({ emailType = 'received' }) {
         {/* Email Detail - Preview Pane */}
         <div className={`${isMobilePreview ? 'block' : 'hidden md:block'} flex-1`}>
           {selectedEmail ? (
-            <Card className="h-full flex flex-col">
+            <Card className="h-full flex flex-col gap-4">
               <CardHeader className="border-b">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
@@ -650,157 +651,195 @@ export function EmailListView({ emailType = 'received' }) {
                 </div>
               </CardHeader>
 
-              <CardContent className="flex-1 overflow-y-auto p-6">
+              <CardContent className="flex-1 overflow-y-auto px-4">
                 {emailDetailLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                   </div>
-                ) : selectedEmailDetail ? (
-                  <div className="space-y-4">
-                    {/* Headers */}
-                    <div className="bg-gray-50 rounded p-3 space-y-2 text-sm">
-                      <div><span className="font-medium">From:</span> {selectedEmailDetail.headers?.from || selectedEmailDetail.fromEmail}</div>
-                      <div><span className="font-medium">To:</span> {selectedEmailDetail.headers?.to || selectedEmailDetail.toEmail}</div>
-                      {selectedEmailDetail.headers?.cc && (
-                        <div><span className="font-medium">Cc:</span> {selectedEmailDetail.headers.cc}</div>
-                      )}
-                      <div><span className="font-medium">Date:</span> {formatDate(selectedEmailDetail.headers?.date || selectedEmailDetail.createdAt)}</div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">Status:</span>
-                        <Badge variant="secondary" className={getStatusBadge(selectedEmailDetail.status)}>
-                          {selectedEmailDetail.status}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {/* Body */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-sm">Message</h4>
-                        <div className="flex gap-2 items-center">
-                          {selectedEmailDetail.body.hasImages && !showImages && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={handleLoadImages}
-                              className="text-xs"
-                            >
-                              <ImageIcon className="w-3 h-3 mr-1" />
-                              Load images
-                            </Button>
-                          )}
-                          <Tabs value={emailView} onValueChange={setEmailView} className="w-auto">
-                            <TabsList className="h-8">
-                              <TabsTrigger value="html" className="text-xs px-3 py-1">
-                                Safe HTML
-                              </TabsTrigger>
-                              <TabsTrigger value="text" className="text-xs px-3 py-1">
-                                Plain text
-                              </TabsTrigger>
-                            </TabsList>
-                          </Tabs>
-                        </div>
-                      </div>
-
-                      {selectedEmailDetail.body.hasImages && !showImages && (
-                        <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 flex items-start gap-2">
-                          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="font-medium">Images are blocked for your privacy</p>
-                            <p className="mt-1 text-xs">Images can reveal your IP address and location. Click "Load images" above if you trust the sender.</p>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="border rounded p-4 bg-white">
-                        {emailView === 'html' ? (
-                          (() => {
-                            const htmlToRender = showImages
-                              ? selectedEmailDetail.body.safeHtmlWithImages
-                              : selectedEmailDetail.body.safeHtmlNoImages
-
-                            return htmlToRender ? (
-                              <div
-                                dangerouslySetInnerHTML={{ __html: htmlToRender }}
-                                className="prose max-w-none text-sm"
-                              />
-                            ) : (
-                              <pre className="whitespace-pre-wrap text-sm font-sans text-gray-600">
-                                {selectedEmailDetail.body.text || '(No content)'}
-                              </pre>
-                            )
-                          })()
-                        ) : (
-                          <pre className="whitespace-pre-wrap text-sm font-sans">
-                            {selectedEmailDetail.body.text || '(No text content)'}
-                          </pre>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Attachments */}
-                    {selectedEmailDetail.attachmentsCount > 0 && (
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium">
-                            Attachments ({selectedEmailDetail.attachmentsCount})
-                          </h4>
-                          {/* Show Process Attachments button for:
-                              1. Received emails that need processing
-                              2. Sent emails that need processing (old emails before feature was added) */}
-                          {selectedEmailDetail.attachmentsStatus === 'not_processed' && (
-                            <Button
-                              size="sm"
-                              onClick={handleProcessAttachments}
-                              disabled={processingAttachments}
-                            >
-                              {processingAttachments ? (
-                                <>
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                  Processing...
-                                </>
-                              ) : (
-                                'Process attachments'
-                              )}
-                            </Button>
-                          )}
-                        </div>
-
-                        {selectedEmailDetail.attachmentsStatus === 'completed' &&
-                          selectedEmailDetail.processedAttachments &&
-                          selectedEmailDetail.processedAttachments.length > 0 && (
-                            <div className="space-y-2">
-                              {selectedEmailDetail.processedAttachments.map((att) => (
-                                <div key={att.id} className="flex items-center gap-2 text-sm border rounded p-2 bg-gray-50">
-                                  <Mail className="w-4 h-4 text-gray-400 shrink-0" />
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-medium truncate">{att.filename}</p>
-                                    <p className="text-xs text-gray-500">{formatSize(att.size)}</p>
-                                  </div>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleDownloadProcessedAttachment(att.id, att.filename)}
-                                    disabled={downloadingAttachment === att.id}
-                                    className="shrink-0"
-                                  >
-                                    {downloadingAttachment === att.id ? (
-                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-                                    ) : (
-                                      <>
-                                        <Download className="w-4 h-4 mr-1" />
-                                        Download
-                                      </>
-                                    )}
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                ) : selectedEmailDetail?.emails && selectedEmailDetail.emails.length > 0 ? (
+                  <div className="space-y-6">
+                    {/* Conversation info */}
+                    {selectedEmailDetail.messageCount > 1 && (
+                      <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
+                        <p className="font-medium text-blue-900">
+                          Conversation with {selectedEmailDetail.messageCount} messages
+                        </p>
                       </div>
                     )}
+
+                    {/* Display each email in the conversation */}
+                    {selectedEmailDetail.emails.map((email, index) => {
+                      const hasImages = email.body?.hasImages
+                      const isLastEmail = index === selectedEmailDetail.emails.length - 1
+
+                      return (
+                        <div
+                          key={email.id}
+                          className={`border rounded-lg p-4 ${isLastEmail ? 'border-blue-300 bg-blue-50/50' : 'bg-gray-50'
+                            }`}
+                        >
+                          {/* Email Headers */}
+                          <div className="space-y-2 text-sm mb-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div><span className="font-medium">From:</span> {email.headers?.from || email.fromEmail}</div>
+                                <div><span className="font-medium">To:</span> {email.headers?.to || email.toEmail}</div>
+                                {email.headers?.cc && (
+                                  <div><span className="font-medium">Cc:</span> {email.headers.cc}</div>
+                                )}
+                                <div><span className="font-medium">Date:</span> {formatDate(email.headers?.date || email.createdAt)}</div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className={getStatusBadge(email.status)}>
+                                  {email.status}
+                                </Badge>
+                                {isLastEmail && emailType !== 'sent' && email.status === 'received' && (
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={handleReply}
+                                      title="Reply"
+                                      className="h-7 px-2"
+                                    >
+                                      <Reply className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={handleReplyAll}
+                                      title="Reply All"
+                                      className="h-7 px-2"
+                                    >
+                                      <ReplyAll className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Email Body */}
+                          <div>
+                            {hasImages && !showImages && (
+                              <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                                <div className="flex-1">
+                                  <p className="font-medium">Images are blocked</p>
+                                  <p className="mt-1 text-xs">Click button to load images</p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleLoadImages}
+                                  className="text-xs h-7"
+                                >
+                                  <ImageIcon className="w-3 h-3 mr-1" />
+                                  Load
+                                </Button>
+                              </div>
+                            )}
+
+                            <div className="border rounded p-3 bg-white">
+                              {emailView === 'html' ? (
+                                (() => {
+                                  const htmlToRender = showImages
+                                    ? email.body?.safeHtmlWithImages
+                                    : email.body?.safeHtmlNoImages
+
+                                  return htmlToRender ? (
+                                    <div
+                                      dangerouslySetInnerHTML={{ __html: htmlToRender }}
+                                      className="prose prose-sm max-w-none"
+                                    />
+                                  ) : (
+                                    <pre className="whitespace-pre-wrap text-sm font-sans text-gray-600">
+                                      {email.body?.text || '(No content)'}
+                                    </pre>
+                                  )
+                                })()
+                              ) : (
+                                <pre className="whitespace-pre-wrap text-sm font-sans">
+                                  {email.body?.text || '(No text content)'}
+                                </pre>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Attachments for this email */}
+                          {email.attachmentsCount > 0 && (
+                            <div className="mt-4 pt-4 border-t">
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="font-medium text-sm">
+                                  Attachments ({email.attachmentsCount})
+                                </h5>
+                                {email.attachmentsStatus === 'not_processed' && (
+                                  <Button
+                                    size="sm"
+                                    onClick={handleProcessAttachments}
+                                    disabled={processingAttachments}
+                                  >
+                                    {processingAttachments ? 'Processing...' : 'Process'}
+                                  </Button>
+                                )}
+                              </div>
+
+                              {email.attachmentsStatus === 'completed' &&
+                                email.processedAttachments &&
+                                email.processedAttachments.length > 0 && (
+                                  <div className="space-y-2">
+                                    {email.processedAttachments.map((att) => (
+                                      <div key={att.id} className="flex items-center gap-2 text-sm border rounded p-2 bg-gray-50">
+                                        <Paperclip className="w-4 h-4 text-gray-400 shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-medium truncate">{att.filename}</p>
+                                          <p className="text-xs text-gray-500">{formatSize(att.size)}</p>
+                                        </div>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleDownloadProcessedAttachment(att.id, att.filename)}
+                                          disabled={downloadingAttachment === att.id}
+                                          className="shrink-0"
+                                        >
+                                          {downloadingAttachment === att.id ? (
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                                          ) : (
+                                            <>
+                                              <Download className="w-4 h-4 mr-1" />
+                                              Download
+                                            </>
+                                          )}
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+
+                    {/* View toggle at the bottom */}
+                    <div className="flex justify-end pt-2 border-t">
+                      <Tabs value={emailView} onValueChange={setEmailView} className="w-auto">
+                        <TabsList className="h-8">
+                          <TabsTrigger value="html" className="text-xs px-3 py-1">
+                            Safe HTML
+                          </TabsTrigger>
+                          <TabsTrigger value="text" className="text-xs px-3 py-1">
+                            Plain text
+                          </TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                    </div>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="flex items-center justify-center py-12">
+                    <p className="text-gray-500">No email content available</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ) : (

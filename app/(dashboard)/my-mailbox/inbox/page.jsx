@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useMailbox } from '../_context/MailboxContext'
 import { EmailListView } from '../_components/EmailListView'
 import { Button } from '@/components/ui/button'
-import { Clock, PenSquare } from 'lucide-react'
+import { Clock, PenSquare, LogOut } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function InboxPage() {
   const mailboxContext = useMailbox()
@@ -14,13 +15,47 @@ export default function InboxPage() {
   const openComposeDialog = mailboxContext?.openComposeDialog
   const router = useRouter()
   const emailListRef = useRef(null)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   useEffect(() => {
     if (!loading && !session) {
-      // Not authenticated, redirect to my-mailbox parent for login
+      // Not authenticated or session expired, redirect to my-mailbox parent for login
       router.push('/my-mailbox')
+      return
+    }
+
+    // Check if session is expired
+    if (session?.expiresAt) {
+      const now = new Date()
+      const expires = new Date(session.expiresAt)
+
+      if (expires <= now) {
+        // Session expired
+        router.push('/my-mailbox')
+        return
+      }
     }
   }, [session, loading, router])
+
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    try {
+      const response = await fetch('/api/mailbox-auth/logout', {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to logout')
+      }
+
+      toast.success('Logged out successfully')
+      router.push('/my-mailbox')
+    } catch (error) {
+      console.error('Error logging out:', error)
+      toast.error('Failed to logout')
+      setLoggingOut(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -71,6 +106,15 @@ export default function InboxPage() {
             >
               <PenSquare className="w-4 h-4" />
               Compose
+            </Button>
+            <Button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              variant="outline"
+              className="gap-2"
+            >
+              <LogOut className="w-4 h-4" />
+              {loggingOut ? 'Exiting...' : 'Exit'}
             </Button>
             <div className="text-sm text-gray-600 flex items-center gap-2">
               <Clock className="w-4 h-4" />

@@ -19,6 +19,19 @@ export function MailboxProvider({ children }) {
 
       if (response.ok) {
         const data = await response.json()
+
+        // Check if session is expired
+        const now = new Date()
+        const expires = new Date(data.expiresAt)
+
+        if (expires <= now) {
+          // Session is expired
+          console.log('Mailbox session expired')
+          setSession(null)
+          setLoading(false)
+          return null
+        }
+
         setSession(data)
         return data
       } else {
@@ -36,7 +49,27 @@ export function MailboxProvider({ children }) {
 
   useEffect(() => {
     checkSession()
-  }, [checkSession])
+  }, []) // Only run once on mount
+
+  useEffect(() => {
+    // Check session every 120 seconds
+    const interval = setInterval(() => {
+      if (session) {
+        const now = new Date()
+        const expires = new Date(session.expiresAt)
+
+        if (expires <= now) {
+          // Session expired, clear it and redirect
+          console.log('Session expired, redirecting to login')
+          setSession(null)
+          toast.error('Your mailbox session has expired. Please login again.')
+          router.push('/my-mailbox')
+        }
+      }
+    }, 120000) // Check every 120 seconds
+
+    return () => clearInterval(interval)
+  }, [session, router])
 
   const login = useCallback(async (mailboxId, password) => {
     try {
@@ -97,13 +130,25 @@ export function MailboxProvider({ children }) {
   }, [session, loading])
 
   const openComposeDialog = useCallback(() => {
-    if (session && !loading) {
-      setIsComposeDialogOpen(true)
-    } else {
+    if (!session || loading) {
       toast.error('Please login to your mailbox first')
       setIsLoginDialogOpen(true)
+      return
     }
-  }, [session, loading])
+
+    // Check if session is expired
+    const now = new Date()
+    const expires = new Date(session.expiresAt)
+
+    if (expires <= now) {
+      toast.error('Your mailbox session has expired. Please login again.')
+      setSession(null)
+      router.push('/my-mailbox')
+      return
+    }
+
+    setIsComposeDialogOpen(true)
+  }, [session, loading, router])
 
   const value = {
     session,

@@ -80,6 +80,17 @@ export function GlobalComposeDialog() {
     return null
   }
 
+  // Check if session is expired
+  if (session.expiresAt) {
+    const now = new Date()
+    const expires = new Date(session.expiresAt)
+
+    if (expires <= now) {
+      // Session expired, don't show compose dialog
+      return null
+    }
+  }
+
   return (
     <ComposeDialog
       open={isComposeDialogOpen}

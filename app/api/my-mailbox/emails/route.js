@@ -145,9 +145,69 @@ export async function GET(req) {
       })
     }
 
-    // Get emails (for conversation grouping)
-    const emails = await prisma.emailLog.findMany({
+    // STEP 1: Get all emails matching filters (needed for conversation grouping)
+    // But only fetch minimal data for grouping
+    const allEmails = await prisma.emailLog.findMany({
       where: whereConditions,
+      select: {
+        id: true,
+        conversationId: true,
+        createdAt: true,
+        attachmentsStatus: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+
+    // STEP 2: Group by conversation in JS (unavoidable, but optimized)
+    const conversationMap = new Map()
+    for (const email of allEmails) {
+      const convKey = email.conversationId || email.id
+      
+      if (!conversationMap.has(convKey)) {
+        conversationMap.set(convKey, {
+          conversationKey: convKey,
+          lastMessageAt: email.createdAt,
+          messageCount: 1,
+          hasAttachments: email.attachmentsStatus === 'completed',
+          emailIds: [email.id],
+        })
+      } else {
+        const conv = conversationMap.get(convKey)
+        conv.messageCount++
+        if (email.attachmentsStatus === 'completed') {
+          conv.hasAttachments = true
+        }
+        // Update last message time if this email is newer
+        if (email.createdAt > conv.lastMessageAt) {
+          conv.lastMessageAt = email.createdAt
+        }
+        conv.emailIds.push(email.id)
+      }
+    }
+
+    // STEP 3: Sort conversations by lastMessageAt DESC
+    const sortedConversations = Array.from(conversationMap.values())
+      .sort((a, b) => b.lastMessageAt - a.lastMessageAt)
+
+    // STEP 4: Apply pagination to conversations
+    const paginatedConversations = sortedConversations.slice(skip, skip + limit)
+
+    // STEP 5: Fetch full details only for paginated conversations' last emails
+    const lastEmailIds = paginatedConversations.map(conv => 
+      // Find the email with the latest createdAt from emailIds
+      allEmails
+        .filter(e => conv.emailIds.includes(e.id))
+        .sort((a, b) => b.createdAt - a.createdAt)[0].id
+    )
+
+    const lastEmails = await prisma.emailLog.findMany({
+      where: {
+        id: {
+          in: lastEmailIds,
+        },
+      },
       select: {
         id: true,
         fromEmail: true,
@@ -170,40 +230,24 @@ export async function GET(req) {
           },
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
     })
 
-    // Group emails by conversation
-    const conversationMap = new Map()
-    for (const email of emails) {
-      const convId = email.conversationId || email.id // Fallback to email ID for null conversationId
-      if (!conversationMap.has(convId)) {
-        conversationMap.set(convId, {
-          conversationId: convId,
-          emails: [],
-          lastEmail: null,
-          messageCount: 0,
-          hasAttachments: false,
-        })
-      }
-      const conversation = conversationMap.get(convId)
-      conversation.emails.push(email)
-      conversation.messageCount++
-      if (email.attachmentsStatus === 'completed') {
-        conversation.hasAttachments = true
-      }
-      // Track latest email for display
-      if (!conversation.lastEmail || email.createdAt > conversation.lastEmail.createdAt) {
-        conversation.lastEmail = email
-      }
-    }
+    // Create a map for quick lookup
+    const emailMap = new Map(lastEmails.map(e => [e.id, e]))
 
-    // Convert to array and sort by last email time
-    const conversations = Array.from(conversationMap.values())
-      .sort((a, b) => b.lastEmail.createdAt - a.lastEmail.createdAt)
-      .slice(skip, skip + limit) // Apply pagination to conversations
+    // STEP 6: Build final response maintaining sort order
+    const conversations = paginatedConversations.map(conv => {
+      const lastEmailId = allEmails
+        .filter(e => conv.emailIds.includes(e.id))
+        .sort((a, b) => b.createdAt - a.createdAt)[0].id
+      
+      return {
+        conversationId: conv.conversationKey,
+        lastEmail: emailMap.get(lastEmailId),
+        messageCount: conv.messageCount,
+        hasAttachments: conv.hasAttachments,
+      }
+    })
 
     const totalConversations = conversationMap.size
     const totalPages = Math.ceil(totalConversations / limit)
