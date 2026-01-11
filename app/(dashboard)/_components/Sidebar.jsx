@@ -5,6 +5,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { useState, useEffect } from 'react'
+import { useMailbox } from '../my-mailbox/_context/MailboxContext'
 import {
   Sidebar,
   SidebarContent,
@@ -15,13 +17,44 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { User, Globe, LogOut, Mail, Inbox, MailOpen } from 'lucide-react'
+import {
+  User,
+  Globe,
+  LogOut,
+  Mail,
+  Inbox,
+  MailOpen,
+  Send,
+  PenSquare,
+  ChevronDown,
+  ChevronRight
+} from 'lucide-react'
 
 const AppSidebar = () => {
   const pathname = usePathname()
   const router = useRouter()
+  const mailboxContext = useMailbox()
+  const openComposeDialog = mailboxContext?.openComposeDialog || (() => {
+    // If not in mailbox context, navigate to mailbox
+    router.push('/my-mailbox')
+  })
+  
+  // Auto-expand if we're on a my-mailbox sub-page
+  const [mailboxExpanded, setMailboxExpanded] = useState(
+    pathname.startsWith('/my-mailbox/') || pathname === '/my-mailbox'
+  )
+
+  // Update expansion state when pathname changes
+  useEffect(() => {
+    if (pathname.startsWith('/my-mailbox/') || pathname === '/my-mailbox') {
+      setMailboxExpanded(true)
+    }
+  }, [pathname])
 
   const handleLogout = async () => {
     try {
@@ -62,12 +95,26 @@ const AppSidebar = () => {
       path: '/mailboxes',
       icon: Inbox,
     },
+  ]
+
+  const mailboxSubItems = [
     {
-      name: 'My Mailbox',
-      path: '/my-mailbox',
-      icon: MailOpen,
+      name: 'Inbox',
+      path: '/my-mailbox/inbox',
+      icon: Inbox,
+    },
+    {
+      name: 'Sent',
+      path: '/my-mailbox/sent',
+      icon: Send,
     },
   ]
+
+  // Compose is handled separately via dialog
+  const composeItem = {
+    name: 'Compose',
+    icon: PenSquare,
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -103,8 +150,7 @@ const AppSidebar = () => {
                 const isActive = pathname === item.path || pathname.startsWith(item.path + '/')
                 const Icon = item.icon
                 return (
-                  <SidebarMenuItem key={item.path}
-                    className="flex items-center justify-center ">
+                  <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
@@ -118,6 +164,66 @@ const AppSidebar = () => {
                   </SidebarMenuItem>
                 )
               })}
+
+              {/* My Mailbox - Collapsible Section */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => {
+                    // Toggle expansion
+                    setMailboxExpanded(!mailboxExpanded)
+                    // Navigate to my-mailbox if collapsed
+                    if (!mailboxExpanded) {
+                      router.push('/my-mailbox')
+                    }
+                  }}
+                  isActive={pathname.startsWith('/my-mailbox')}
+                  tooltip="My Mailbox"
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <MailOpen className="w-7.5 h-7.5 text-[28px]" />
+                  <span>My Mailbox</span>
+                  <div className="ml-auto group-data-[collapsible=icon]:hidden">
+                    {mailboxExpanded ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </div>
+                </SidebarMenuButton>
+
+                {mailboxExpanded && (
+                  <SidebarMenuSub>
+                    {mailboxSubItems.map((subItem) => {
+                      const SubIcon = subItem.icon
+                      const isSubActive = pathname === subItem.path
+                      return (
+                        <SidebarMenuSubItem key={subItem.path}>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={isSubActive}
+                          >
+                            <Link href={subItem.path} className="flex items-center gap-2">
+                              <SubIcon className="w-4 h-4" />
+                              <span>{subItem.name}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      )
+                    })}
+                    
+                    {/* Compose button - opens dialog */}
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        onClick={openComposeDialog}
+                        className="cursor-pointer"
+                      >
+                        <PenSquare className="w-4 h-4" />
+                        <span>{composeItem.name}</span>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  </SidebarMenuSub>
+                )}
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

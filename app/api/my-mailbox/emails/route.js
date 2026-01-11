@@ -38,6 +38,7 @@ export async function GET(req) {
     const hasAttachments = searchParams.get('hasAttachments')
     const dateFrom = searchParams.get('dateFrom')
     const dateTo = searchParams.get('dateTo')
+    const statusFilter = searchParams.get('status') // Filter by email status
 
     // Get aliases for this mailbox
     const aliases = await prisma.alias.findMany({
@@ -51,71 +52,97 @@ export async function GET(req) {
 
     const aliasIds = aliases.map((alias) => alias.id)
 
-    if (aliasIds.length === 0) {
-      return NextResponse.json({
-        emails: [],
-        pagination: {
-          page,
-          limit,
-          totalCount: 0,
-          totalPages: 0,
-          hasMore: false,
-        },
-      })
-    }
-
     // Build filter conditions
+    // Include emails where:
+    // 1. aliasId matches one of the mailbox aliases, OR
+    // 2. aliasId is null AND the email is sent from the mailbox primary address
     const whereConditions = {
-      aliasId: {
-        in: aliasIds,
-      },
+      AND: [
+        {
+          OR: [
+            {
+              // Emails associated with mailbox aliases
+              aliasId: {
+                in: aliasIds,
+              },
+            },
+            {
+              // Sent emails from mailbox primary address (aliasId is null)
+              aliasId: null,
+              userId: session.user.id,
+              // For sent emails, fromEmail should match mailbox email
+              fromEmail: mailboxSession.mailbox.emailAlias,
+            },
+          ],
+        },
+      ],
     }
 
     // Apply filters
     if (query) {
-      whereConditions.OR = [
-        {
-          subject: {
-            contains: query,
-            mode: 'insensitive',
+      whereConditions.AND.push({
+        OR: [
+          {
+            subject: {
+              contains: query,
+              mode: 'insensitive',
+            },
           },
+          {
+            fromEmail: {
+              contains: query,
+              mode: 'insensitive',
+            },
+          },
+        ],
+      })
+    }
+
+    if (fromEmail) {
+      whereConditions.AND.push({
+        fromEmail: {
+          contains: fromEmail,
+          mode: 'insensitive',
         },
+      })
+    }
+
+    if (filterAliasId && aliasIds.includes(filterAliasId)) {
+      // Override the main OR condition to filter by specific alias
+      whereConditions.AND = [
         {
-          fromEmail: {
-            contains: query,
-            mode: 'insensitive',
-          },
+          aliasId: filterAliasId,
         },
       ]
     }
 
-    if (fromEmail) {
-      whereConditions.fromEmail = {
-        contains: fromEmail,
-        mode: 'insensitive',
-      }
-    }
-
-    if (filterAliasId && aliasIds.includes(filterAliasId)) {
-      whereConditions.aliasId = filterAliasId
-    }
-
     if (hasAttachments === 'true') {
-      whereConditions.attachmentsStatus = 'completed'
+      whereConditions.AND.push({
+        attachmentsStatus: 'completed',
+      })
     }
 
     if (dateFrom) {
-      whereConditions.createdAt = {
-        ...whereConditions.createdAt,
-        gte: new Date(dateFrom),
-      }
+      whereConditions.AND.push({
+        createdAt: {
+          gte: new Date(dateFrom),
+        },
+      })
     }
 
     if (dateTo) {
-      whereConditions.createdAt = {
-        ...whereConditions.createdAt,
-        lte: new Date(dateTo),
-      }
+      whereConditions.AND.push({
+        createdAt: {
+          lte: new Date(dateTo),
+        },
+      })
+    }
+
+    // Filter by status (received, sent, etc.)
+    if (statusFilter) {
+      whereConditions.AND.push({
+        status: statusFilter,
+      })
     }
 
     // Get total count

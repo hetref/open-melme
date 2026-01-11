@@ -24,6 +24,7 @@ enum EmailStatus {
   failed
   pending
   invalid
+  sent
 }
 
 enum AttachmentsStatus {

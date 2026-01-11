@@ -43,12 +43,24 @@ export async function GET(req, { params }) {
     const aliasIds = aliases.map((alias) => alias.id)
 
     // Get email details
+    // Include emails where:
+    // 1. aliasId matches one of the mailbox aliases, OR
+    // 2. aliasId is null AND the email is sent from the mailbox primary address
     const email = await prisma.emailLog.findFirst({
       where: {
         id: emailId,
-        aliasId: {
-          in: aliasIds,
-        },
+        OR: [
+          {
+            aliasId: {
+              in: aliasIds,
+            },
+          },
+          {
+            aliasId: null,
+            userId: session.user.id,
+            fromEmail: mailboxSession.mailbox.emailAlias,
+          },
+        ],
       },
       include: {
         alias: {
@@ -91,9 +103,17 @@ export async function GET(req, { params }) {
           attachmentsStatus: email.attachmentsStatus,
           attachmentsError: email.attachmentsError,
           processedAttachments: email.attachments || [],
+          headers: {
+            from: email.fromEmail,
+            to: email.toEmail,
+            date: email.createdAt,
+          },
           body: {
             text: 'Email content not available',
             html: '<p>Email content not available</p>',
+            safeHtmlNoImages: '<p>Email content not available</p>',
+            safeHtmlWithImages: '<p>Email content not available</p>',
+            hasImages: false,
           },
         },
       })
