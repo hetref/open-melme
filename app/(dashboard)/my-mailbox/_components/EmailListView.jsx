@@ -736,6 +736,9 @@ export function EmailListView({ emailType = 'received' }) {
                           <h4 className="font-medium">
                             Attachments ({selectedEmailDetail.attachmentsCount})
                           </h4>
+                          {/* Show Process Attachments button for:
+                              1. Received emails that need processing
+                              2. Sent emails that need processing (old emails before feature was added) */}
                           {selectedEmailDetail.attachmentsStatus === 'not_processed' && (
                             <Button
                               size="sm"

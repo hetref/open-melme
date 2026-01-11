@@ -38,7 +38,9 @@ export async function GET(request, { params }) {
       },
       include: {
         emailLog: {
-          include: {
+          select: {
+            userId: true,
+            aliasId: true,
             alias: {
               select: {
                 mailboxId: true,
@@ -53,8 +55,11 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Attachment not found' }, { status: 404 })
     }
 
-    // Verify attachment belongs to user's mailbox
-    if (attachment.emailLog.alias?.mailboxId !== mailboxSession.mailbox.id) {
+    // Verify attachment belongs to user (for sent emails) or user's mailbox (for received emails)
+    const belongsToUser = attachment.emailLog.userId === session.user.id
+    const belongsToMailbox = attachment.emailLog.alias?.mailboxId === mailboxSession.mailbox.id
+
+    if (!belongsToUser && !belongsToMailbox) {
       return NextResponse.json(
         { error: 'Attachment does not belong to your mailbox' },
         { status: 403 }

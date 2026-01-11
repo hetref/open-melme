@@ -12,11 +12,24 @@ import {
   sanitizeEmailList
 } from '@/lib/email-builder'
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import prisma from '@/lib/prisma'
 import { cookies } from 'next/headers'
 import { simpleParser } from 'mailparser'
 
-const S3_BUCKET = process.env.AWS_S3_BUCKET
+const S3_BUCKET = process.env.AWS_BUCKET_NAME
+
+if (!S3_BUCKET) {
+  console.error('CRITICAL: AWS_BUCKET_NAME environment variable is not set!')
+}
+
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || 'ap-south-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+})
 
 const sesClient = new SESv2Client({
   region: process.env.AWS_REGION || 'ap-south-1',
@@ -59,10 +72,10 @@ export async function POST(req) {
       cc = [],
       bcc = [],
       subject,
-      html,
-      text,
+      text, // TEXT ONLY - NO HTML ALLOWED
       replyToEmailLogId,
       attachmentKeys = [],
+      draftId, // Optional: Draft EmailLog ID created for attachments
     } = body
 
     // Validate mailbox ownership
@@ -185,16 +198,15 @@ export async function POST(req) {
       )
     }
 
-    if (!html && !text) {
+    if (!text || text.trim() === '') {
       return NextResponse.json(
         { error: 'Email body is required' },
         { status: 400 }
       )
     }
 
-    // Sanitize HTML
-    const sanitizedHtml = sanitizeOutboundHtml(html || '')
-    const finalText = text || 'This email contains HTML content.'
+    // TEXT ONLY - No HTML processing
+    const finalText = text.trim()
 
     // Handle reply threading
     let replyToMessageId = null
@@ -247,8 +259,9 @@ export async function POST(req) {
       finalSubject = buildReplySubject(originalEmail.subject || subject)
     }
 
-    // Fetch attachments from S3
+    // Fetch attachments from S3 and prepare metadata
     const attachments = []
+    const attachmentMetadata = [] // Store metadata for DB records
     if (attachmentKeys.length > 0) {
       for (const key of attachmentKeys) {
         try {
@@ -263,11 +276,22 @@ export async function POST(req) {
           else if (filename.match(/\.(jpg|jpeg)$/i)) contentType = 'image/jpeg'
           else if (filename.endsWith('.png')) contentType = 'image/png'
           else if (filename.endsWith('.txt')) contentType = 'text/plain'
+          else if (filename.match(/\.(doc|docx)$/i)) contentType = 'application/msword'
+          else if (filename.match(/\.(xls|xlsx)$/i)) contentType = 'application/vnd.ms-excel'
 
           attachments.push({
             filename,
             contentType,
             content: buffer,
+          })
+
+          // Store metadata for creating EmailAttachment records
+          attachmentMetadata.push({
+            filename,
+            mimeType: contentType,
+            size: buffer.length,
+            s3Bucket: S3_BUCKET,
+            s3Key: key,
           })
         } catch (error) {
           console.error(`Error fetching attachment ${key}:`, error)
@@ -287,7 +311,7 @@ export async function POST(req) {
         bcc: sanitizedBcc,
         subject: finalSubject,
         text: finalText,
-        html: sanitizedHtml,
+        html: '', // No HTML
         attachments,
       })
     } catch (error) {
@@ -297,7 +321,7 @@ export async function POST(req) {
       )
     }
 
-    // Build raw MIME email
+    // Build raw MIME email (TEXT ONLY)
     let rawMessage
     try {
       rawMessage = buildRawMimeEmail({
@@ -307,7 +331,7 @@ export async function POST(req) {
         bcc: sanitizedBcc,
         subject: finalSubject,
         text: finalText,
-        html: sanitizedHtml,
+        html: '', // NO HTML - text only
         attachments,
         replyToMessageId,
         domain: alias.domain.fullDomain,
@@ -320,22 +344,122 @@ export async function POST(req) {
       )
     }
 
-    // Create email log entry (before sending)
-    const emailLog = await prisma.emailLog.create({
-      data: {
-        userId: session.user.id,
-        domainId: alias.domainId,
-        aliasId: aliasId.startsWith('mailbox-') ? null : aliasId, // Set null for mailbox primary
-        fromEmail,
-        toEmail: allRecipients.join(', '),
-        subject: finalSubject,
-        status: 'pending',
-        pendingReason: 'Sending via SES',
-        size: Buffer.byteLength(rawMessage, 'utf8'),
-      },
-    })
+    // Generate body preview (first 200 chars)
+    const bodyPreview = finalText.slice(0, 200)
 
-    // Send via SES
+    // Use existing draft or create new EmailLog
+    let emailLog
+    if (draftId) {
+      // Update existing draft with actual email data
+      emailLog = await prisma.emailLog.update({
+        where: { id: draftId },
+        data: {
+          fromEmail,
+          toEmail: allRecipients.join(', '),
+          subject: finalSubject,
+          status: 'pending',
+          pendingReason: 'Building email',
+          size: Buffer.byteLength(rawMessage, 'utf8'),
+          s3Bucket: S3_BUCKET,
+          s3Key: `emails-sent/${draftId}.eml`,
+          attachmentsStatus: attachments.length > 0 ? 'completed' : 'not_processed',
+        },
+      })
+    } else {
+      // Create new EmailLog entry
+      emailLog = await prisma.emailLog.create({
+        data: {
+          userId: session.user.id,
+          domainId: alias.domainId,
+          aliasId: aliasId.startsWith('mailbox-') ? null : aliasId,
+          fromEmail,
+          toEmail: allRecipients.join(', '),
+          subject: finalSubject,
+          status: 'pending',
+          pendingReason: 'Building email',
+          size: Buffer.byteLength(rawMessage, 'utf8'),
+          s3Bucket: S3_BUCKET,
+          s3Key: `emails-sent/${null}.eml`, // Will update after creation
+          attachmentsStatus: attachments.length > 0 ? 'completed' : 'not_processed',
+        },
+      })
+
+      // Update S3 key with actual emailLog ID if created new
+      await prisma.emailLog.update({
+        where: { id: emailLog.id },
+        data: { s3Key: `emails-sent/${emailLog.id}.eml` },
+      })
+    }
+
+    // Prepare S3 key for .eml file
+    const s3Key = `emails-sent/${emailLog.id}.eml`
+
+    // Validate S3_BUCKET is set
+    if (!S3_BUCKET) {
+      throw new Error('AWS_BUCKET_NAME environment variable is not configured')
+    }
+
+    console.log(`Preparing to upload to S3 - Bucket: ${S3_BUCKET}, Key: ${s3Key}`)
+
+    // Step 1: Upload .eml to S3 BEFORE sending
+    try {
+      const putCommand = new PutObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: s3Key,
+        Body: Buffer.from(rawMessage, 'utf-8'),
+        ContentType: 'message/rfc822',
+      })
+
+      await s3Client.send(putCommand)
+      console.log(`Uploaded outbound email to S3: ${S3_BUCKET}/${s3Key}`)
+
+      // Create EmailAttachment records for outbound attachments
+      if (attachmentMetadata.length > 0) {
+        try {
+          await prisma.emailAttachment.createMany({
+            data: attachmentMetadata.map(att => ({
+              emailLogId: emailLog.id,
+              filename: att.filename,
+              mimeType: att.mimeType,
+              size: att.size,
+              s3Bucket: att.s3Bucket,
+              s3Key: att.s3Key,
+            })),
+          })
+          console.log(`Created ${attachmentMetadata.length} EmailAttachment record(s)`)
+        } catch (attachError) {
+          console.error('Error creating EmailAttachment records:', attachError)
+          // Don't fail the email send if attachment records fail
+        }
+      }
+
+      // Update status to indicate S3 upload complete
+      await prisma.emailLog.update({
+        where: { id: emailLog.id },
+        data: {
+          pendingReason: 'Email stored, sending via SES',
+        },
+      })
+    } catch (error) {
+      console.error('Error uploading .eml to S3:', error)
+
+      // Update email log to failed
+      await prisma.emailLog.update({
+        where: { id: emailLog.id },
+        data: {
+          status: 'failed',
+          error: `S3 upload failed: ${error.message}`,
+          pendingReason: null,
+        },
+      })
+
+      return NextResponse.json(
+        { error: `Failed to store email: ${error.message}` },
+        { status: 500 }
+      )
+    }
+
+    // Step 2: Send via SES
     try {
       const command = new SendEmailCommand({
         FromEmailAddress: fromEmail,
@@ -371,7 +495,7 @@ export async function POST(req) {
     } catch (error) {
       console.error('Error sending email via SES:', error)
 
-      // Update email log to failed
+      // Update email log to failed (but .eml is still in S3)
       await prisma.emailLog.update({
         where: { id: emailLog.id },
         data: {

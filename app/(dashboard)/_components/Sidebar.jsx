@@ -43,7 +43,7 @@ const AppSidebar = () => {
     // If not in mailbox context, navigate to mailbox
     router.push('/my-mailbox')
   })
-  
+
   // Auto-expand if we're on a my-mailbox sub-page
   const [mailboxExpanded, setMailboxExpanded] = useState(
     pathname.startsWith('/my-mailbox/') || pathname === '/my-mailbox'
@@ -210,7 +210,7 @@ const AppSidebar = () => {
                         </SidebarMenuSubItem>
                       )
                     })}
-                    
+
                     {/* Compose button - opens dialog */}
                     <SidebarMenuSubItem>
                       <SidebarMenuSubButton

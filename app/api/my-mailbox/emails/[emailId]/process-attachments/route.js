@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { validateMailboxSession } from '@/lib/mailbox'
-import { fetchEmailFromS3, uploadAttachmentToS3, sanitizeFilename } from '@/lib/s3'
+import { fetchEmailFromS3, uploadAttachmentToS3, sanitizeFilename, listS3Objects } from '@/lib/s3'
 import { simpleParser } from 'mailparser'
 
 // POST /api/my-mailbox/emails/[emailId]/process-attachments
@@ -50,9 +50,20 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Email not found' }, { status: 404 })
     }
 
-    // Verify email belongs to user's mailbox
-    if (email.alias?.mailboxId !== mailboxSession.mailbox.id) {
-      return NextResponse.json({ error: 'Email does not belong to your mailbox' }, { status: 403 })
+    // For sent emails (status='sent'), verify via userId
+    // For received emails, verify via mailbox alias
+    const isSentEmail = email.status === 'sent'
+
+    if (isSentEmail) {
+      // Sent emails: verify by userId
+      if (email.userId !== session.user.id) {
+        return NextResponse.json({ error: 'Email does not belong to you' }, { status: 403 })
+      }
+    } else {
+      // Received emails: verify by mailbox
+      if (email.alias?.mailboxId !== mailboxSession.mailbox.id) {
+        return NextResponse.json({ error: 'Email does not belong to your mailbox' }, { status: 403 })
+      }
     }
 
     // Check if email has S3 storage
@@ -103,6 +114,80 @@ export async function POST(request, { params }) {
     })
 
     try {
+      // BRANCH: Handle sent emails differently from received emails
+      if (isSentEmail) {
+        // For sent emails: scan sent-attachments/<emailId>/ prefix in S3
+        const sentAttachmentsPrefix = `sent-attachments/${emailId}/`
+
+        console.log(`Scanning S3 for sent attachments: ${sentAttachmentsPrefix}`)
+
+        const s3Objects = await listS3Objects(email.s3Bucket, sentAttachmentsPrefix)
+
+        if (!s3Objects || s3Objects.length === 0) {
+          // No attachments found in S3
+          await prisma.emailLog.update({
+            where: { id: emailId },
+            data: { attachmentsStatus: 'completed' },
+          })
+
+          return NextResponse.json({
+            message: 'No attachments found for this sent email',
+            status: 'completed',
+            attachments: [],
+          })
+        }
+
+        // Create EmailAttachment records for each file found
+        const attachmentRecords = []
+
+        for (const s3Object of s3Objects) {
+          // Extract filename from S3 key
+          const filename = s3Object.Key.split('/').pop().replace(/^\d+-[a-f0-9]+-/, '') || 'attachment'
+
+          // Detect MIME type from filename
+          let mimeType = 'application/octet-stream'
+          if (filename.endsWith('.pdf')) mimeType = 'application/pdf'
+          else if (filename.match(/\.(jpg|jpeg)$/i)) mimeType = 'image/jpeg'
+          else if (filename.endsWith('.png')) mimeType = 'image/png'
+          else if (filename.endsWith('.txt')) mimeType = 'text/plain'
+          else if (filename.match(/\.(doc|docx)$/i)) mimeType = 'application/msword'
+          else if (filename.match(/\.(xls|xlsx)$/i)) mimeType = 'application/vnd.ms-excel'
+          else if (filename.endsWith('.zip')) mimeType = 'application/zip'
+
+          // Create database record
+          const attachmentRecord = await prisma.emailAttachment.create({
+            data: {
+              emailLogId: emailId,
+              filename: filename,
+              mimeType: mimeType,
+              size: s3Object.Size,
+              s3Bucket: email.s3Bucket,
+              s3Key: s3Object.Key,
+            },
+          })
+
+          attachmentRecords.push(attachmentRecord)
+        }
+
+        // Update status to completed
+        await prisma.emailLog.update({
+          where: { id: emailId },
+          data: { attachmentsStatus: 'completed' },
+        })
+
+        return NextResponse.json({
+          message: `Successfully processed ${attachmentRecords.length} attachment(s) from sent email`,
+          status: 'completed',
+          attachments: attachmentRecords.map(att => ({
+            id: att.id,
+            filename: att.filename,
+            mimeType: att.mimeType,
+            size: att.size,
+          })),
+        })
+      }
+
+      // RECEIVED EMAILS: Original behavior - parse .eml and extract attachments
       // Fetch raw email from S3
       const rawEmail = await fetchEmailFromS3(email.s3Bucket, email.s3Key)
 

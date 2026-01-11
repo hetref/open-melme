@@ -24,8 +24,7 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, onEmailSen
     cc: '',
     bcc: '',
     subject: '',
-    html: '',
-    text: '',
+    text: '', // TEXT ONLY
   })
 
   const [attachments, setAttachments] = useState([])
@@ -33,6 +32,7 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, onEmailSen
   const [sending, setSending] = useState(false)
   const [showCc, setShowCc] = useState(false)
   const [showBcc, setShowBcc] = useState(false)
+  const [draftId, setDraftId] = useState(null) // Draft EmailLog ID for attachments
 
   const fileInputRef = useRef(null)
 
@@ -45,6 +45,34 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, onEmailSen
       }))
     }
   }, [open, aliases, formData.aliasId])
+
+  // Create draft when dialog opens (for attachment uploads)
+  useEffect(() => {
+    if (open && mailbox && formData.aliasId && !draftId) {
+      createDraft()
+    }
+  }, [open, mailbox, formData.aliasId, draftId])
+
+  const createDraft = async () => {
+    try {
+      const response = await fetch('/api/mailbox/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mailboxId: mailbox.id,
+          aliasId: formData.aliasId,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setDraftId(data.draftId)
+      }
+    } catch (error) {
+      console.error('Error creating draft:', error)
+      // Non-blocking - user can still compose without attachments
+    }
+  }
 
   const handleClose = () => {
     if (sending || uploadingAttachment) {
@@ -62,12 +90,12 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, onEmailSen
       cc: '',
       bcc: '',
       subject: '',
-      html: '',
       text: '',
     })
     setAttachments([])
     setShowCc(false)
     setShowBcc(false)
+    setDraftId(null) // Reset draft ID
   }
 
   const handleFileSelect = async (e) => {
@@ -81,13 +109,20 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, onEmailSen
       return
     }
 
+    // Ensure we have a draft ID before uploading
+    if (!draftId) {
+      toast.error('Please wait while draft is being created...')
+      return
+    }
+
     setUploadingAttachment(true)
 
     try {
       for (const file of files) {
-        // Upload to S3
+        // Upload to S3 with draft EmailLog ID
         const formData = new FormData()
         formData.append('file', file)
+        formData.append('emailLogId', draftId) // CRITICAL: Pass draft ID
 
         const response = await fetch('/api/mailbox/attachments/upload', {
           method: 'POST',
@@ -152,7 +187,7 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, onEmailSen
       return
     }
 
-    if (!formData.text.trim() && !formData.html.trim()) {
+    if (!formData.text.trim()) {
       toast.error('Email body is required')
       return
     }
@@ -177,9 +212,9 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, onEmailSen
           cc: ccEmails,
           bcc: bccEmails,
           subject: formData.subject,
-          text: formData.text || formData.html.replace(/<[^>]*>/g, ''),
-          html: formData.html || `<p>${formData.text.replace(/\n/g, '<br>')}</p>`,
+          text: formData.text, // TEXT ONLY - NO HTML
           attachmentKeys: attachments.map((a) => a.s3Key),
+          draftId: draftId, // Pass draft ID to update existing EmailLog
         }),
       })
 

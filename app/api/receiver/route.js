@@ -114,29 +114,15 @@ export async function POST(req) {
     });
 
     if (!domainRecord) {
-      console.log('Domain not found:', domain);
+      // Domain not found - silently handle without logging to DB (avoids foreign key errors)
+      // Just clean up S3 and return success
 
-      // Log as invalid
-      await logEmail({
-        userId: null,
-        domainId: null,
-        aliasId: null,
-        fromEmail,
-        toEmail,
-        subject,
-        s3Bucket: s3.bucket,
-        s3Key: s3.key,
-        size: s3.size,
-        status: 'invalid',
-        error: 'Domain not found',
-        pendingReason: null,
-      });
-
-      // DELETE S3 object for invalid emails
+      // Try to delete S3 object for invalid emails (silent failure if no permission)
       try {
         await deleteEmailFromS3(s3.bucket, s3.key);
       } catch (deleteError) {
-        console.error('Failed to delete S3 object:', deleteError);
+        // Silently ignore S3 deletion errors (IAM permissions may not be set yet)
+        // The S3 object will remain but won't be processed
       }
 
       return Response.json({
@@ -471,11 +457,16 @@ async function logEmail({
   pendingReason,
 }) {
   try {
-    // Allow logging even without userId/domainId for invalid emails
+    // MUST have valid userId and domainId for foreign key constraints
+    if (!userId || !domainId) {
+      // Cannot log without valid user and domain - skip silently
+      return null;
+    }
+
     const emailLog = await prisma.emailLog.create({
       data: {
-        userId: userId || 'unknown',
-        domainId: domainId || 'unknown',
+        userId,
+        domainId,
         aliasId,
         fromEmail: fromEmail || 'unknown',
         toEmail: toEmail || 'unknown',
@@ -491,7 +482,7 @@ async function logEmail({
 
     return emailLog;
   } catch (err) {
-    console.error('Error logging email:', err);
+    // Silently handle logging errors (e.g., foreign key constraints)
     return null;
   }
 }

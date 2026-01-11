@@ -5,7 +5,11 @@ import { uploadAttachmentToS3, sanitizeFilename } from '@/lib/s3'
 import { cookies } from 'next/headers'
 import { randomUUID } from 'crypto'
 
-const S3_BUCKET = process.env.AWS_S3_BUCKET
+const S3_BUCKET = process.env.AWS_BUCKET_NAME
+
+if (!S3_BUCKET) {
+  console.error('CRITICAL: AWS_BUCKET_NAME environment variable is not set!')
+}
 
 // Max file size: 10MB per file
 const MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -41,10 +45,18 @@ export async function POST(req) {
     // Parse form data
     const formData = await req.formData()
     const file = formData.get('file')
-    const emailLogId = formData.get('emailLogId') || randomUUID()
+    const emailLogId = formData.get('emailLogId')
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    }
+
+    // emailLogId is REQUIRED - attachments must be associated with an EmailLog
+    if (!emailLogId) {
+      return NextResponse.json(
+        { error: 'emailLogId is required. Attachments must be associated with an email.' },
+        { status: 400 }
+      )
     }
 
     // Validate file size
