@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMailbox } from '../_context/MailboxContext'
 import { EmailListView } from '../_components/EmailListView'
@@ -13,8 +13,8 @@ export default function SentPage() {
   const session = mailboxContext?.session
   const loading = mailboxContext?.loading
   const openComposeDialog = mailboxContext?.openComposeDialog
+  const logout = mailboxContext?.logout
   const router = useRouter()
-  const [loggingOut, setLoggingOut] = useState(false)
 
   useEffect(() => {
     if (!loading && !session) {
@@ -30,31 +30,14 @@ export default function SentPage() {
 
       if (expires <= now) {
         // Session expired
+        toast.info('Your session has expired. Please login again.')
         router.push('/my-mailbox')
         return
       }
     }
   }, [session, loading, router])
 
-  const handleLogout = async () => {
-    setLoggingOut(true)
-    try {
-      const response = await fetch('/api/mailbox-auth/logout', {
-        method: 'POST',
-      })
 
-      if (!response.ok) {
-        throw new Error('Failed to logout')
-      }
-
-      toast.success('Logged out successfully')
-      router.push('/my-mailbox')
-    } catch (error) {
-      console.error('Error logging out:', error)
-      toast.error('Failed to logout')
-      setLoggingOut(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -107,13 +90,13 @@ export default function SentPage() {
               Compose
             </Button>
             <Button
-              onClick={handleLogout}
-              disabled={loggingOut}
+              onClick={logout}
+              disabled={!logout}
               variant="outline"
               className="gap-2"
             >
               <LogOut className="w-4 h-4" />
-              {loggingOut ? 'Exiting...' : 'Exit'}
+              Exit
             </Button>
             <div className="text-sm text-gray-600 flex items-center gap-2">
               <Clock className="w-4 h-4" />

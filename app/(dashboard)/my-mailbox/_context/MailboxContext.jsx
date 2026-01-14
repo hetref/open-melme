@@ -3,15 +3,21 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { useMailboxStore } from '@/lib/stores/mailboxStore'
 
 const MailboxContext = createContext(null)
 
 export function MailboxProvider({ children }) {
-  const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false)
   const [isComposeDialogOpen, setIsComposeDialogOpen] = useState(false)
   const router = useRouter()
+
+  // Use Zustand store
+  const session = useMailboxStore((state) => state.session)
+  const setSession = useMailboxStore((state) => state.setSession)
+  const clearSession = useMailboxStore((state) => state.clearSession)
+  const isSessionValid = useMailboxStore((state) => state.isSessionValid)
 
   const checkSession = useCallback(async () => {
     try {
@@ -27,7 +33,7 @@ export function MailboxProvider({ children }) {
         if (expires <= now) {
           // Session is expired
           console.log('Mailbox session expired')
-          setSession(null)
+          clearSession()
           setLoading(false)
           return null
         }
@@ -35,41 +41,35 @@ export function MailboxProvider({ children }) {
         setSession(data)
         return data
       } else {
-        setSession(null)
+        clearSession()
         return null
       }
     } catch (error) {
       console.error('Error checking session:', error)
-      setSession(null)
+      clearSession()
       return null
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [setSession, clearSession])
 
   useEffect(() => {
     checkSession()
-  }, []) // Only run once on mount
+  }, [checkSession])
 
+  // Monitor session expiry from store
   useEffect(() => {
-    // Check session every 120 seconds
-    const interval = setInterval(() => {
-      if (session) {
-        const now = new Date()
-        const expires = new Date(session.expiresAt)
-
-        if (expires <= now) {
-          // Session expired, clear it and redirect
-          console.log('Session expired, redirecting to login')
-          setSession(null)
-          toast.error('Your mailbox session has expired. Please login again.')
-          router.push('/my-mailbox')
-        }
+    const checkExpiry = setInterval(() => {
+      if (session && !isSessionValid()) {
+        console.log('Session expired, redirecting to login')
+        toast.error('Your mailbox session has expired. Please login again.')
+        router.push('/my-mailbox')
+        setIsLoginDialogOpen(true)
       }
-    }, 120000) // Check every 120 seconds
+    }, 30000) // Check every 30 seconds
 
-    return () => clearInterval(interval)
-  }, [session, router])
+    return () => clearInterval(checkExpiry)
+  }, [session, isSessionValid, router])
 
   const login = useCallback(async (mailboxId, password) => {
     try {
@@ -100,7 +100,7 @@ export function MailboxProvider({ children }) {
       toast.error(error.message)
       throw error
     }
-  }, [router])
+  }, [router, setSession])
 
   const logout = useCallback(async () => {
     try {
@@ -112,14 +112,17 @@ export function MailboxProvider({ children }) {
         throw new Error('Failed to logout')
       }
 
-      setSession(null)
+      clearSession()
       toast.success('Logged out successfully')
+
+      // Open login modal after logout
+      setIsLoginDialogOpen(true)
       router.push('/my-mailbox')
     } catch (error) {
       console.error('Error logging out:', error)
       toast.error('Failed to logout')
     }
-  }, [router])
+  }, [router, clearSession])
 
   const requireAuth = useCallback(() => {
     if (!session && !loading) {
@@ -137,18 +140,16 @@ export function MailboxProvider({ children }) {
     }
 
     // Check if session is expired
-    const now = new Date()
-    const expires = new Date(session.expiresAt)
-
-    if (expires <= now) {
+    if (!isSessionValid()) {
       toast.error('Your mailbox session has expired. Please login again.')
-      setSession(null)
+      clearSession()
+      setIsLoginDialogOpen(true)
       router.push('/my-mailbox')
       return
     }
 
     setIsComposeDialogOpen(true)
-  }, [session, loading, router])
+  }, [session, loading, router, isSessionValid, clearSession])
 
   const value = {
     session,

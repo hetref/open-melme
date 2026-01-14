@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
 import { useMailbox } from '../my-mailbox/_context/MailboxContext'
+import { useMailboxStore } from '@/lib/stores/mailboxStore'
 import {
   Sidebar,
   SidebarContent,
@@ -43,6 +44,11 @@ const AppSidebar = () => {
     // If not in mailbox context, navigate to mailbox
     router.push('/my-mailbox')
   })
+
+  // Get session status from Zustand store
+  const mailboxSession = useMailboxStore((state) => state.session)
+  const isSessionValid = useMailboxStore((state) => state.isSessionValid)
+  const hasActiveSession = mailboxSession && isSessionValid()
 
   // Auto-expand if we're on a my-mailbox sub-page
   const [mailboxExpanded, setMailboxExpanded] = useState(
@@ -178,10 +184,18 @@ const AppSidebar = () => {
                   }}
                   isActive={pathname.startsWith('/my-mailbox')}
                   tooltip="My Mailbox"
-                  className="flex items-center gap-2 cursor-pointer"
+                  className="flex items-center gap-2 cursor-pointer relative"
                 >
+                  {/* <div className="relative"> */}
                   <MailOpen className="w-7.5 h-7.5 text-[28px]" />
-                  <span>My Mailbox</span>
+
+                  {/* </div> */}
+                  <span className="flex items-center gap-2">
+                    My Mailbox
+                    {hasActiveSession && (
+                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse group-data-[collapsible=icon]:hidden" />
+                    )}
+                  </span>
                   <div className="ml-auto group-data-[collapsible=icon]:hidden">
                     {mailboxExpanded ? (
                       <ChevronDown className="w-4 h-4" />

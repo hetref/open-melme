@@ -25,11 +25,14 @@ export default function MyMailboxPage() {
       // If already logged in, redirect to inbox
       router.push('/my-mailbox/inbox')
     } else if (!loading && !session) {
-      // Not logged in, show login dialog
-      setIsLoginDialogOpen(true)
+      // Not logged in, fetch mailboxes and ensure dialog will open
       fetchMailboxes()
+      // Open dialog after a short delay to ensure component is mounted
+      setTimeout(() => {
+        setIsLoginDialogOpen(true)
+      }, 100)
     }
-  }, [loading, session, router])
+  }, [loading, session, router, setIsLoginDialogOpen])
 
   const fetchMailboxes = async () => {
     try {
