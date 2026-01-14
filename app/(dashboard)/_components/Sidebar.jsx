@@ -31,7 +31,7 @@ import {
   Inbox,
   MailOpen,
   Send,
-  PenSquare,
+  Settings,
   ChevronDown,
   ChevronRight
 } from 'lucide-react'
@@ -114,13 +114,12 @@ const AppSidebar = () => {
       path: '/my-mailbox/sent',
       icon: Send,
     },
+    {
+      name: 'Settings',
+      path: '/my-mailbox/settings',
+      icon: Settings,
+    },
   ]
-
-  // Compose is handled separately via dialog
-  const composeItem = {
-    name: 'Compose',
-    icon: PenSquare,
-  }
 
   return (
     <Sidebar collapsible="icon">
@@ -224,17 +223,6 @@ const AppSidebar = () => {
                         </SidebarMenuSubItem>
                       )
                     })}
-
-                    {/* Compose button - opens dialog */}
-                    <SidebarMenuSubItem>
-                      <SidebarMenuSubButton
-                        onClick={openComposeDialog}
-                        className="cursor-pointer"
-                      >
-                        <PenSquare className="w-4 h-4" />
-                        <span>{composeItem.name}</span>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
                   </SidebarMenuSub>
                 )}
               </SidebarMenuItem>
