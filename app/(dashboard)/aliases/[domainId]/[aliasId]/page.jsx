@@ -18,6 +18,7 @@ const AliasDetailPage = () => {
 
   const [alias, setAlias] = useState(null)
   const [emails, setEmails] = useState([])
+  const [mailboxes, setMailboxes] = useState([])
   const [loading, setLoading] = useState(true)
   const [emailsLoading, setEmailsLoading] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -41,6 +42,7 @@ const AliasDetailPage = () => {
     if (aliasId) {
       fetchAliasDetails()
       fetchEmails(1)
+      fetchMailboxes()
     }
   }, [aliasId])
 
@@ -85,6 +87,19 @@ const AliasDetailPage = () => {
       toast.error('Failed to load emails')
     } finally {
       setEmailsLoading(false)
+    }
+  }
+
+  const fetchMailboxes = async () => {
+    try {
+      const response = await fetch('/api/mailboxes')
+      if (!response.ok) throw new Error('Failed to fetch mailboxes')
+      const data = await response.json()
+      // Filter mailboxes for this domain
+      const domainMailboxes = data.mailboxes.filter(m => m.domainId === domainId && m.isActive)
+      setMailboxes(domainMailboxes)
+    } catch (error) {
+      console.error('Error fetching mailboxes:', error)
     }
   }
 
@@ -705,13 +720,30 @@ const AliasDetailPage = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="mailboxId">Select Mailbox</Label>
+                <Label htmlFor="editMailboxId">Select Mailbox</Label>
+                {mailboxes.length === 0 ? (
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                    No mailboxes available for this domain. Create a mailbox first.
+                  </div>
+                ) : (
+                  <select
+                    id="editMailboxId"
+                    value={formData.mailboxId}
+                    onChange={(e) => setFormData({ ...formData, mailboxId: e.target.value })}
+                    disabled={isSubmitting}
+                    className="w-full px-3 py-2 border rounded-md"
+                  >
+                    <option value="">Select a mailbox...</option>
+                    {mailboxes.map((mailbox) => (
+                      <option key={mailbox.id} value={mailbox.id}>
+                        {mailbox.name} ({mailbox.slug})
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <p className="text-sm text-gray-500">
-                  Note: Mailbox cannot be changed after creation. To use a different mailbox, create a new alias.
+                  Emails will be stored in the selected mailbox (not forwarded)
                 </p>
-                <div className="p-3 bg-gray-50 border rounded text-sm">
-                  <strong>Current Mailbox:</strong> {alias.mailbox?.emailAlias || 'Unknown'}
-                </div>
               </div>
             )}
             <div className="flex justify-end gap-2">
