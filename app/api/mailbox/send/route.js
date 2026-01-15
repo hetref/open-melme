@@ -86,90 +86,58 @@ export async function POST(req) {
       )
     }
 
-    // Check if this is the mailbox primary email (virtual alias)
+    // Check if this is using an alias
     let alias = null
     let fromEmail = null
+    let senderName = null
 
     if (aliasId.startsWith('mailbox-')) {
-      // Using mailbox primary email
-      const mailbox = await prisma.mailbox.findUnique({
-        where: { id: mailboxId },
-        include: {
-          domain: true,
-        },
-      })
-
-      if (!mailbox) {
-        return NextResponse.json({ error: 'Mailbox not found' }, { status: 404 })
-      }
-
-      if (!mailbox.isActive) {
-        return NextResponse.json(
-          { error: 'Mailbox is not active' },
-          { status: 400 }
-        )
-      }
-
-      // Validate domain is verified
-      if (mailbox.domain.verificationStatus !== 'verified') {
-        return NextResponse.json(
-          { error: 'Domain is not verified. Please verify your domain before sending emails.' },
-          { status: 400 }
-        )
-      }
-
-      // Use mailbox email as from address
-      fromEmail = mailbox.emailAlias
-
-      // Create a virtual alias object for the rest of the logic
-      const [localPart, domain] = mailbox.emailAlias.split('@')
-      alias = {
-        id: aliasId,
-        localPart: localPart,
-        mailboxId: mailbox.id,
-        domainId: mailbox.domainId,
-        isActive: true,
-        domain: mailbox.domain,
-      }
-    } else {
-      // Using a real alias
-      alias = await prisma.alias.findUnique({
-        where: { id: aliasId },
-        include: {
-          domain: true,
-          mailbox: true,
-        },
-      })
-
-      if (!alias) {
-        return NextResponse.json({ error: 'Alias not found' }, { status: 404 })
-      }
-
-      if (alias.mailboxId !== mailboxId) {
-        return NextResponse.json(
-          { error: 'Alias does not belong to this mailbox' },
-          { status: 403 }
-        )
-      }
-
-      if (!alias.isActive) {
-        return NextResponse.json(
-          { error: 'Alias is not active' },
-          { status: 400 }
-        )
-      }
-
-      // Validate domain is verified
-      if (alias.domain.verificationStatus !== 'verified') {
-        return NextResponse.json(
-          { error: 'Domain is not verified. Please verify your domain before sending emails.' },
-          { status: 400 }
-        )
-      }
-
-      // Build from address
-      fromEmail = `${alias.localPart}@${alias.domain.fullDomain}`
+      return NextResponse.json(
+        { error: 'Direct mailbox sending is not supported. Please use an alias.' },
+        { status: 400 }
+      )
     }
+
+    // Using a real alias
+    alias = await prisma.alias.findUnique({
+      where: { id: aliasId },
+      include: {
+        domain: true,
+        mailbox: true,
+      },
+    })
+
+    if (!alias) {
+      return NextResponse.json({ error: 'Alias not found' }, { status: 404 })
+    }
+
+    if (alias.mailboxId !== mailboxId) {
+      return NextResponse.json(
+        { error: 'Alias does not belong to this mailbox' },
+        { status: 403 }
+      )
+    }
+
+    if (!alias.isActive) {
+      return NextResponse.json(
+        { error: 'Alias is not active' },
+        { status: 400 }
+      )
+    }
+
+    // Validate domain is verified
+    if (alias.domain.verificationStatus !== 'verified') {
+      return NextResponse.json(
+        { error: 'Domain is not verified. Please verify your domain before sending emails.' },
+        { status: 400 }
+      )
+    }
+
+    // Build from address
+    fromEmail = `${alias.localPart}@${alias.domain.fullDomain}`
+
+    // Use mailbox senderName for sender identity
+    senderName = alias.mailbox.senderName
 
     // Sanitize recipients
     const sanitizedTo = sanitizeEmailList(to)
@@ -335,7 +303,7 @@ export async function POST(req) {
     let rawMessage
     try {
       rawMessage = buildRawMimeEmail({
-        from: fromEmail,
+        from: `${senderName} <${fromEmail}>`, // Include sender name
         to: sanitizedTo,
         cc: sanitizedCc,
         bcc: sanitizedBcc,
@@ -458,7 +426,7 @@ export async function POST(req) {
     // Step 2: Send via SES
     try {
       const command = new SendEmailCommand({
-        FromEmailAddress: fromEmail,
+        FromEmailAddress: `${senderName} <${fromEmail}>`, // Include sender name
         Destination: {
           ToAddresses: sanitizedTo,
           CcAddresses: sanitizedCc.length > 0 ? sanitizedCc : undefined,

@@ -93,7 +93,10 @@ export async function POST(req) {
     // 6b. Extract threading headers
     const messageId = parsed.messageId || parsed.headers.get('message-id');
     const inReplyTo = parsed.inReplyTo || parsed.headers.get('in-reply-to');
-    const references = parsed.references?.join(' ') || parsed.headers.get('references');
+    const referencesRaw = parsed.references || parsed.headers.get('references');
+    const references = Array.isArray(referencesRaw)
+      ? referencesRaw.join(' ')
+      : referencesRaw;
 
     // 6c. Resolve conversation ID
     const conversationId = await resolveConversationId({
@@ -303,12 +306,12 @@ export async function POST(req) {
     if (alias.mode === 'mailbox') {
       console.log('Alias is in mailbox mode - storing email, not forwarding');
 
-      // Check if mailbox is active
-      if (!alias.mailbox || !alias.mailbox.isActive) {
-        console.log('Mailbox is inactive or not found');
+      // CRITICAL: Validate mailbox assignment and activation
+      if (!alias.mailboxId) {
+        console.log('Alias has no assigned mailbox');
 
-        // Log as failed
-        const emailLog = await logEmail({
+        // Log as invalid and delete S3
+        await logEmail({
           userId: domainRecord.userId,
           domainId: domainRecord.id,
           aliasId: alias.id,
@@ -318,7 +321,45 @@ export async function POST(req) {
           s3Bucket: s3.bucket,
           s3Key: s3.key,
           size: s3.size,
-          status: 'failed',
+          status: 'invalid',
+          error: 'Alias has no assigned mailbox',
+          pendingReason: null,
+          conversationId,
+          messageId,
+          inReplyTo,
+          references,
+        });
+
+        // DELETE S3 object for invalid emails
+        try {
+          await deleteEmailFromS3(s3.bucket, s3.key);
+        } catch (deleteError) {
+          console.error('Failed to delete S3 object:', deleteError);
+        }
+
+        return Response.json({
+          received: true,
+          status: 'invalid',
+          reason: 'no_mailbox_assigned',
+        });
+      }
+
+      // Check if mailbox is active
+      if (!alias.mailbox || !alias.mailbox.isActive) {
+        console.log('Mailbox is inactive or not found');
+
+        // Log as invalid and delete S3
+        await logEmail({
+          userId: domainRecord.userId,
+          domainId: domainRecord.id,
+          aliasId: alias.id,
+          fromEmail,
+          toEmail,
+          subject,
+          s3Bucket: s3.bucket,
+          s3Key: s3.key,
+          size: s3.size,
+          status: 'invalid',
           error: 'Mailbox inactive or not found',
           pendingReason: null,
           conversationId,
@@ -327,11 +368,17 @@ export async function POST(req) {
           references,
         });
 
+        // DELETE S3 object for invalid emails
+        try {
+          await deleteEmailFromS3(s3.bucket, s3.key);
+        } catch (deleteError) {
+          console.error('Failed to delete S3 object:', deleteError);
+        }
+
         return Response.json({
           received: true,
-          status: 'failed',
+          status: 'invalid',
           reason: 'mailbox_inactive',
-          emailId: emailLog.id,
         });
       }
 
@@ -369,8 +416,8 @@ export async function POST(req) {
     if (!alias.forwardTo) {
       console.log('Forward mode but no forwardTo address configured');
 
-      // Log as failed
-      const emailLog = await logEmail({
+      // Log as invalid and delete S3
+      await logEmail({
         userId: domainRecord.userId,
         domainId: domainRecord.id,
         aliasId: alias.id,
@@ -380,7 +427,7 @@ export async function POST(req) {
         s3Bucket: s3.bucket,
         s3Key: s3.key,
         size: s3.size,
-        status: 'failed',
+        status: 'invalid',
         error: 'No forwarding address configured',
         pendingReason: null,
         conversationId,
@@ -389,11 +436,17 @@ export async function POST(req) {
         references,
       });
 
+      // DELETE S3 object for invalid emails
+      try {
+        await deleteEmailFromS3(s3.bucket, s3.key);
+      } catch (deleteError) {
+        console.error('Failed to delete S3 object:', deleteError);
+      }
+
       return Response.json({
         received: true,
-        status: 'failed',
+        status: 'invalid',
         reason: 'no_forward_address',
-        emailId: emailLog.id,
       });
     }
 

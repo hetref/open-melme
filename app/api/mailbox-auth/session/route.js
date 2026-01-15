@@ -38,8 +38,12 @@ export async function GET(req) {
     return NextResponse.json({
       mailbox: {
         id: mailboxSession.mailbox.id,
-        emailAlias: mailboxSession.mailbox.emailAlias,
-        domain: mailboxSession.mailbox.domain.fullDomain,
+        name: mailboxSession.mailbox.name,
+        slug: mailboxSession.mailbox.slug,
+        senderName: mailboxSession.mailbox.senderName,
+        description: mailboxSession.mailbox.description,
+        domain: mailboxSession.mailbox.domain?.fullDomain || null,
+        aliases: mailboxSession.mailbox.aliases,
         isActive: mailboxSession.mailbox.isActive,
       },
       expiresAt: mailboxSession.expiresAt,

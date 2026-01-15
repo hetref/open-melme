@@ -21,8 +21,10 @@ const MailboxesPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [formData, setFormData] = useState({
-    domainId: '',
-    localPart: '',
+    name: '',
+    slug: '',
+    senderName: '',
+    description: '',
     password: '',
     confirmPassword: '',
   })
@@ -77,8 +79,8 @@ const MailboxesPage = () => {
   const handleCreateMailbox = async (e) => {
     e.preventDefault()
 
-    if (!formData.domainId || !formData.localPart || !formData.password || !formData.confirmPassword) {
-      toast.error('All fields are required')
+    if (!formData.name || !formData.slug || !formData.senderName || !formData.password || !formData.confirmPassword) {
+      toast.error('All required fields must be filled')
       return
     }
 
@@ -101,8 +103,11 @@ const MailboxesPage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          domainId: formData.domainId,
-          localPart: formData.localPart.toLowerCase().trim(),
+          name: formData.name.trim(),
+          slug: formData.slug.toLowerCase().trim(),
+          senderName: formData.senderName.trim(),
+
+          description: formData.description.trim() || null,
           password: formData.password,
           confirmPassword: formData.confirmPassword,
         }),
@@ -117,8 +122,10 @@ const MailboxesPage = () => {
       toast.success('Mailbox created successfully!')
       setIsCreateDialogOpen(false)
       setFormData({
-        domainId: '',
-        localPart: '',
+        name: '',
+        slug: '',
+        senderName: '',
+        description: '',
         password: '',
         confirmPassword: '',
       })
@@ -217,13 +224,26 @@ const MailboxesPage = () => {
                       {mailbox.isActive ? 'Active' : 'Inactive'}
                     </Badge>
                   </div>
-                  <CardTitle className="text-lg font-mono mt-2 break-all">
-                    {mailbox.emailAlias}
+                  <CardTitle className="text-lg mt-2">
+                    {mailbox.name}
                   </CardTitle>
-                  <CardDescription>{mailbox.domain.fullDomain}</CardDescription>
+                  <CardDescription>
+                    <div className="space-y-1">
+                      <div className="font-mono text-xs">{mailbox.slug}</div>
+                      {mailbox.description && (
+                        <div className="text-xs text-gray-500 line-clamp-2">{mailbox.description}</div>
+                      )}
+                    </div>
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Aliases:</span>
+                      <Badge variant="outline">
+                        {mailbox._count.aliases}
+                      </Badge>
+                    </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Active Sessions:</span>
                       <Badge variant="outline">
@@ -262,61 +282,100 @@ const MailboxesPage = () => {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Create Mailbox</DialogTitle>
+            <DialogTitle>Create New Mailbox</DialogTitle>
             <DialogDescription>
-              Create a secure mailbox to receive and store emails without forwarding
+              Create an independent mailbox. Aliases can be assigned to it later.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreateMailbox} className="space-y-4 mt-4">
-            {/* Domain Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="domainId">Domain *</Label>
-              {domainsLoading ? (
-                <div className="flex items-center justify-center py-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></div>
-                </div>
-              ) : domains.length === 0 ? (
-                <div className="text-sm text-gray-600 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                  No verified domains available. Please verify a domain first.
-                </div>
-              ) : (
-                <select
-                  id="domainId"
-                  value={formData.domainId}
-                  onChange={(e) => setFormData({ ...formData, domainId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isSubmitting}
-                  required
-                >
-                  <option value="">Select a domain</option>
-                  {domains.map((domain) => (
-                    <option key={domain.id} value={domain.id}>
-                      {domain.fullDomain}
-                    </option>
-                  ))}
-                </select>
-              )}
+          {/* Info Card */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex gap-2">
+              <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-blue-800">
+                Mailboxes are independent storage units. After creation, you can assign one or more aliases to receive emails.
+              </p>
             </div>
+          </div>
 
-            {/* Local Part */}
+          <form onSubmit={handleCreateMailbox} className="space-y-4 mt-4">
+            {/* Name */}
             <div className="space-y-2">
-              <Label htmlFor="localPart">Alias *</Label>
+              <Label htmlFor="name">Mailbox Name *</Label>
               <Input
-                id="localPart"
+                id="name"
                 type="text"
-                placeholder="support"
-                value={formData.localPart}
+                placeholder="Support Team"
+                value={formData.name}
                 onChange={(e) =>
-                  setFormData({ ...formData, localPart: e.target.value })
+                  setFormData({ ...formData, name: e.target.value })
                 }
                 disabled={isSubmitting}
-                pattern="[a-z0-9._-]+"
-                title="Use only lowercase letters, numbers, dots, hyphens, and underscores"
                 required
               />
               <p className="text-xs text-gray-500">
-                Use lowercase letters, numbers, dots, hyphens, and underscores
+                A descriptive name for this mailbox
+              </p>
+            </div>
+
+            {/* Slug */}
+            <div className="space-y-2">
+              <Label htmlFor="slug">Mailbox Identifier (Slug) *</Label>
+              <Input
+                id="slug"
+                type="text"
+                placeholder="support-team"
+                value={formData.slug}
+                onChange={(e) =>
+                  setFormData({ ...formData, slug: e.target.value.toLowerCase() })
+                }
+                disabled={isSubmitting}
+                pattern="[a-z0-9\-]+"
+                title="Use only lowercase letters, numbers, and hyphens"
+                required
+              />
+              <p className="text-xs text-gray-500">
+                Unique identifier (lowercase letters, numbers, and hyphens only)
+              </p>
+            </div>
+
+            {/* Sender Name */}
+            <div className="space-y-2">
+              <Label htmlFor="senderName">Sender Name *</Label>
+              <Input
+                id="senderName"
+                type="text"
+                placeholder="Support Team"
+                value={formData.senderName}
+                onChange={(e) =>
+                  setFormData({ ...formData, senderName: e.target.value })
+                }
+                disabled={isSubmitting}
+                maxLength={100}
+                required
+              />
+              <p className="text-xs text-gray-500">
+                Name shown when sending emails (max 100 characters)
+              </p>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="description">Description (Optional)</Label>
+              <textarea
+                id="description"
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Optional notes or description for this mailbox..."
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                disabled={isSubmitting}
+                maxLength={500}
+                rows={3}
+              />
+              <p className="text-xs text-gray-500">
+                For your reference only (max 500 characters)
               </p>
             </div>
 
@@ -375,8 +434,10 @@ const MailboxesPage = () => {
                 onClick={() => {
                   setIsCreateDialogOpen(false)
                   setFormData({
-                    domainId: '',
-                    localPart: '',
+                    name: '',
+                    slug: '',
+                    senderName: '',
+                    description: '',
                     password: '',
                     confirmPassword: '',
                   })
@@ -385,7 +446,7 @@ const MailboxesPage = () => {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting || domains.length === 0}>
+              <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Creating...' : 'Create Mailbox'}
               </Button>
             </div>

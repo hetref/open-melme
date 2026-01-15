@@ -27,10 +27,24 @@ export async function POST(req) {
         id: mailboxId,
         userId: session.user.id,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        senderName: true,
+        description: true,
+        isActive: true,
+        passwordHash: true,
+        domainId: true,
         domain: {
           select: {
             fullDomain: true,
+          },
+        },
+        aliases: {
+          select: {
+            id: true,
+            localPart: true,
           },
         },
       },
@@ -88,8 +102,12 @@ export async function POST(req) {
       message: 'Login successful',
       mailbox: {
         id: mailbox.id,
-        emailAlias: mailbox.emailAlias,
-        domain: mailbox.domain.fullDomain,
+        name: mailbox.name,
+        slug: mailbox.slug,
+        senderName: mailbox.senderName,
+        description: mailbox.description,
+        domain: mailbox.domain?.fullDomain || null,
+        aliases: mailbox.aliases,
       },
       expiresAt: mailboxSession.expiresAt,
     })

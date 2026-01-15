@@ -59,21 +59,10 @@ export async function GET(req) {
     const whereConditions = {
       AND: [
         {
-          OR: [
-            {
-              // Emails associated with mailbox aliases
-              aliasId: {
-                in: aliasIds,
-              },
-            },
-            {
-              // Sent emails from mailbox primary address (aliasId is null)
-              aliasId: null,
-              userId: session.user.id,
-              // For sent emails, fromEmail should match mailbox email
-              fromEmail: mailboxSession.mailbox.emailAlias,
-            },
-          ],
+          // Emails associated with mailbox aliases only
+          aliasId: {
+            in: aliasIds,
+          },
         },
       ],
     }

@@ -101,9 +101,10 @@ export default function MyMailboxPage() {
         <div className="mb-6">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 font-mono">
-                {session.mailbox.emailAlias}
+              <h1 className="text-3xl font-bold text-gray-900">
+                {session.mailbox.name}
               </h1>
+              <p className="text-sm text-gray-500 font-mono mt-1">{session.mailbox.slug}</p>
               <p className="text-gray-600 mt-2">Redirecting to inbox...</p>
             </div>
 
@@ -168,7 +169,7 @@ export default function MyMailboxPage() {
                   <option value="">Select a mailbox</option>
                   {mailboxes.map((mailbox) => (
                     <option key={mailbox.id} value={mailbox.id}>
-                      {mailbox.emailAlias}
+                      {mailbox.name} ({mailbox.slug})
                     </option>
                   ))}
                 </select>

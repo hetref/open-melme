@@ -449,7 +449,7 @@ const DomainAliasesPage = () => {
                         <option value="">Select a mailbox...</option>
                         {mailboxes.map((mailbox) => (
                           <option key={mailbox.id} value={mailbox.id}>
-                            {mailbox.emailAlias}
+                            {mailbox.name} ({mailbox.slug})
                           </option>
                         ))}
                       </select>
@@ -578,7 +578,7 @@ const DomainAliasesPage = () => {
                       {alias.mode === 'forward' ? (
                         <>Forwards to: <span className="font-medium">{alias.forwardTo}</span></>
                       ) : (
-                        <>Stored in mailbox: <span className="font-medium">{alias.mailbox?.emailAlias || 'Unknown'}</span></>
+                        <>Stored in mailbox: <span className="font-medium">{alias.mailbox?.name || 'Unknown'}</span></>
                       )}
                     </CardDescription>
                   </div>
@@ -697,7 +697,7 @@ const DomainAliasesPage = () => {
                     <option value="">Select a mailbox...</option>
                     {mailboxes.map((mailbox) => (
                       <option key={mailbox.id} value={mailbox.id}>
-                        {mailbox.emailAlias}
+                        {mailbox.name} ({mailbox.slug})
                       </option>
                     ))}
                   </select>

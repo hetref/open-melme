@@ -51,7 +51,9 @@ export async function GET(request, { params }) {
         mailbox: {
           select: {
             id: true,
-            emailAlias: true,
+            name: true,
+            slug: true,
+            senderName: true,
             isActive: true,
           },
         },

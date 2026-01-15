@@ -39,8 +39,8 @@ export async function GET(request, { params }) {
     // Get all alias IDs for this mailbox
     const aliasIds = mailbox.aliases.map(a => a.id)
 
-    // Count emails through aliases
-    const emailCount = await prisma.emailLog.count({
+    // Count received emails
+    const receivedCount = await prisma.emailLog.count({
       where: {
         aliasId: {
           in: aliasIds,
@@ -49,13 +49,22 @@ export async function GET(request, { params }) {
       },
     })
 
-    // Calculate storage used (sum of email sizes)
+    // Count sent emails
+    const sentCount = await prisma.emailLog.count({
+      where: {
+        aliasId: {
+          in: aliasIds,
+        },
+        status: 'sent',
+      },
+    })
+
+    // Calculate storage used (sum of email sizes for ALL emails - received, sent, and replies)
     const emailSizes = await prisma.emailLog.aggregate({
       where: {
         aliasId: {
           in: aliasIds,
         },
-        status: 'received',
       },
       _sum: {
         size: true,
@@ -79,7 +88,9 @@ export async function GET(request, { params }) {
 
     return NextResponse.json({
       stats: {
-        totalEmails: emailCount,
+        totalReceived: receivedCount,
+        totalSent: sentCount,
+        totalEmails: receivedCount + sentCount,
         activeAliases: mailbox.aliases.length,
         storageUsed,
         storageBytes: totalBytes,

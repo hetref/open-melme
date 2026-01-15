@@ -16,12 +16,28 @@ export async function GET(req) {
       where: {
         userId: session.user.id,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        senderName: true,
+        description: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        domainId: true,
         domain: {
           select: {
             id: true,
             fullDomain: true,
             verificationStatus: true,
+          },
+        },
+        aliases: {
+          select: {
+            id: true,
+            localPart: true,
+            isActive: true,
           },
         },
         _count: {
@@ -34,6 +50,7 @@ export async function GET(req) {
                 },
               },
             },
+            aliases: true,
           },
         },
       },
@@ -61,12 +78,12 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { domainId, localPart, password, confirmPassword } = await req.json()
+    const { name, slug, senderName, description, password, confirmPassword } = await req.json()
 
     // Validate inputs
-    if (!domainId || !localPart || !password || !confirmPassword) {
+    if (!name || !slug || !senderName || !password || !confirmPassword) {
       return NextResponse.json(
-        { error: 'All fields are required' },
+        { error: 'Name, slug, sender name, and password are required' },
         { status: 400 }
       )
     }
@@ -85,66 +102,25 @@ export async function POST(req) {
       )
     }
 
-    // Validate local part format
-    const localPartRegex = /^[a-z0-9._-]+$/
-    if (!localPartRegex.test(localPart)) {
+    // Validate slug format (URL-safe)
+    const slugRegex = /^[a-z0-9-]+$/
+    if (!slugRegex.test(slug)) {
       return NextResponse.json(
-        { error: 'Invalid alias format. Use only lowercase letters, numbers, dots, hyphens, and underscores' },
+        { error: 'Slug must contain only lowercase letters, numbers, and hyphens' },
         { status: 400 }
       )
     }
 
-    // Verify domain belongs to user and is verified
-    const domain = await prisma.domain.findFirst({
-      where: {
-        id: domainId,
-        userId: session.user.id,
-      },
-    })
-
-    if (!domain) {
-      return NextResponse.json(
-        { error: 'Domain not found' },
-        { status: 404 }
-      )
-    }
-
-    if (domain.verificationStatus !== 'verified') {
-      return NextResponse.json(
-        { error: 'Domain must be verified before creating a mailbox' },
-        { status: 400 }
-      )
-    }
-
-    const emailAlias = `${localPart}@${domain.fullDomain}`
-
-    // Check if alias already exists
-    const existingAlias = await prisma.alias.findUnique({
-      where: {
-        domainId_localPart: {
-          domainId,
-          localPart,
-        },
-      },
-    })
-
-    if (existingAlias) {
-      return NextResponse.json(
-        { error: 'This alias already exists. Delete the existing alias before creating a mailbox.' },
-        { status: 409 }
-      )
-    }
-
-    // Check if mailbox with same email already exists
+    // Check if slug already exists
     const existingMailbox = await prisma.mailbox.findUnique({
       where: {
-        emailAlias,
+        slug,
       },
     })
 
     if (existingMailbox) {
       return NextResponse.json(
-        { error: 'A mailbox with this email address already exists' },
+        { error: 'A mailbox with this slug already exists' },
         { status: 409 }
       )
     }
@@ -152,43 +128,23 @@ export async function POST(req) {
     // Hash password
     const passwordHash = await hashPassword(password)
 
-    // Create mailbox and alias in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // Create mailbox
-      const mailbox = await tx.mailbox.create({
-        data: {
-          userId: session.user.id,
-          domainId,
-          emailAlias,
-          passwordHash,
-        },
-        include: {
-          domain: {
-            select: {
-              fullDomain: true,
-            },
-          },
-        },
-      })
-
-      // Create alias with mailbox mode
-      const alias = await tx.alias.create({
-        data: {
-          userId: session.user.id,
-          domainId,
-          localPart,
-          mode: 'mailbox',
-          mailboxId: mailbox.id,
-        },
-      })
-
-      return { mailbox, alias }
+    // Create mailbox independently (no alias dependency)
+    const mailbox = await prisma.mailbox.create({
+      data: {
+        userId: session.user.id,
+        name,
+        slug,
+        senderName,
+        description: description || null,
+        passwordHash,
+        domainId: null, // No domain required at creation
+      },
     })
 
     return NextResponse.json(
       {
-        message: 'Mailbox created successfully',
-        mailbox: result.mailbox,
+        message: 'Mailbox created successfully. You can now assign aliases to this mailbox.',
+        mailbox,
       },
       { status: 201 }
     )

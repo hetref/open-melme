@@ -215,7 +215,8 @@ export async function POST(request) {
         mode,
         forwardTo: mode === 'forward' ? forwardTo.toLowerCase().trim() : null,
         mailboxId: mode === 'mailbox' ? mailboxId : null,
-        isActive: true,
+        // CRITICAL: When creating with mailbox, alias is INACTIVE by default
+        isActive: mode === 'forward' ? true : false,
       },
     })
 

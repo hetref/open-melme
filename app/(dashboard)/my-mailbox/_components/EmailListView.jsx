@@ -93,54 +93,26 @@ export function EmailListView({ emailType = 'received' }) {
 
   const fetchAliases = async () => {
     try {
-      const response = await fetch('/api/aliases')
+      const response = await fetch('/api/my-mailbox/aliases')
       if (!response.ok) {
-        if (session?.mailbox) {
-          const mailboxAlias = createMailboxPrimaryAlias(session.mailbox)
-          setAliases([mailboxAlias])
-        }
+        // If API fails, just set empty aliases array
+        setAliases([])
         return
       }
 
       const data = await response.json()
-      let mailboxAliases = data.aliases?.filter(
-        (alias) => alias.mailboxId === session?.mailbox?.id && alias.isActive
-      ) || []
-
-      if (mailboxAliases.length === 0 && session?.mailbox) {
-        mailboxAliases = [createMailboxPrimaryAlias(session.mailbox)]
-      }
-
-      setAliases(mailboxAliases)
+      // Return all aliases (active and inactive)
+      // ReplyDialog will handle showing warnings
+      setAliases(data.aliases || [])
     } catch (error) {
       console.error('Error fetching aliases:', error)
-      if (session?.mailbox) {
-        const mailboxAlias = createMailboxPrimaryAlias(session.mailbox)
-        setAliases([mailboxAlias])
-      }
+      // On error, set empty aliases array
+      setAliases([])
     }
   }
 
-  const createMailboxPrimaryAlias = (mailbox) => {
-    const [localPart, domain] = mailbox.emailAlias.split('@')
-    return {
-      id: `mailbox-${mailbox.id}`,
-      localPart: localPart || 'mailbox',
-      mailboxId: mailbox.id,
-      domainId: mailbox.domainId,
-      isActive: true,
-      domain: mailbox.domain ? {
-        ...mailbox.domain,
-        fullDomain: mailbox.domain.fullDomain || domain
-      } : {
-        fullDomain: domain,
-        domain: domain,
-        verificationStatus: 'verified'
-      },
-      mode: 'mailbox',
-      isMailboxPrimary: true
-    }
-  }
+  // No need for mailbox primary alias anymore
+  // Mailboxes now use only assigned aliases for sending
 
   const fetchEmails = async (page = 1) => {
     setEmailsLoading(true)

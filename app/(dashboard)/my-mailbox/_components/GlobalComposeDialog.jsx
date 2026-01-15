@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 export function GlobalComposeDialog() {
   const { session, isComposeDialogOpen, setIsComposeDialogOpen } = useMailbox()
   const [aliases, setAliases] = useState([])
+  const [aliasesLoading, setAliasesLoading] = useState(false)
 
   useEffect(() => {
     if (isComposeDialogOpen && session) {
@@ -21,55 +22,30 @@ export function GlobalComposeDialog() {
   }, [isComposeDialogOpen, session])
 
   const fetchAliases = async () => {
+    setAliasesLoading(true)
     try {
-      const response = await fetch('/api/aliases')
+      const response = await fetch('/api/my-mailbox/aliases')
       if (!response.ok) {
-        if (session?.mailbox) {
-          const mailboxAlias = createMailboxPrimaryAlias(session.mailbox)
-          setAliases([mailboxAlias])
-        }
+        // If API fails, set empty aliases array
+        setAliases([])
         return
       }
 
       const data = await response.json()
-      let mailboxAliases = data.aliases?.filter(
-        (alias) => alias.mailboxId === session?.mailbox?.id && alias.isActive
-      ) || []
-
-      if (mailboxAliases.length === 0 && session?.mailbox) {
-        mailboxAliases = [createMailboxPrimaryAlias(session.mailbox)]
-      }
-
-      setAliases(mailboxAliases)
+      // Return all aliases (active and inactive)
+      // ComposeDialog will handle showing appropriate warnings
+      setAliases(data.aliases || [])
     } catch (error) {
       console.error('Error fetching aliases:', error)
-      if (session?.mailbox) {
-        const mailboxAlias = createMailboxPrimaryAlias(session.mailbox)
-        setAliases([mailboxAlias])
-      }
+      // On error, set empty aliases array
+      setAliases([])
+    } finally {
+      setAliasesLoading(false)
     }
   }
 
-  const createMailboxPrimaryAlias = (mailbox) => {
-    const [localPart, domain] = mailbox.emailAlias.split('@')
-    return {
-      id: `mailbox-${mailbox.id}`,
-      localPart: localPart || 'mailbox',
-      mailboxId: mailbox.id,
-      domainId: mailbox.domainId,
-      isActive: true,
-      domain: mailbox.domain ? {
-        ...mailbox.domain,
-        fullDomain: mailbox.domain.fullDomain || domain
-      } : {
-        fullDomain: domain,
-        domain: domain,
-        verificationStatus: 'verified'
-      },
-      mode: 'mailbox',
-      isMailboxPrimary: true
-    }
-  }
+  // No need for mailbox primary alias anymore
+  // Mailboxes now use only assigned aliases for sending
 
   const handleEmailSent = () => {
     toast.success('Email sent successfully!')
@@ -97,6 +73,7 @@ export function GlobalComposeDialog() {
       onOpenChange={setIsComposeDialogOpen}
       mailbox={session.mailbox}
       aliases={aliases}
+      aliasesLoading={aliasesLoading}
       onEmailSent={handleEmailSent}
     />
   )

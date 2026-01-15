@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import prisma from '@/lib/prisma'
+import { deleteAlias } from '@/lib/alias-deletion'
 
 /**
  * GET /api/aliases/[aliasId]
@@ -41,7 +42,9 @@ export async function GET(request, { params }) {
         mailbox: {
           select: {
             id: true,
-            emailAlias: true,
+            name: true,
+            slug: true,
+            senderName: true,
             isActive: true,
           },
         },
@@ -188,6 +191,8 @@ export async function PATCH(request, { params }) {
 
         updateData.mailboxId = mailboxId
         updateData.forwardTo = null
+        // CRITICAL: When assigning mailbox, alias becomes INACTIVE
+        updateData.isActive = false
       }
 
       // When switching to forward mode, clear mailboxId and require forwardTo
@@ -239,23 +244,51 @@ export async function PATCH(request, { params }) {
           )
         }
 
-        // Verify mailbox exists and belongs to user
-        const mailbox = await prisma.mailbox.findFirst({
-          where: {
-            id: mailboxId,
-            userId: session.user.id,
-            isActive: true,
-          },
-        })
+        if (mailboxId === null) {
+          // Unassigning mailbox
+          updateData.mailboxId = null
+          // CRITICAL: When removing mailbox, alias becomes INACTIVE
+          updateData.isActive = false
+        } else {
+          // Assigning/changing mailbox
+          // Verify mailbox exists and belongs to user
+          const mailbox = await prisma.mailbox.findFirst({
+            where: {
+              id: mailboxId,
+              userId: session.user.id,
+              isActive: true,
+            },
+          })
 
-        if (!mailbox) {
-          return NextResponse.json(
-            { error: 'Mailbox not found or inactive' },
-            { status: 404 }
-          )
+          if (!mailbox) {
+            return NextResponse.json(
+              { error: 'Mailbox not found or inactive' },
+              { status: 404 }
+            )
+          }
+
+          updateData.mailboxId = mailboxId
+          // CRITICAL: When assigning mailbox, alias becomes INACTIVE
+          updateData.isActive = false
         }
 
-        updateData.mailboxId = mailboxId
+        // CRITICAL: Enforce activation rules
+        if (isActive === true) {
+          // Activating alias - validate requirements
+          if (alias.mode === 'mailbox' && !alias.mailboxId && mailboxId === undefined) {
+            return NextResponse.json(
+              { error: 'Cannot activate mailbox mode alias without assigned mailbox' },
+              { status: 400 }
+            )
+          }
+          if (alias.mode === 'forward' && !alias.forwardTo && forwardTo === undefined) {
+            return NextResponse.json(
+              { error: 'Cannot activate forward mode alias without forwardTo address' },
+              { status: 400 }
+            )
+          }
+        }
+
       }
     }
 
@@ -306,7 +339,7 @@ export async function PATCH(request, { params }) {
 
 /**
  * DELETE /api/aliases/[aliasId]
- * Delete an alias
+ * Delete an alias with all related S3 and DB data
  */
 export async function DELETE(request, { params }) {
   try {
@@ -338,17 +371,22 @@ export async function DELETE(request, { params }) {
       )
     }
 
-    // Delete alias
-    await prisma.alias.delete({
-      where: {
-        id: aliasId,
-      },
-    })
+    // Use bulk deletion utility for efficient cleanup
+    try {
+      const result = await deleteAlias(aliasId, session.user.id)
 
-    return NextResponse.json({
-      success: true,
-      message: 'Alias deleted successfully',
-    })
+      return NextResponse.json({
+        success: true,
+        message: 'Alias and all related data deleted successfully',
+        s3ObjectsDeleted: result.s3Stats.objectsDeleted,
+      })
+    } catch (deleteError) {
+      console.error('Error during alias deletion:', deleteError)
+      return NextResponse.json(
+        { error: 'Failed to delete alias and related data' },
+        { status: 500 }
+      )
+    }
   } catch (error) {
     console.error('Error deleting alias:', error)
     return NextResponse.json(

@@ -474,7 +474,7 @@ const AliasDetailPage = () => {
                   <Label className="text-sm text-gray-600">Mailbox</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <Mail className="w-4 h-4 text-gray-400" />
-                    <p className="text-sm font-medium">{alias.mailbox?.emailAlias || 'Unknown'}</p>
+                    <p className="text-sm font-medium">{alias.mailbox?.name || 'Unknown'}</p>
                   </div>
                 </div>
               )}

@@ -40,11 +40,18 @@ const SingleMailboxPage = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [refreshingSessions, setRefreshingSessions] = useState(false)
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
+  })
+
+  const [settingsData, setSettingsData] = useState({
+    name: '',
+    senderName: '',
+    description: '',
   })
 
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
@@ -70,6 +77,12 @@ const SingleMailboxPage = () => {
       }
       const data = await response.json()
       setMailbox(data.mailbox)
+      // Initialize settings data
+      setSettingsData({
+        name: data.mailbox.name || '',
+        senderName: data.mailbox.senderName || '',
+        description: data.mailbox.description || '',
+      })
     } catch (error) {
       console.error('Error fetching mailbox:', error)
       toast.error('Failed to load mailbox')
@@ -136,6 +149,55 @@ const SingleMailboxPage = () => {
     } catch (error) {
       console.error('Error updating mailbox:', error)
       toast.error('Failed to update mailbox status')
+    }
+  }
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault()
+
+    if (!settingsData.name.trim()) {
+      toast.error('Mailbox name is required')
+      return
+    }
+
+    if (!settingsData.senderName.trim()) {
+      toast.error('Sender name is required')
+      return
+    }
+
+    setIsSavingSettings(true)
+
+    try {
+      const response = await fetch(`/api/mailboxes/${mailboxId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: settingsData.name.trim(),
+          senderName: settingsData.senderName.trim(),
+          description: settingsData.description.trim() || null,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to update settings')
+      }
+
+      const data = await response.json()
+      setMailbox(data.mailbox)
+      setSettingsData({
+        name: data.mailbox.name || '',
+        senderName: data.mailbox.senderName || '',
+        description: data.mailbox.description || '',
+      })
+      toast.success('Settings updated successfully')
+    } catch (error) {
+      console.error('Error updating settings:', error)
+      toast.error(error.message)
+    } finally {
+      setIsSavingSettings(false)
     }
   }
 
@@ -217,8 +279,8 @@ const SingleMailboxPage = () => {
   const handleDeleteMailbox = async (e) => {
     e.preventDefault()
 
-    if (deleteConfirmation !== mailbox.emailAlias) {
-      toast.error('Email alias does not match')
+    if (deleteConfirmation !== mailbox.slug) {
+      toast.error('Slug does not match')
       return
     }
 
@@ -310,8 +372,8 @@ const SingleMailboxPage = () => {
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900 font-mono break-all">
-                {mailbox.emailAlias}
+              <h1 className="text-3xl font-bold text-gray-900 break-all">
+                {mailbox.name}
               </h1>
               <Badge
                 variant={mailbox.isActive ? 'default' : 'secondary'}
@@ -365,6 +427,9 @@ const SingleMailboxPage = () => {
                 <Mail className="w-5 h-5 text-blue-600" />
                 <span className="text-2xl font-bold">{stats.totalEmails}</span>
               </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {stats.totalReceived || 0} received • {stats.totalSent || 0} sent
+              </p>
             </CardContent>
           </Card>
 
@@ -401,6 +466,9 @@ const SingleMailboxPage = () => {
                 <Database className="w-5 h-5 text-orange-600" />
                 <span className="text-2xl font-bold">{stats.storageUsed}</span>
               </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {stats.storageBytes?.toLocaleString() || 0} bytes
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -408,8 +476,9 @@ const SingleMailboxPage = () => {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
         </TabsList>
@@ -424,16 +493,38 @@ const SingleMailboxPage = () => {
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Email Alias</Label>
-                  <p className="text-sm font-mono mt-1 p-2 bg-gray-50 rounded border">
-                    {mailbox.emailAlias}
+                  <Label className="text-sm font-medium text-gray-600">Mailbox Name</Label>
+                  <p className="text-sm mt-1 p-2 bg-gray-50 rounded border">
+                    {mailbox.name}
                   </p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Domain</Label>
-                  <p className="text-sm mt-1 p-2 bg-gray-50 rounded border">
-                    {mailbox.domain.fullDomain}
+                  <Label className="text-sm font-medium text-gray-600">Identifier (Slug)</Label>
+                  <p className="text-sm font-mono mt-1 p-2 bg-gray-50 rounded border">
+                    {mailbox.slug}
                   </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Sender Name</Label>
+                  <p className="text-sm mt-1 p-2 bg-gray-50 rounded border">
+                    {mailbox.senderName}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Assigned Aliases</Label>
+                  <div className="mt-1 p-2 bg-gray-50 rounded border">
+                    {mailbox.aliases && mailbox.aliases.length > 0 ? (
+                      <div className="space-y-1">
+                        {mailbox.aliases.map((alias) => (
+                          <p key={alias.id} className="text-sm font-mono">
+                            {alias.localPart}@{mailbox.domain?.fullDomain || 'N/A'}
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No aliases assigned</p>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600">Status</Label>
@@ -500,6 +591,161 @@ const SingleMailboxPage = () => {
                   <p className="text-gray-600 text-sm">No aliases using this mailbox yet</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Mailbox Settings</CardTitle>
+              <CardDescription>Update mailbox display information and sender identity</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveSettings} className="space-y-6">
+                <div className="space-y-4">
+                  {/* Read-only info */}
+                  <div className="p-4 bg-gray-50 border rounded-lg space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Mailbox Identifier</Label>
+                      <p className="text-sm font-mono mt-1 text-gray-900">
+                        {mailbox.slug}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Assigned Aliases</Label>
+                      {mailbox.aliases && mailbox.aliases.length > 0 ? (
+                        <div className="mt-1 space-y-1">
+                          {mailbox.aliases.map((alias) => (
+                            <p key={alias.id} className="text-sm font-mono text-gray-900">
+                              {alias.localPart}@{mailbox.domain?.fullDomain || 'N/A'}
+                            </p>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 mt-1">No aliases assigned</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Editable fields */}
+                  <div className="space-y-2">
+                    <Label htmlFor="name">
+                      Mailbox Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="e.g., Support Mailbox"
+                      value={settingsData.name}
+                      onChange={(e) =>
+                        setSettingsData({ ...settingsData, name: e.target.value })
+                      }
+                      disabled={isSavingSettings}
+                      maxLength={100}
+                      required
+                    />
+                    <p className="text-xs text-gray-500">
+                      Unique name for this mailbox (max 100 characters)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="senderName">
+                      Sender Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="senderName"
+                      type="text"
+                      placeholder="e.g., John Doe"
+                      value={settingsData.senderName}
+                      onChange={(e) =>
+                        setSettingsData({ ...settingsData, senderName: e.target.value })
+                      }
+                      disabled={isSavingSettings}
+                      maxLength={100}
+                      required
+                    />
+                    <p className="text-xs text-gray-500">
+                      Used as sender name in outbound emails (max 100 characters)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description (Optional)</Label>
+                    <textarea
+                      id="description"
+                      className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="Add notes or description for this mailbox..."
+                      value={settingsData.description}
+                      onChange={(e) =>
+                        setSettingsData({ ...settingsData, description: e.target.value })
+                      }
+                      disabled={isSavingSettings}
+                      maxLength={500}
+                      rows={4}
+                    />
+                    <p className="text-xs text-gray-500">
+                      For your reference only (max 500 characters)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 pt-4 border-t">
+                  <Button type="submit" disabled={isSavingSettings}>
+                    {isSavingSettings ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setSettingsData({
+                        name: mailbox.name || '',
+                        senderName: mailbox.senderName || '',
+                        description: mailbox.description || '',
+                      })
+                    }}
+                    disabled={isSavingSettings}
+                  >
+                    Reset
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>How Sender Identity Works</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm text-gray-600">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <p>
+                    <strong>Sender Name</strong> is shown in recipient's inbox as the sender name
+                  </p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <p>
+                    <strong>Mailbox Name</strong> is used for identification in your UI
+                  </p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <p>
+                    Email address remains the alias address (unchanged)
+                  </p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <p>
+                    Changes apply immediately to new emails
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -784,12 +1030,12 @@ const SingleMailboxPage = () => {
 
             <div className="space-y-2">
               <Label htmlFor="deleteConfirmation">
-                Type <span className="font-mono font-bold">{mailbox.emailAlias}</span> to confirm
+                Type <span className="font-mono font-bold">{mailbox.slug}</span> to confirm
               </Label>
               <Input
                 id="deleteConfirmation"
                 type="text"
-                placeholder={mailbox.emailAlias}
+                placeholder={mailbox.slug}
                 value={deleteConfirmation}
                 onChange={(e) => setDeleteConfirmation(e.target.value)}
                 disabled={isSubmitting}
@@ -812,7 +1058,7 @@ const SingleMailboxPage = () => {
               <Button
                 type="submit"
                 variant="destructive"
-                disabled={isSubmitting || deleteConfirmation !== mailbox.emailAlias}
+                disabled={isSubmitting || deleteConfirmation !== mailbox.slug}
               >
                 {isSubmitting ? 'Deleting...' : 'Delete Mailbox'}
               </Button>

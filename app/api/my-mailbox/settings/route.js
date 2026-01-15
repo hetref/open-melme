@@ -116,7 +116,10 @@ export async function GET(request) {
     return NextResponse.json({
       mailbox: {
         id: mailbox.id,
-        emailAlias: mailbox.emailAlias,
+        name: mailbox.name,
+        slug: mailbox.slug,
+        senderName: mailbox.senderName,
+        description: mailbox.description,
         domainId: mailbox.domainId,
         domain: mailbox.domain,
         isActive: mailbox.isActive,

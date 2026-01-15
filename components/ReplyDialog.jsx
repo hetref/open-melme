@@ -206,6 +206,13 @@ export function ReplyDialog({
       return
     }
 
+    // Check if selected alias is active
+    const selectedAlias = aliases?.find(a => a.id === formData.aliasId)
+    if (selectedAlias && !selectedAlias.isActive) {
+      toast.error('Cannot send from an inactive email alias. Please activate it first.')
+      return
+    }
+
     setSending(true)
 
     try {
@@ -293,22 +300,32 @@ export function ReplyDialog({
           {/* From */}
           <div className="space-y-2">
             <Label htmlFor="from">From *</Label>
-            <select
-              id="from"
-              value={formData.aliasId}
-              onChange={(e) => setFormData({ ...formData, aliasId: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={sending}
-            >
-              {aliases?.map((alias) => {
-                const domain = alias.domain?.fullDomain || alias.domain?.domain || '';
-                return (
-                  <option key={alias.id} value={alias.id}>
-                    {alias.localPart}@{domain}
-                  </option>
-                );
-              })}
-            </select>
+            <>
+              <select
+                id="from"
+                value={formData.aliasId}
+                onChange={(e) => setFormData({ ...formData, aliasId: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={sending}
+              >
+                {aliases?.map((alias) => {
+                  const domain = alias.domain?.fullDomain || alias.domain?.domain || '';
+                  return (
+                    <option key={alias.id} value={alias.id}>
+                      {alias.localPart}@{domain} {!alias.isActive ? '(INACTIVE)' : ''}
+                    </option>
+                  );
+                })}
+              </select>
+              {(() => {
+                const selectedAlias = aliases?.find(a => a.id === formData.aliasId)
+                return selectedAlias && !selectedAlias.isActive ? (
+                  <div className="mt-2 px-3 py-2 border border-orange-300 rounded-md bg-orange-50 text-orange-800 text-sm">
+                    ⚠️ This email alias is inactive. You won't be able to send emails from this address until it's activated.
+                  </div>
+                ) : null
+              })()}
+            </>
           </div>
 
           {/* To */}

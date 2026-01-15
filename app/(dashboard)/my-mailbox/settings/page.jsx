@@ -100,9 +100,10 @@ export default function SettingsPage() {
       <div className="mb-6">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 font-mono">
-              {session.mailbox.emailAlias}
+            <h1 className="text-3xl font-bold text-gray-900">
+              {session.mailbox.name}
             </h1>
+            <p className="text-sm text-gray-500 font-mono mt-1">{session.mailbox.slug}</p>
             <p className="text-gray-600 mt-2">Mailbox Settings</p>
           </div>
 
@@ -148,25 +149,16 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm font-medium text-gray-500">Mailbox Email</p>
-                <p className="text-lg font-mono mt-1">{settingsData?.mailbox?.emailAlias}</p>
+                <p className="text-sm font-medium text-gray-500">Mailbox Name</p>
+                <p className="text-lg mt-1">{settingsData?.mailbox?.name}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Domain</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-lg">{settingsData?.mailbox?.domain?.fullDomain}</p>
-                  {settingsData?.mailbox?.domain?.verificationStatus === 'verified' ? (
-                    <Badge variant="success" className="bg-green-100 text-green-800">
-                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                      Verified
-                    </Badge>
-                  ) : (
-                    <Badge variant="destructive">
-                      <XCircle className="w-3 h-3 mr-1" />
-                      Unverified
-                    </Badge>
-                  )}
-                </div>
+                <p className="text-sm font-medium text-gray-500">Sender Name</p>
+                <p className="text-lg mt-1">{settingsData?.mailbox?.senderName}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Identifier (Slug)</p>
+                <p className="text-lg font-mono mt-1">{settingsData?.mailbox?.slug}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Status</p>
