@@ -154,25 +154,49 @@ export async function PATCH(request, { params }) {
     // Prepare update data
     const updateData = {}
 
-    // Handle mode change
+    // Reject mode changes - mode cannot be converted
     if (mode !== undefined) {
-      if (mode !== 'forward' && mode !== 'mailbox') {
+      return NextResponse.json(
+        { error: 'Alias mode cannot be changed. Create a new alias instead.' },
+        { status: 400 }
+      )
+    }
+
+    // Only allow updating forwardTo if in forward mode
+    if (forwardTo !== undefined) {
+      if (alias.mode !== 'forward') {
         return NextResponse.json(
-          { error: 'Mode must be either "forward" or "mailbox"' },
+          { error: 'Cannot update forwardTo for mailbox mode aliases' },
           { status: 400 }
         )
       }
-      updateData.mode = mode
 
-      // When switching to mailbox mode, clear forwardTo and set mailboxId
-      if (mode === 'mailbox') {
-        if (!mailboxId) {
-          return NextResponse.json(
-            { error: 'mailboxId is required when switching to mailbox mode' },
-            { status: 400 }
-          )
-        }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(forwardTo)) {
+        return NextResponse.json(
+          { error: 'Invalid forward to email address' },
+          { status: 400 }
+        )
+      }
+      updateData.forwardTo = forwardTo.toLowerCase().trim()
+    }
 
+    // Only allow updating mailboxId if in mailbox mode
+    if (mailboxId !== undefined) {
+      if (alias.mode !== 'mailbox') {
+        return NextResponse.json(
+          { error: 'Cannot update mailboxId for forward mode aliases' },
+          { status: 400 }
+        )
+      }
+
+      if (mailboxId === null) {
+        // Unassigning mailbox
+        updateData.mailboxId = null
+        // CRITICAL: When removing mailbox, alias becomes INACTIVE
+        updateData.isActive = false
+      } else {
+        // Assigning/changing mailbox
         // Verify mailbox exists and belongs to user
         const mailbox = await prisma.mailbox.findFirst({
           where: {
@@ -190,108 +214,12 @@ export async function PATCH(request, { params }) {
         }
 
         updateData.mailboxId = mailboxId
-        updateData.forwardTo = null
         // CRITICAL: When assigning mailbox, alias becomes INACTIVE
         updateData.isActive = false
       }
-
-      // When switching to forward mode, clear mailboxId and require forwardTo
-      if (mode === 'forward') {
-        if (!forwardTo) {
-          return NextResponse.json(
-            { error: 'forwardTo is required when switching to forward mode' },
-            { status: 400 }
-          )
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailRegex.test(forwardTo)) {
-          return NextResponse.json(
-            { error: 'Invalid forward to email address' },
-            { status: 400 }
-          )
-        }
-
-        updateData.forwardTo = forwardTo.toLowerCase().trim()
-        updateData.mailboxId = null
-      }
-    } else {
-      // If not changing mode, only allow updating forwardTo if in forward mode
-      if (forwardTo !== undefined) {
-        if (alias.mode !== 'forward') {
-          return NextResponse.json(
-            { error: 'Cannot update forwardTo for mailbox mode aliases' },
-            { status: 400 }
-          )
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailRegex.test(forwardTo)) {
-          return NextResponse.json(
-            { error: 'Invalid forward to email address' },
-            { status: 400 }
-          )
-        }
-        updateData.forwardTo = forwardTo.toLowerCase().trim()
-      }
-
-      // Only allow updating mailboxId if in mailbox mode
-      if (mailboxId !== undefined) {
-        if (alias.mode !== 'mailbox') {
-          return NextResponse.json(
-            { error: 'Cannot update mailboxId for forward mode aliases' },
-            { status: 400 }
-          )
-        }
-
-        if (mailboxId === null) {
-          // Unassigning mailbox
-          updateData.mailboxId = null
-          // CRITICAL: When removing mailbox, alias becomes INACTIVE
-          updateData.isActive = false
-        } else {
-          // Assigning/changing mailbox
-          // Verify mailbox exists and belongs to user
-          const mailbox = await prisma.mailbox.findFirst({
-            where: {
-              id: mailboxId,
-              userId: session.user.id,
-              isActive: true,
-            },
-          })
-
-          if (!mailbox) {
-            return NextResponse.json(
-              { error: 'Mailbox not found or inactive' },
-              { status: 404 }
-            )
-          }
-
-          updateData.mailboxId = mailboxId
-          // CRITICAL: When assigning mailbox, alias becomes INACTIVE
-          updateData.isActive = false
-        }
-
-        // CRITICAL: Enforce activation rules
-        if (isActive === true) {
-          // Activating alias - validate requirements
-          if (alias.mode === 'mailbox' && !alias.mailboxId && mailboxId === undefined) {
-            return NextResponse.json(
-              { error: 'Cannot activate mailbox mode alias without assigned mailbox' },
-              { status: 400 }
-            )
-          }
-          if (alias.mode === 'forward' && !alias.forwardTo && forwardTo === undefined) {
-            return NextResponse.json(
-              { error: 'Cannot activate forward mode alias without forwardTo address' },
-              { status: 400 }
-            )
-          }
-        }
-
-      }
     }
 
+    // Handle isActive updates
     if (isActive !== undefined) {
       if (typeof isActive !== 'boolean') {
         return NextResponse.json(
@@ -299,6 +227,24 @@ export async function PATCH(request, { params }) {
           { status: 400 }
         )
       }
+
+      // CRITICAL: Enforce activation rules
+      if (isActive === true) {
+        // Activating alias - validate requirements
+        if (alias.mode === 'mailbox' && !alias.mailboxId && mailboxId === undefined) {
+          return NextResponse.json(
+            { error: 'Cannot activate mailbox mode alias without assigned mailbox' },
+            { status: 400 }
+          )
+        }
+        if (alias.mode === 'forward' && !alias.forwardTo && forwardTo === undefined) {
+          return NextResponse.json(
+            { error: 'Cannot activate forward mode alias without forwardTo address' },
+            { status: 400 }
+          )
+        }
+      }
+
       updateData.isActive = isActive
     }
 
@@ -339,7 +285,9 @@ export async function PATCH(request, { params }) {
 
 /**
  * DELETE /api/aliases/[aliasId]
- * Delete an alias with all related S3 and DB data
+ * Delete an alias
+ * - Forward aliases: Delete immediately with minimal email logs
+ * - Mailbox aliases: Reject and require explicit action via /delete endpoint
  */
 export async function DELETE(request, { params }) {
   try {
@@ -371,22 +319,48 @@ export async function DELETE(request, { params }) {
       )
     }
 
-    // Use bulk deletion utility for efficient cleanup
-    try {
-      const result = await deleteAlias(aliasId, session.user.id)
+    // CASE 1: Forward alias - delete instantly
+    if (alias.mode === 'forward') {
+      try {
+        // Delete email logs (audit only, no attachments stored)
+        await prisma.emailLog.deleteMany({
+          where: { aliasId },
+        })
 
-      return NextResponse.json({
-        success: true,
-        message: 'Alias and all related data deleted successfully',
-        s3ObjectsDeleted: result.s3Stats.objectsDeleted,
-      })
-    } catch (deleteError) {
-      console.error('Error during alias deletion:', deleteError)
+        // Delete alias
+        await prisma.alias.delete({
+          where: { id: aliasId },
+        })
+
+        return NextResponse.json({
+          success: true,
+          message: 'Forward alias deleted successfully',
+        })
+      } catch (deleteError) {
+        console.error('Error deleting forward alias:', deleteError)
+        return NextResponse.json(
+          { error: 'Failed to delete forward alias' },
+          { status: 500 }
+        )
+      }
+    }
+
+    // CASE 2: Mailbox alias - reject and require explicit action
+    if (alias.mode === 'mailbox') {
       return NextResponse.json(
-        { error: 'Failed to delete alias and related data' },
-        { status: 500 }
+        { 
+          error: 'Mailbox alias requires explicit deletion action',
+          code: 'MAILBOX_ALIAS_REQUIRES_ACTION',
+          message: 'Use the deletion modal to choose transfer or delete action',
+        },
+        { status: 400 }
       )
     }
+
+    return NextResponse.json(
+      { error: 'Invalid alias mode' },
+      { status: 400 }
+    )
   } catch (error) {
     console.error('Error deleting alias:', error)
     return NextResponse.json(

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Plus, Trash2, Edit2, Power, PowerOff, ArrowLeft, Mail, RefreshCw, AlertCircle, Inbox } from 'lucide-react'
 import { toast } from 'sonner'
+import { AliasDeletionModal } from '@/components/AliasDeletionModal'
 
 const DomainAliasesPage = () => {
   const params = useParams()
@@ -22,7 +23,9 @@ const DomainAliasesPage = () => {
   const [loading, setLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingAlias, setEditingAlias] = useState(null)
+  const [deletingAlias, setDeletingAlias] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isRechecking, setIsRechecking] = useState(false)
 
@@ -146,12 +149,12 @@ const DomainAliasesPage = () => {
   const handleUpdateAlias = async (e) => {
     e.preventDefault()
 
-    if (formData.mode === 'forward' && !formData.forwardTo.trim()) {
+    if (editingAlias.mode === 'forward' && !formData.forwardTo.trim()) {
       toast.error('Forward to email is required')
       return
     }
 
-    if (formData.mode === 'mailbox' && !formData.mailboxId) {
+    if (editingAlias.mode === 'mailbox' && !formData.mailboxId) {
       toast.error('Please select a mailbox')
       return
     }
@@ -159,16 +162,12 @@ const DomainAliasesPage = () => {
     setIsSubmitting(true)
 
     try {
-      const body = {
-        mode: formData.mode,
-      }
+      const body = {}
 
-      if (formData.mode === 'forward') {
+      if (editingAlias.mode === 'forward') {
         body.forwardTo = formData.forwardTo.trim()
-        body.mailboxId = null
       } else {
         body.mailboxId = formData.mailboxId
-        body.forwardTo = null
       }
 
       const response = await fetch(`/api/aliases/${editingAlias.id}`, {
@@ -224,26 +223,13 @@ const DomainAliasesPage = () => {
   }
 
   const handleDeleteAlias = async (alias) => {
-    if (!confirm(`Are you sure you want to delete ${alias.localPart}@${domain.fullDomain}?`)) {
-      return
-    }
+    // Open the deletion modal
+    setDeletingAlias(alias)
+    setIsDeleteDialogOpen(true)
+  }
 
-    try {
-      const response = await fetch(`/api/aliases/${alias.id}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to delete alias')
-      }
-
-      toast.success('Alias deleted successfully!')
-      fetchAliases()
-    } catch (error) {
-      console.error('Error deleting alias:', error)
-      toast.error(error.message)
-    }
+  const handleDeletionSuccess = () => {
+    fetchAliases()
   }
 
   const openEditDialog = (alias) => {
@@ -631,37 +617,11 @@ const DomainAliasesPage = () => {
           <DialogHeader>
             <DialogTitle>Edit Alias</DialogTitle>
             <DialogDescription>
-              Update destination for {editingAlias?.localPart}@{domain.fullDomain}
+              Update {editingAlias?.mode === 'forward' ? 'forwarding email' : 'mailbox'} for {editingAlias?.localPart}@{domain.fullDomain}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateAlias} className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Alias Mode</Label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    value="forward"
-                    checked={formData.mode === 'forward'}
-                    onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
-                    disabled={isSubmitting}
-                  />
-                  <span className="text-sm">Forward to email</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    value="mailbox"
-                    checked={formData.mode === 'mailbox'}
-                    onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
-                    disabled={isSubmitting}
-                  />
-                  <span className="text-sm">Store in mailbox</span>
-                </label>
-              </div>
-            </div>
-
-            {formData.mode === 'forward' ? (
+            {editingAlias?.mode === 'forward' ? (
               <div className="space-y-2">
                 <Label htmlFor="editForwardTo">Forward To Email</Label>
                 <Input
@@ -728,6 +688,22 @@ const DomainAliasesPage = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Alias Deletion Modal */}
+      <AliasDeletionModal
+        isOpen={isDeleteDialogOpen}
+        onClose={() => {
+          setIsDeleteDialogOpen(false)
+          setDeletingAlias(null)
+        }}
+        alias={deletingAlias ? {
+          id: deletingAlias.id,
+          localPart: deletingAlias.localPart,
+          mode: deletingAlias.mode,
+          domainName: domain.fullDomain,
+        } : null}
+        onSuccess={handleDeletionSuccess}
+      />
     </div>
   )
 }
