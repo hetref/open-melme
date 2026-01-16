@@ -87,9 +87,24 @@ export function EmailListView({ emailType = 'received' }) {
       }
     }
 
+    // Listen for emailSent event from compose/reply dialogs
+    const handleEmailSentEvent = async () => {
+      await fetchEmails(pagination.page)
+
+      // If a conversation is open, refresh its details
+      if (selectedEmail) {
+        await fetchEmailDetail(selectedEmail.id)
+      }
+    }
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedEmail])
+    window.addEventListener('emailSent', handleEmailSentEvent)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('emailSent', handleEmailSentEvent)
+    }
+  }, [selectedEmail, pagination.page])
 
   const fetchAliases = async () => {
     try {
@@ -360,8 +375,16 @@ export function EmailListView({ emailType = 'received' }) {
     setIsReplyAllOpen(true)
   }
 
-  const handleEmailSent = () => {
-    fetchEmails(pagination.page)
+  const handleEmailSent = async () => {
+    // Refresh the email list
+    await fetchEmails(pagination.page)
+
+    // If a conversation is currently selected, refresh its details
+    if (selectedEmail) {
+      await fetchEmailDetail(selectedEmail.id)
+    }
+
+    toast.success('Email list updated')
   }
 
   if (!session) {
@@ -514,8 +537,13 @@ export function EmailListView({ emailType = 'received' }) {
                               <Paperclip className="w-3 h-3 text-gray-400 shrink-0" />
                             )}
                           </div>
-                          <div className="text-xs text-gray-600 truncate">
-                            {emailType === 'sent' ? `To: ${lastEmail.toEmail}` : lastEmail.fromEmail}
+                          <div className="space-y-0.5">
+                            <div className="text-xs text-gray-600 truncate">
+                              <span className="font-medium">From:</span> {lastEmail.fromEmail}
+                            </div>
+                            <div className="text-xs text-gray-600 truncate">
+                              <span className="font-medium">To:</span> {lastEmail.toEmail}
+                            </div>
                           </div>
                           <div className="flex items-center justify-between mt-1">
                             <Badge variant="secondary" className={`text-xs ${getStatusBadge(lastEmail.status)}`}>

@@ -28,7 +28,6 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
   })
 
   const [attachments, setAttachments] = useState([])
-  const [uploadingAttachment, setUploadingAttachment] = useState(false)
   const [sending, setSending] = useState(false)
   const [showCc, setShowCc] = useState(false)
   const [showBcc, setShowBcc] = useState(false)
@@ -47,8 +46,8 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
   }, [open, aliases, formData.aliasId])
 
   const handleClose = () => {
-    if (sending || uploadingAttachment) {
-      toast.error('Cannot close while sending or uploading')
+    if (sending) {
+      toast.error('Cannot close while sending')
       return
     }
     resetForm()
@@ -80,48 +79,20 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
       return
     }
 
-    // Ensure we have a draft ID before uploading
-    setUploadingAttachment(true)
+    // Store files locally without uploading
+    const newAttachments = files.map((file) => ({
+      file, // Store the actual File object
+      filename: file.name,
+      size: file.size,
+      contentType: file.type || 'application/octet-stream',
+    }))
 
-    try {
-      for (const file of files) {
-        // Upload to temporary S3 location
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('uploadId', uploadId) // Use temp upload ID
+    setAttachments((prev) => [...prev, ...newAttachments])
+    toast.success(`Added ${files.length} attachment(s)`)
 
-        const response = await fetch('/api/mailbox/attachments/upload', {
-          method: 'POST',
-          body: formData,
-        })
-
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Upload failed')
-        }
-
-        const data = await response.json()
-
-        setAttachments((prev) => [
-          ...prev,
-          {
-            s3Key: data.attachment.s3Key,
-            filename: data.attachment.filename,
-            size: data.attachment.size,
-            contentType: data.attachment.contentType,
-          },
-        ])
-      }
-
-      toast.success(`Uploaded ${files.length} attachment(s)`)
-    } catch (error) {
-      console.error('Error uploading attachment:', error)
-      toast.error(error.message || 'Failed to upload attachment')
-    } finally {
-      setUploadingAttachment(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
+    // Clear file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
@@ -173,6 +144,34 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
     setSending(true)
 
     try {
+      // Upload attachments first if any
+      let attachmentKeys = []
+
+      if (attachments.length > 0) {
+        toast.info('Uploading attachments...')
+
+        for (const attachment of attachments) {
+          const formData = new FormData()
+          formData.append('file', attachment.file)
+          formData.append('uploadId', uploadId)
+
+          const response = await fetch('/api/mailbox/attachments/upload', {
+            method: 'POST',
+            body: formData,
+          })
+
+          if (!response.ok) {
+            const data = await response.json()
+            throw new Error(data.error || 'Failed to upload attachment')
+          }
+
+          const data = await response.json()
+          attachmentKeys.push(data.attachment.s3Key)
+        }
+      }
+
+      // Send email
+      toast.info('Sending email...')
       const response = await fetch('/api/mailbox/send', {
         method: 'POST',
         headers: {
@@ -185,8 +184,8 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
           cc: ccEmails,
           bcc: bccEmails,
           subject: formData.subject,
-          text: formData.text, // TEXT ONLY - NO HTML
-          attachmentKeys: attachments.map((a) => a.s3Key),
+          text: formData.text,
+          attachmentKeys: attachmentKeys,
         }),
       })
 
@@ -203,6 +202,10 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
       if (onEmailSent) {
         onEmailSent()
       }
+
+      // Trigger custom event for real-time updates
+      const event = new CustomEvent('emailSent')
+      window.dispatchEvent(event)
     } catch (error) {
       console.error('Error sending email:', error)
       toast.error(error.message || 'Failed to send email')
@@ -379,7 +382,7 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
             <Label htmlFor="body">Message *</Label>
             <textarea
               id="body"
-              className="w-full min-h-[200px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full min-h-50 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Type your message here..."
               value={formData.text}
               onChange={(e) => setFormData({ ...formData, text: e.target.value })}
@@ -396,19 +399,10 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
                 variant="outline"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingAttachment || sending || attachments.length >= 10}
+                disabled={sending || attachments.length >= 10}
               >
-                {uploadingAttachment ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Paperclip className="w-4 h-4 mr-2" />
-                    Add Files
-                  </>
-                )}
+                <Paperclip className="w-4 h-4 mr-2" />
+                Add Files
               </Button>
               <input
                 ref={fileInputRef}
@@ -456,14 +450,14 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
               type="button"
               variant="outline"
               onClick={handleClose}
-              disabled={sending || uploadingAttachment}
+              disabled={sending}
             >
               Cancel
             </Button>
             <Button
               type="button"
               onClick={handleSend}
-              disabled={sending || uploadingAttachment || !formData.aliasId || !aliases || aliases.length === 0}
+              disabled={sending || !formData.aliasId || !aliases || aliases.length === 0}
             >
               {sending ? (
                 <>

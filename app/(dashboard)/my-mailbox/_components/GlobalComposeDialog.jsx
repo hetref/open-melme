@@ -48,8 +48,9 @@ export function GlobalComposeDialog() {
   // Mailboxes now use only assigned aliases for sending
 
   const handleEmailSent = () => {
-    toast.success('Email sent successfully!')
-    // Could trigger a refresh event here if needed
+    // Trigger custom event to notify EmailListView to refresh
+    const event = new CustomEvent('emailSent')
+    window.dispatchEvent(event)
   }
 
   if (!session) {

@@ -14,11 +14,11 @@ import { toast } from 'sonner'
  * - Forward aliases: Simple confirmation
  * - Mailbox aliases: Must choose transfer or delete
  */
-export function AliasDeletionModal({ 
-  isOpen, 
-  onClose, 
-  alias, 
-  onSuccess 
+export function AliasDeletionModal({
+  isOpen,
+  onClose,
+  alias,
+  onSuccess
 }) {
   const [loading, setLoading] = useState(true)
   const [deleteInfo, setDeleteInfo] = useState(null)
@@ -37,7 +37,7 @@ export function AliasDeletionModal({
     try {
       setLoading(true)
       const response = await fetch(`/api/aliases/${alias.id}/delete`)
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch deletion info')
       }
@@ -169,7 +169,7 @@ export function AliasDeletionModal({
             Delete Alias: {alias.localPart}@{alias.domainName}
           </DialogTitle>
           <DialogDescription>
-            {alias.mode === 'forward' 
+            {alias.mode === 'forward'
               ? 'This forwarding alias will be permanently deleted.'
               : 'This alias stores emails in a mailbox. You must choose what to do with existing emails.'
             }
@@ -209,7 +209,7 @@ export function AliasDeletionModal({
             {alias.mode === 'forward' && (
               <div className="space-y-4">
                 <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
                   <div className="text-sm text-blue-800">
                     <p className="font-medium mb-1">Forward Mode Alias</p>
                     <p>
@@ -226,14 +226,13 @@ export function AliasDeletionModal({
               <div className="space-y-4">
                 <div className="space-y-3">
                   <Label className="text-base font-semibold">Choose an action (required)</Label>
-                  
+
                   {/* Option A: Transfer */}
-                  <div 
-                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                      selectedAction === 'transfer' 
-                        ? 'border-blue-500 bg-blue-50' 
+                  <div
+                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedAction === 'transfer'
+                        ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                      }`}
                     onClick={() => setSelectedAction('transfer')}
                   >
                     <label className="flex items-start gap-3 cursor-pointer">
@@ -251,7 +250,7 @@ export function AliasDeletionModal({
                           <span className="font-semibold text-gray-900">Transfer Emails (Recommended)</span>
                         </div>
                         <p className="text-sm text-gray-600 mb-3">
-                          Move all emails and attachments to another mailbox alias. 
+                          Move all emails and attachments to another mailbox alias.
                           Conversations and attachments remain intact.
                         </p>
 
@@ -285,12 +284,11 @@ export function AliasDeletionModal({
                   </div>
 
                   {/* Option B: Delete Everything */}
-                  <div 
-                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                      selectedAction === 'delete' 
-                        ? 'border-red-500 bg-red-50' 
+                  <div
+                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedAction === 'delete'
+                        ? 'border-red-500 bg-red-50'
                         : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                      }`}
                     onClick={() => setSelectedAction('delete')}
                   >
                     <label className="flex items-start gap-3 cursor-pointer">
@@ -308,7 +306,7 @@ export function AliasDeletionModal({
                           <span className="font-semibold text-gray-900">Delete Everything</span>
                         </div>
                         <p className="text-sm text-gray-600 mb-3">
-                          Permanently delete all emails, attachments, and S3 objects. 
+                          Permanently delete all emails, attachments, and S3 objects.
                           This action cannot be undone.
                         </p>
 
@@ -319,7 +317,7 @@ export function AliasDeletionModal({
                                 ⚠️ Warning: This action is permanent and cannot be undone.
                               </p>
                             </div>
-                            
+
                             <label className="flex items-start gap-2 cursor-pointer">
                               <input
                                 type="checkbox"
@@ -328,7 +326,7 @@ export function AliasDeletionModal({
                                 className="mt-1"
                               />
                               <span className="text-sm text-gray-700">
-                                I understand this will permanently delete {deleteInfo.stats.emailCount} emails 
+                                I understand this will permanently delete {deleteInfo.stats.emailCount} emails
                                 and {deleteInfo.stats.attachmentCount} attachments. This cannot be undone.
                               </span>
                             </label>
@@ -365,7 +363,7 @@ export function AliasDeletionModal({
                 variant="destructive"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="min-w-[120px]"
+                className="min-w-30"
               >
                 {isDeleting ? (
                   <>
