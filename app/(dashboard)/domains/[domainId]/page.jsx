@@ -198,6 +198,21 @@ const DomainDetailsPage = () => {
               </div>
               {getStatusBadge(domain.verificationStatus)}
             </div>
+            {domain.verificationStatus !== 'verified' && (
+              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-900 mb-1">
+                      Domain verification required
+                    </p>
+                    <p className="text-sm text-yellow-800">
+                      Both DKIM and MX records must be verified to send and receive emails. DKIM verification proves domain ownership and prevents spoofing.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <div className="flex gap-6">
@@ -207,6 +222,7 @@ const DomainDetailsPage = () => {
                   {getRecordStatusIcon(domain.dkimStatus)}
                   <span className="font-medium capitalize">{domain.dkimStatus || 'pending'}</span>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">Required for domain ownership</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600 mb-1">MX Status</p>
@@ -214,6 +230,7 @@ const DomainDetailsPage = () => {
                   {getRecordStatusIcon(domain.mxStatus)}
                   <span className="font-medium capitalize">{domain.mxStatus || 'pending'}</span>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">Required for email receiving</p>
               </div>
             </div>
             {domain.verificationError && (
@@ -323,7 +340,10 @@ const DomainDetailsPage = () => {
                   <div className="border rounded-lg p-4 bg-gray-50">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <h3 className="font-semibold text-lg">DKIM Records (Email Authentication)</h3>
+                        <h3 className="font-semibold text-lg">DKIM Records (Required for Domain Ownership)</h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          DKIM cryptographically proves you own this domain and prevents email spoofing
+                        </p>
                         {domain.subdomain && (
                           <p className="text-sm text-gray-600 mt-1">
                             These are CNAME records for the full domain: {domain.fullDomain}
@@ -426,6 +446,14 @@ const DomainDetailsPage = () => {
             <CardTitle>Need Help?</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+              <h4 className="font-medium mb-2">What is DKIM?</h4>
+              <p className="text-sm text-gray-600">
+                DKIM (DomainKeys Identified Mail) is a cryptographic signature that proves you own the domain.
+                It prevents email spoofing and ensures your emails are trusted by recipients.
+                <strong> Both DKIM and MX records must be verified before you can send or receive emails.</strong>
+              </p>
+            </div>
             <div>
               <h4 className="font-medium mb-2">DNS Propagation</h4>
               <p className="text-sm text-gray-600">

@@ -2,8 +2,8 @@ import { simpleParser } from "mailparser";
 import prisma from "@/lib/prisma";
 import { SESClient, SendRawEmailCommand } from '@aws-sdk/client-ses'
 import { fetchEmailFromS3, deleteEmailFromS3 } from '@/lib/s3'
-import { verifyDomainConnection } from '@/lib/ses'
 import { resolveConversationId } from '@/lib/email'
+import { verifyDomainConnection } from '@/lib/ses'
 
 const sesClient = new SESClient({
   region: process.env.AWS_REGION || 'ap-south-1',
@@ -21,16 +21,13 @@ export async function GET() {
 
 export async function POST(req) {
   try {
-    // 1. Authenticate Lambda
+    // ==================== AUTHENTICATION ====================
     const secret = req.headers.get("x-internal-secret");
     if (!secret || secret !== process.env.PLATFORM_API_SECRET) {
-      return Response.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Parse payload
+    // ==================== PARSE PAYLOAD ====================
     const body = await req.json();
     const { s3 } = body;
 
@@ -41,11 +38,9 @@ export async function POST(req) {
       );
     }
 
-    // 3. IDEMPOTENCY CHECK - Critical to prevent duplicate forwarding
+    // ==================== IDEMPOTENCY CHECK ====================
     const existingLog = await prisma.emailLog.findUnique({
-      where: {
-        s3Key: s3.key,
-      },
+      where: { s3Key: s3.key },
     });
 
     if (existingLog) {
@@ -57,32 +52,35 @@ export async function POST(req) {
       });
     }
 
-    // 4. Fetch email from S3
+    // ==================== FETCH EMAIL FROM S3 ====================
     let rawEmailBuffer;
     try {
       rawEmailBuffer = await fetchEmailFromS3(s3.bucket, s3.key);
     } catch (s3Error) {
       console.error('Failed to fetch email from S3:', s3Error);
-      return Response.json(
-        { error: 'Failed to fetch email from S3' },
-        { status: 500 }
-      );
+      // Silently fail - can't process without email content
+      return Response.json({ received: true, ignored: 'fetch_failed' });
     }
 
-    // 5. Parse email (headers only for now)
-    const parsed = await simpleParser(rawEmailBuffer);
+    // ==================== PARSE EMAIL ====================
+    let parsed;
+    try {
+      parsed = await simpleParser(rawEmailBuffer);
+    } catch (parseError) {
+      console.error('Failed to parse email:', parseError);
+      // Delete malformed email
+      await safeDeleteS3(s3.bucket, s3.key);
+      return Response.json({ received: true, ignored: 'parse_failed' });
+    }
 
     // Check for forwarding loop
     if (parsed.headers.get('x-melme-forwarded')) {
-      console.log('Email already forwarded by MelMe, dropping to prevent loop');
-      return Response.json({
-        received: true,
-        status: 'dropped',
-        reason: 'forwarding_loop_prevention'
-      });
+      console.log('Forwarding loop detected, dropping email');
+      await safeDeleteS3(s3.bucket, s3.key);
+      return Response.json({ received: true, ignored: 'forwarding_loop' });
     }
 
-    // 6. Extract email addresses
+    // ==================== STEP 1: EXTRACT RECIPIENT EMAIL ====================
     const toText = parsed.to?.text || parsed.headers.get('to');
     const fromText = parsed.from?.text || parsed.headers.get('from');
 
@@ -90,65 +88,65 @@ export async function POST(req) {
     const fromEmail = extractEmailAddress(fromText);
     const subject = parsed.subject || '(No Subject)';
 
-    // 6b. Extract threading headers
-    const messageId = parsed.messageId || parsed.headers.get('message-id');
-    const inReplyTo = parsed.inReplyTo || parsed.headers.get('in-reply-to');
-    const referencesRaw = parsed.references || parsed.headers.get('references');
-    const references = Array.isArray(referencesRaw)
-      ? referencesRaw.join(' ')
-      : referencesRaw;
-
-    // 6c. Resolve conversation ID
-    const conversationId = await resolveConversationId({
-      messageId,
-      inReplyTo,
-      references,
-    });
-
-    if (!toEmail) {
-      console.error('Could not extract TO email address');
-      return Response.json({ error: 'Invalid TO address' }, { status: 400 });
+    if (!toEmail || !toEmail.includes('@')) {
+      console.log('Invalid TO address format');
+      await safeDeleteS3(s3.bucket, s3.key);
+      return Response.json({ received: true, ignored: 'invalid_to_address' });
     }
 
-    // 7. Parse domain and local part
     const [localPart, domain] = toEmail.toLowerCase().split('@');
 
     if (!domain || !localPart) {
-      console.error('Invalid email format:', toEmail);
-      return Response.json({ error: 'Invalid email format' }, { status: 400 });
+      console.log('Could not parse localPart and domain');
+      await safeDeleteS3(s3.bucket, s3.key);
+      return Response.json({ received: true, ignored: 'invalid_email_format' });
     }
 
-    // ====================
-    // STEP 1: RESOLVE DOMAIN & ALIAS (PRIMARY CHECKS)
-    // ====================
-
-    // 8. Find domain in database (ANY status - we'll check connection separately)
+    // ==================== STEP 2: VALIDATE DOMAIN EXISTS ====================
     const domainRecord = await prisma.domain.findFirst({
-      where: {
-        fullDomain: domain,
-      },
+      where: { fullDomain: domain },
     });
 
     if (!domainRecord) {
-      // Domain not found - silently handle without logging to DB (avoids foreign key errors)
-      // Just clean up S3 and return success
+      console.log('Domain not found:', domain);
+      await safeDeleteS3(s3.bucket, s3.key);
+      return Response.json({ received: true, ignored: 'domain_not_found' });
+    }
 
-      // Try to delete S3 object for invalid emails (silent failure if no permission)
-      try {
-        await deleteEmailFromS3(s3.bucket, s3.key);
-      } catch (deleteError) {
-        // Silently ignore S3 deletion errors (IAM permissions may not be set yet)
-        // The S3 object will remain but won't be processed
-      }
+    // ==================== STEP 2.5: VERIFY DOMAIN CONNECTION ====================
+    console.log('Verifying domain connection for:', domain);
+    const connectionStatus = await verifyDomainConnection(domainRecord.fullDomain);
 
+    // Update domain status in database (include MX status)
+    await prisma.domain.update({
+      where: { id: domainRecord.id },
+      data: {
+        verificationStatus: connectionStatus.verificationStatus,
+        dkimStatus: connectionStatus.dkimStatus,
+        mxStatus: connectionStatus.mxStatus,
+        lastCheckedAt: new Date(),
+      },
+    }).catch(err => {
+      console.error('Failed to update domain status (non-critical):', err.message);
+    });
+
+    // If domain is not connected, discard email
+    if (!connectionStatus.isConnected) {
+      console.log('Domain is not connected, discarding email:', domain);
+      await safeDeleteS3(s3.bucket, s3.key);
       return Response.json({
         received: true,
-        status: 'invalid',
-        reason: 'domain_not_found'
+        ignored: 'domain_not_connected',
+        details: {
+          verificationStatus: connectionStatus.verificationStatus,
+          dkimStatus: connectionStatus.dkimStatus
+        }
       });
     }
 
-    // 9. Find alias
+    console.log('Domain is connected and verified');
+
+    // ==================== STEP 3: VALIDATE ALIAS EXISTS ====================
     const alias = await prisma.alias.findUnique({
       where: {
         domainId_localPart: {
@@ -168,354 +166,225 @@ export async function POST(req) {
 
     if (!alias) {
       console.log('Alias not found:', localPart, '@', domain);
-
-      // Log as invalid
-      await logEmail({
-        userId: domainRecord.userId,
-        domainId: domainRecord.id,
-        aliasId: null,
-        fromEmail,
-        toEmail,
-        subject,
-        s3Bucket: s3.bucket,
-        s3Key: s3.key,
-        size: s3.size,
-        status: 'invalid',
-        error: 'Alias not found',
-        pendingReason: null,
-        conversationId,
-        messageId,
-        inReplyTo,
-        references,
-      });
-
-      // DELETE S3 object for invalid emails
-      try {
-        await deleteEmailFromS3(s3.bucket, s3.key);
-      } catch (deleteError) {
-        console.error('Failed to delete S3 object:', deleteError);
-      }
-
-      return Response.json({
-        received: true,
-        status: 'invalid',
-        reason: 'alias_not_found'
-      });
+      await safeDeleteS3(s3.bucket, s3.key);
+      return Response.json({ received: true, ignored: 'alias_not_found' });
     }
 
-    // 10. Check if alias is active
+    // ==================== STEP 4: ALIAS ACTIVE CHECK ====================
     if (!alias.isActive) {
       console.log('Alias is inactive:', localPart, '@', domain);
-
-      // Log as invalid
-      await logEmail({
-        userId: domainRecord.userId,
-        domainId: domainRecord.id,
-        aliasId: alias.id,
-        fromEmail,
-        toEmail,
-        subject,
-        s3Bucket: s3.bucket,
-        s3Key: s3.key,
-        size: s3.size,
-        status: 'invalid',
-        error: 'Alias inactive',
-        pendingReason: null,
-        conversationId,
-        messageId,
-        inReplyTo,
-        references,
-      });
-
-      // DELETE S3 object for invalid emails
-      try {
-        await deleteEmailFromS3(s3.bucket, s3.key);
-      } catch (deleteError) {
-        console.error('Failed to delete S3 object:', deleteError);
-      }
-
-      return Response.json({
-        received: true,
-        status: 'invalid',
-        reason: 'alias_inactive'
-      });
+      await safeDeleteS3(s3.bucket, s3.key);
+      return Response.json({ received: true, ignored: 'alias_inactive' });
     }
 
-    // ====================
-    // STEP 2: CHECK DOMAIN CONNECTION STATUS (CRITICAL)
-    // ====================
+    // ==================== EXTRACT THREADING HEADERS ====================
+    const messageId = parsed.messageId || parsed.headers.get('message-id');
+    const inReplyTo = parsed.inReplyTo || parsed.headers.get('in-reply-to');
+    const referencesRaw = parsed.references || parsed.headers.get('references');
+    const references = Array.isArray(referencesRaw)
+      ? referencesRaw.join(' ')
+      : referencesRaw;
 
-    console.log('Checking domain connection status for:', domain);
-    const connectionStatus = await verifyDomainConnection(domainRecord.fullDomain);
-
-    // Update domain status in database
-    await prisma.domain.update({
-      where: { id: domainRecord.id },
-      data: {
-        verificationStatus: connectionStatus.verificationStatus,
-        dkimStatus: connectionStatus.dkimStatus,
-        lastCheckedAt: new Date(),
-      },
-    });
-
-    // ====================
-    // STEP 3: HANDLE DOMAIN DISCONNECTED CASE
-    // ====================
-
-    if (!connectionStatus.isConnected) {
-      console.log('Domain is disconnected:', domain);
-
-      // Log as pending
-      const emailLog = await logEmail({
-        userId: domainRecord.userId,
-        domainId: domainRecord.id,
-        aliasId: alias.id,
-        fromEmail,
-        toEmail,
-        subject,
-        s3Bucket: s3.bucket,
-        s3Key: s3.key,
-        size: s3.size,
-        status: 'pending',
-        error: 'Domain disconnected - waiting for reconnection',
-        pendingReason: 'domain_disconnected',
-        conversationId,
-        messageId,
-        inReplyTo,
-        references,
-      });
-
-      // KEEP S3 object for pending emails
-      console.log('Email marked as pending, S3 object preserved');
-
-      return Response.json({
-        received: true,
-        status: 'pending',
-        reason: 'domain_disconnected',
-        emailId: emailLog.id,
-      });
-    }
-
-    // ====================
-    // STEP 4: NORMAL PROCESSING (DOMAIN VERIFIED)
-    // ====================
-
-    console.log('Domain is connected, processing email normally');
-
-    // Check alias mode
-    if (alias.mode === 'mailbox') {
-      console.log('Alias is in mailbox mode - storing email, not forwarding');
-
-      // CRITICAL: Validate mailbox assignment and activation
-      if (!alias.mailboxId) {
-        console.log('Alias has no assigned mailbox');
-
-        // Log as invalid and delete S3
-        await logEmail({
-          userId: domainRecord.userId,
-          domainId: domainRecord.id,
-          aliasId: alias.id,
-          fromEmail,
-          toEmail,
-          subject,
-          s3Bucket: s3.bucket,
-          s3Key: s3.key,
-          size: s3.size,
-          status: 'invalid',
-          error: 'Alias has no assigned mailbox',
-          pendingReason: null,
-          conversationId,
-          messageId,
-          inReplyTo,
-          references,
-        });
-
-        // DELETE S3 object for invalid emails
-        try {
-          await deleteEmailFromS3(s3.bucket, s3.key);
-        } catch (deleteError) {
-          console.error('Failed to delete S3 object:', deleteError);
-        }
-
-        return Response.json({
-          received: true,
-          status: 'invalid',
-          reason: 'no_mailbox_assigned',
-        });
-      }
-
-      // Check if mailbox is active
-      if (!alias.mailbox || !alias.mailbox.isActive) {
-        console.log('Mailbox is inactive or not found');
-
-        // Log as invalid and delete S3
-        await logEmail({
-          userId: domainRecord.userId,
-          domainId: domainRecord.id,
-          aliasId: alias.id,
-          fromEmail,
-          toEmail,
-          subject,
-          s3Bucket: s3.bucket,
-          s3Key: s3.key,
-          size: s3.size,
-          status: 'invalid',
-          error: 'Mailbox inactive or not found',
-          pendingReason: null,
-          conversationId,
-          messageId,
-          inReplyTo,
-          references,
-        });
-
-        // DELETE S3 object for invalid emails
-        try {
-          await deleteEmailFromS3(s3.bucket, s3.key);
-        } catch (deleteError) {
-          console.error('Failed to delete S3 object:', deleteError);
-        }
-
-        return Response.json({
-          received: true,
-          status: 'invalid',
-          reason: 'mailbox_inactive',
-        });
-      }
-
-      // Log as received (email stored in mailbox)
-      const emailLog = await logEmail({
-        userId: domainRecord.userId,
-        domainId: domainRecord.id,
-        aliasId: alias.id,
-        fromEmail,
-        toEmail,
-        subject,
-        s3Bucket: s3.bucket,
-        s3Key: s3.key,
-        size: s3.size,
-        status: 'received',
-        error: null,
-        pendingReason: null,
-        conversationId,
-        messageId,
-        inReplyTo,
-        references,
-      });
-
-      console.log('Email stored in mailbox successfully:', toEmail);
-
-      return Response.json({
-        received: true,
-        status: 'received',
-        mode: 'mailbox',
-        emailId: emailLog.id,
-      });
-    }
-
-    // Forward mode - continue with normal forwarding
-    if (!alias.forwardTo) {
-      console.log('Forward mode but no forwardTo address configured');
-
-      // Log as invalid and delete S3
-      await logEmail({
-        userId: domainRecord.userId,
-        domainId: domainRecord.id,
-        aliasId: alias.id,
-        fromEmail,
-        toEmail,
-        subject,
-        s3Bucket: s3.bucket,
-        s3Key: s3.key,
-        size: s3.size,
-        status: 'invalid',
-        error: 'No forwarding address configured',
-        pendingReason: null,
-        conversationId,
-        messageId,
-        inReplyTo,
-        references,
-      });
-
-      // DELETE S3 object for invalid emails
-      try {
-        await deleteEmailFromS3(s3.bucket, s3.key);
-      } catch (deleteError) {
-        console.error('Failed to delete S3 object:', deleteError);
-      }
-
-      return Response.json({
-        received: true,
-        status: 'invalid',
-        reason: 'no_forward_address',
-      });
-    }
-
-    // 11. Log as received
-    const emailLog = await logEmail({
-      userId: domainRecord.userId,
-      domainId: domainRecord.id,
-      aliasId: alias.id,
-      fromEmail,
-      toEmail,
-      subject,
-      s3Bucket: s3.bucket,
-      s3Key: s3.key,
-      size: s3.size,
-      status: 'received',
-      error: null,
-      pendingReason: null,
-      conversationId,
+    const conversationId = await resolveConversationId({
       messageId,
       inReplyTo,
       references,
     });
 
-    // 12. Forward email
-    try {
+    // ==================== STEP 5: BRANCH BY ALIAS MODE ====================
+
+    if (alias.mode === 'forward') {
+      // ==================== CASE A: FORWARD ALIAS ====================
+
+      if (!alias.forwardTo) {
+        console.log('Forward mode but no forwardTo address configured');
+        await safeDeleteS3(s3.bucket, s3.key);
+        return Response.json({ received: true, ignored: 'no_forward_address' });
+      }
+
       const aliasEmail = `${alias.localPart}@${domainRecord.fullDomain}`;
-      await forwardEmail(rawEmailBuffer, alias.forwardTo, parsed, aliasEmail, fromEmail);
 
-      // Update status to forwarded
-      await prisma.emailLog.update({
-        where: { id: emailLog.id },
-        data: { status: 'forwarded' },
-      });
+      // Try to forward
+      try {
+        await forwardEmail(rawEmailBuffer, alias.forwardTo, parsed, aliasEmail, fromEmail);
 
-      console.log('Email forwarded successfully:', toEmail, '->', alias.forwardTo);
+        // Log successful forward
+        const emailLog = await safeLogEmail({
+          userId: domainRecord.userId,
+          domainId: domainRecord.id,
+          aliasId: alias.id,
+          fromEmail,
+          toEmail: alias.forwardTo,
+          subject,
+          s3Bucket: s3.bucket,
+          s3Key: s3.key,
+          size: s3.size,
+          status: 'forwarded',
+          conversationId,
+          messageId,
+          inReplyTo,
+          references,
+        });
 
-      return Response.json({
-        received: true,
-        status: 'forwarded',
-        emailId: emailLog.id,
-        to: alias.forwardTo
-      });
-    } catch (forwardError) {
-      console.error('Error forwarding email:', forwardError);
+        // Delete S3 after successful forward
+        await safeDeleteS3(s3.bucket, s3.key);
 
-      // Update status to failed
-      await prisma.emailLog.update({
-        where: { id: emailLog.id },
-        data: {
+        console.log('Email forwarded successfully:', toEmail, '->', alias.forwardTo);
+
+        return Response.json({
+          received: true,
+          status: 'forwarded',
+          emailId: emailLog?.id,
+          to: alias.forwardTo,
+        });
+
+      } catch (forwardError) {
+        console.error('Failed to forward email:', forwardError);
+
+        // Log failed forward - KEEP S3 for debugging
+        const emailLog = await safeLogEmail({
+          userId: domainRecord.userId,
+          domainId: domainRecord.id,
+          aliasId: alias.id,
+          fromEmail,
+          toEmail: alias.forwardTo,
+          subject,
+          s3Bucket: s3.bucket,
+          s3Key: s3.key,
+          size: s3.size,
           status: 'failed',
           error: forwardError.message,
-        },
+          conversationId,
+          messageId,
+          inReplyTo,
+          references,
+        });
+
+        return Response.json({
+          received: true,
+          status: 'failed',
+          reason: 'forwarding_failed',
+          emailId: emailLog?.id,
+        });
+      }
+    }
+
+    // ==================== CASE B: MAILBOX ALIAS ====================
+
+    if (alias.mode === 'mailbox') {
+      // Validate mailbox assignment
+      if (!alias.mailboxId) {
+        console.log('Mailbox alias has no assigned mailbox');
+        await safeDeleteS3(s3.bucket, s3.key);
+        return Response.json({ received: true, ignored: 'no_mailbox_assigned' });
+      }
+
+      // Check if mailbox is active
+      if (!alias.mailbox || !alias.mailbox.isActive) {
+        console.log('Mailbox is inactive or not found');
+        await safeDeleteS3(s3.bucket, s3.key);
+        return Response.json({ received: true, ignored: 'mailbox_inactive' });
+      }
+
+      // Store email - KEEP S3 for attachment processing
+      const emailLog = await safeLogEmail({
+        userId: domainRecord.userId,
+        domainId: domainRecord.id,
+        aliasId: alias.id,
+        fromEmail,
+        toEmail,
+        subject,
+        s3Bucket: s3.bucket,
+        s3Key: s3.key,
+        size: s3.size,
+        status: 'received',
+        conversationId,
+        messageId,
+        inReplyTo,
+        references,
       });
+
+      console.log('Email stored in mailbox:', toEmail);
 
       return Response.json({
         received: true,
-        status: 'failed',
-        reason: 'forwarding_failed',
-        emailId: emailLog.id,
+        status: 'received',
+        mode: 'mailbox',
+        emailId: emailLog?.id,
       });
     }
 
-  } catch (err) {
-    console.error("Inbound email API error:", err);
+    // Unknown mode - should never happen
+    console.error('Unknown alias mode:', alias.mode);
+    await safeDeleteS3(s3.bucket, s3.key);
+    return Response.json({ received: true, ignored: 'unknown_mode' });
 
-    return Response.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error("Receiver API critical error:", err);
+
+    // Never crash - always return success to SES
+    return Response.json({ received: true, ignored: 'internal_error' });
+  }
+}
+
+/**
+ * Safe S3 delete - never throws
+ */
+async function safeDeleteS3(bucket, key) {
+  try {
+    await deleteEmailFromS3(bucket, key);
+    console.log('S3 object deleted:', key);
+  } catch (error) {
+    console.error('S3 deletion failed (non-critical):', error.message);
+    // Silently continue - S3 cleanup is best-effort
+  }
+}
+
+/**
+ * Safe email logging - never throws
+ */
+async function safeLogEmail({
+  userId,
+  domainId,
+  aliasId,
+  fromEmail,
+  toEmail,
+  subject,
+  s3Bucket,
+  s3Key,
+  size,
+  status,
+  error = null,
+  conversationId = null,
+  messageId = null,
+  inReplyTo = null,
+  references = null,
+}) {
+  try {
+    const emailLog = await prisma.emailLog.create({
+      data: {
+        userId,
+        domainId,
+        aliasId,
+        fromEmail: fromEmail || 'unknown',
+        toEmail: toEmail || 'unknown',
+        subject: subject || '(No Subject)',
+        s3Bucket,
+        s3Key,
+        size,
+        status,
+        error,
+        conversationId,
+        messageId,
+        inReplyTo,
+        references,
+      },
+    });
+
+    return emailLog;
+  } catch (logError) {
+    console.error('Failed to log email (non-critical):', logError.message);
+    return null;
   }
 }
 
@@ -534,122 +403,61 @@ function extractEmailAddress(emailString) {
 }
 
 /**
- * Log email to database
- */
-async function logEmail({
-  userId,
-  domainId,
-  aliasId,
-  fromEmail,
-  toEmail,
-  subject,
-  s3Bucket,
-  s3Key,
-  size,
-  status,
-  error,
-  pendingReason,
-  conversationId,
-  messageId,
-  inReplyTo,
-  references,
-}) {
-  try {
-    // MUST have valid userId and domainId for foreign key constraints
-    if (!userId || !domainId) {
-      // Cannot log without valid user and domain - skip silently
-      return null;
-    }
-
-    const emailLog = await prisma.emailLog.create({
-      data: {
-        userId,
-        domainId,
-        aliasId,
-        fromEmail: fromEmail || 'unknown',
-        toEmail: toEmail || 'unknown',
-        subject,
-        s3Bucket,
-        s3Key,
-        size,
-        status,
-        error,
-        pendingReason,
-        conversationId,
-        messageId,
-        inReplyTo,
-        references,
-      },
-    });
-
-    return emailLog;
-  } catch (err) {
-    // Silently handle logging errors (e.g., foreign key constraints)
-    return null;
-  }
-}
-
-/**
  * Forward email with proper header rewriting
  * CRITICAL: FROM must be alias@domain (SES verified), Reply-To is original sender
  */
 async function forwardEmail(rawEmailBuffer, forwardTo, parsed, aliasEmail, originalFrom) {
-  try {
-    const rawEmailString = rawEmailBuffer.toString('utf-8');
+  const rawEmailString = rawEmailBuffer.toString('utf-8');
 
-    // Split headers and body at first empty line
-    const headerBodySplit = rawEmailString.split(/\r?\n\r?\n/);
-    const originalHeaders = headerBodySplit[0];
-    const body = headerBodySplit.slice(1).join('\r\n\r\n');
+  // Split headers and body at first empty line
+  const headerBodySplit = rawEmailString.split(/\r?\n\r?\n/);
+  const originalHeaders = headerBodySplit[0];
+  const body = headerBodySplit.slice(1).join('\r\n\r\n');
 
-    // Parse existing headers line by line
-    const headerLines = originalHeaders.split(/\r?\n/);
-    const preservedHeaders = [];
+  // Parse existing headers line by line
+  const headerLines = originalHeaders.split(/\r?\n/);
+  const preservedHeaders = [];
 
-    // Filter out headers that must be rewritten or removed
-    for (const line of headerLines) {
-      const lowerLine = line.toLowerCase();
+  // Filter out headers that must be rewritten or removed
+  for (const line of headerLines) {
+    const lowerLine = line.toLowerCase();
 
-      // Skip headers that we'll rewrite or that cause problems
-      if (lowerLine.startsWith('from:') ||
-        lowerLine.startsWith('to:') ||
-        lowerLine.startsWith('return-path:') ||
-        lowerLine.startsWith('sender:') ||
-        lowerLine.startsWith('reply-to:') ||
-        lowerLine.startsWith('dkim-signature:') ||
-        lowerLine.startsWith('x-melme-')) {
-        continue;
-      }
-
-      preservedHeaders.push(line);
+    // Skip headers that we'll rewrite or that cause problems
+    if (lowerLine.startsWith('from:') ||
+      lowerLine.startsWith('to:') ||
+      lowerLine.startsWith('return-path:') ||
+      lowerLine.startsWith('sender:') ||
+      lowerLine.startsWith('reply-to:') ||
+      lowerLine.startsWith('dkim-signature:') ||
+      lowerLine.startsWith('x-melme-')) {
+      continue;
     }
 
-    // Build new headers in correct order
-    const newHeaders = [
-      `From: ${aliasEmail}`,
-      `To: ${forwardTo}`,
-      `Reply-To: ${originalFrom}`,
-      `X-MelMe-Forwarded: true`,
-      `X-MelMe-Original-From: ${originalFrom}`,
-      ...preservedHeaders,
-    ];
-
-    // Reconstruct complete email
-    const completeEmail = newHeaders.join('\r\n') + '\r\n\r\n' + body;
-
-    // Send using SES SendRawEmail
-    const command = new SendRawEmailCommand({
-      Source: aliasEmail,
-      Destinations: [forwardTo],
-      RawMessage: {
-        Data: Buffer.from(completeEmail),
-      },
-    });
-
-    console.log(`Forwarded email FROM: ${aliasEmail} TO: ${forwardTo} REPLY-TO: ${originalFrom}`);
-    await sesClient.send(command);
-  } catch (error) {
-    console.error('SES forward error:', error);
-    throw new Error(`Failed to forward email: ${error.message}`);
+    preservedHeaders.push(line);
   }
+
+  // Build new headers in correct order
+  const newHeaders = [
+    `From: ${aliasEmail}`,
+    `To: ${forwardTo}`,
+    `Reply-To: ${originalFrom}`,
+    `X-MelMe-Forwarded: true`,
+    `X-MelMe-Original-From: ${originalFrom}`,
+    ...preservedHeaders,
+  ];
+
+  // Reconstruct complete email
+  const completeEmail = newHeaders.join('\r\n') + '\r\n\r\n' + body;
+
+  // Send using SES SendRawEmail
+  const command = new SendRawEmailCommand({
+    Source: aliasEmail,
+    Destinations: [forwardTo],
+    RawMessage: {
+      Data: Buffer.from(completeEmail),
+    },
+  });
+
+  console.log(`Forwarding email FROM: ${aliasEmail} TO: ${forwardTo} REPLY-TO: ${originalFrom}`);
+  await sesClient.send(command);
 }

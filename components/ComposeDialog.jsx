@@ -192,6 +192,26 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
       const data = await response.json()
 
       if (!response.ok) {
+        // Check if it's a domain verification error
+        if (data.verificationRequired) {
+          const domainStatus = data.domainStatus
+          let errorMessage = data.error
+
+          if (domainStatus) {
+            errorMessage += '\n\n'
+            if (domainStatus.dkimStatus !== 'verified') {
+              errorMessage += '❌ DKIM not verified (required for domain ownership)\n'
+            }
+            if (domainStatus.mxStatus !== 'verified') {
+              errorMessage += '❌ MX not verified (required for email receiving)\n'
+            }
+            errorMessage += '\nPlease configure your DNS records in the Domains section.'
+          }
+
+          toast.error(errorMessage, { duration: 10000 })
+          throw new Error(data.error)
+        }
+
         throw new Error(data.error || 'Failed to send email')
       }
 

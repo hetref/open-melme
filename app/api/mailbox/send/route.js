@@ -125,10 +125,31 @@ export async function POST(req) {
       )
     }
 
-    // Validate domain is verified
+    // Validate domain is fully verified (BOTH DKIM and MX)
     if (alias.domain.verificationStatus !== 'verified') {
+      // Check which verification is missing
+      const issues = []
+      if (alias.domain.dkimStatus !== 'verified') {
+        issues.push('DKIM records not verified (required for domain ownership proof)')
+      }
+      if (alias.domain.mxStatus !== 'verified') {
+        issues.push('MX records not verified (required for email receiving)')
+      }
+
+      const errorMessage = issues.length > 0
+        ? `Domain verification incomplete: ${issues.join(', ')}. Please configure your DNS records.`
+        : 'Domain is not verified. Please verify your domain before sending emails.'
+
       return NextResponse.json(
-        { error: 'Domain is not verified. Please verify your domain before sending emails.' },
+        {
+          error: errorMessage,
+          verificationRequired: true,
+          domainStatus: {
+            verificationStatus: alias.domain.verificationStatus,
+            dkimStatus: alias.domain.dkimStatus,
+            mxStatus: alias.domain.mxStatus,
+          }
+        },
         { status: 400 }
       )
     }
