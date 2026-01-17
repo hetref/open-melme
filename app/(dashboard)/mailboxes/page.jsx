@@ -150,7 +150,7 @@ const MailboxesPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading mailboxes...</p>
@@ -179,7 +179,7 @@ const MailboxesPage = () => {
         {/* Info Banner */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <div className="flex gap-3">
-            <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <Lock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="text-sm font-medium text-blue-900">Mailbox Security</p>
               <p className="text-sm text-blue-700 mt-1">
@@ -364,7 +364,7 @@ const MailboxesPage = () => {
               <Label htmlFor="description">Description (Optional)</Label>
               <textarea
                 id="description"
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 placeholder="Optional notes or description for this mailbox..."
                 value={formData.description}
                 onChange={(e) =>
@@ -419,7 +419,7 @@ const MailboxesPage = () => {
             {/* Warning Message */}
             <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
               <div className="flex gap-2">
-                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0" />
                 <p className="text-xs text-yellow-800">
                   This mailbox password is separate from your account password.
                   Store it securely - you'll need it to access your mailbox.

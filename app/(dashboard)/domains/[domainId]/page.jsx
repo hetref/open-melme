@@ -157,7 +157,7 @@ const DomainDetailsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading domain details...</p>
@@ -213,7 +213,7 @@ const DomainDetailsPage = () => {
             {domain.verificationStatus !== 'verified' && (
               <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-yellow-900 mb-1">
                       Domain verification required
@@ -321,7 +321,7 @@ const DomainDetailsPage = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => copyToClipboard(domain.dnsRecords.mx.value)}
-                            className="h-7 w-7 p-0 flex-shrink-0"
+                            className="h-7 w-7 p-0 shrink-0"
                           >
                             <Copy className="w-3 h-3" />
                           </Button>
@@ -395,7 +395,7 @@ const DomainDetailsPage = () => {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => copyToClipboard(record.host)}
-                                  className="h-7 w-7 p-0 flex-shrink-0"
+                                  className="h-7 w-7 p-0 shrink-0"
                                 >
                                   <Copy className="w-3 h-3" />
                                 </Button>
@@ -411,7 +411,7 @@ const DomainDetailsPage = () => {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => copyToClipboard(record.value)}
-                                  className="h-7 w-7 p-0 flex-shrink-0"
+                                  className="h-7 w-7 p-0 shrink-0"
                                 >
                                   <Copy className="w-3 h-3" />
                                 </Button>

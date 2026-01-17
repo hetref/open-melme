@@ -331,7 +331,7 @@ const SingleMailboxPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading mailbox...</p>
@@ -675,7 +675,7 @@ const SingleMailboxPage = () => {
                     <Label htmlFor="description">Description (Optional)</Label>
                     <textarea
                       id="description"
-                      className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       placeholder="Add notes or description for this mailbox..."
                       value={settingsData.description}
                       onChange={(e) =>
@@ -721,25 +721,25 @@ const SingleMailboxPage = () => {
             <CardContent>
               <div className="space-y-3 text-sm text-gray-600">
                 <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
                   <p>
                     <strong>Sender Name</strong> is shown in recipient's inbox as the sender name
                   </p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
                   <p>
                     <strong>Mailbox Name</strong> is used for identification in your UI
                   </p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
                   <p>
                     Email address remains the alias address (unchanged)
                   </p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
                   <p>
                     Changes apply immediately to new emails
                   </p>
@@ -758,7 +758,7 @@ const SingleMailboxPage = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <Lock className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <Lock className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-blue-900">Mailbox Password</p>
                   <p className="text-sm text-blue-700 mt-1">
@@ -787,7 +787,7 @@ const SingleMailboxPage = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
-                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-red-900">Delete Mailbox</p>
                   <p className="text-sm text-red-700 mt-1">
@@ -847,7 +847,7 @@ const SingleMailboxPage = () => {
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <Activity className="w-4 h-4 text-green-600 flex-shrink-0" />
+                          <Activity className="w-4 h-4 text-green-600 shrink-0" />
                           <p className="font-medium text-sm">Active Session</p>
                           <Badge variant="outline" className="text-xs">
                             {new Date(session.expiresAt) > new Date() ? 'Valid' : 'Expired'}
@@ -872,7 +872,7 @@ const SingleMailboxPage = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleRevokeSession(session.id)}
-                        className="flex-shrink-0"
+                        className="shrink-0"
                       >
                         <LogOut className="w-4 h-4 mr-2" />
                         Revoke
@@ -891,15 +891,15 @@ const SingleMailboxPage = () => {
             <CardContent>
               <div className="space-y-3 text-sm text-gray-600">
                 <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
                   <p>Sessions expire after 1 hour of inactivity</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
                   <p>You can revoke sessions at any time</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
                   <p>Changing the mailbox password invalidates all active sessions</p>
                 </div>
               </div>
@@ -969,7 +969,7 @@ const SingleMailboxPage = () => {
 
             <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
               <div className="flex gap-2">
-                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0" />
                 <p className="text-xs text-yellow-800">
                   Changing the password will log out all active sessions. You'll need to login again with the new password.
                 </p>
@@ -1013,7 +1013,7 @@ const SingleMailboxPage = () => {
           <form onSubmit={handleDeleteMailbox} className="space-y-4 mt-4">
             <div className="bg-red-50 border border-red-200 rounded p-4">
               <div className="flex gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-red-900 mb-2">
                     This will delete:
