@@ -25,7 +25,7 @@ export default function Home() {
             <SidebarTrigger className="-ml-1" />
             <div className="flex-1" />
           </header>
-          <div className="flex-1 min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8">
+          <div className="flex-1 min-h-screen bg-linear-to-br from-gray-50 to-gray-100 p-4 md:p-8">
             <div className="container mx-auto">
               <div className="max-w-2xl mx-auto text-center">
                 <h1 className="text-5xl font-bold mb-4 text-gray-900">Welcome to MelMe</h1>
@@ -56,7 +56,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-2xl mx-auto text-center">
           <h1 className="text-5xl font-bold mb-4 text-gray-900">Welcome to MelMe</h1>
