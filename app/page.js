@@ -44,14 +44,14 @@ export default function Home() {
               </Link>
             </div>
             <div className="flex items-center gap-4">
-              <Link 
-                href="/login" 
+              <Link
+                href="/login"
                 className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
               >
                 Login
               </Link>
-              <Link 
-                href="/register" 
+              <Link
+                href="/register"
                 className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 font-medium transition-colors"
               >
                 Get Started

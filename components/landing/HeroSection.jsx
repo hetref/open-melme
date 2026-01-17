@@ -15,7 +15,7 @@ export default function HeroSection() {
 
           {/* Subheadline */}
           <p className="mt-6 text-lg leading-8 text-gray-600 sm:text-xl max-w-3xl mx-auto">
-            Create custom email IDs for your domain, receive them in your MelMe inbox or forward anywhere, 
+            Create custom email IDs for your domain, receive them in your MelMe inbox or forward anywhere,
             reply using the same alias, and control everything from one powerful dashboard.
           </p>
 
@@ -28,9 +28,9 @@ export default function HeroSection() {
               </Button>
             </Link>
             <Link href="/login">
-              <Button 
-                variant="outline" 
-                size="lg" 
+              <Button
+                variant="outline"
+                size="lg"
                 className="w-full sm:w-auto text-base px-8 py-6 rounded-full border-2 hover:bg-gray-50"
               >
                 Login

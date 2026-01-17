@@ -12,9 +12,9 @@ export default function FreemiumSection() {
                 Try MelMe Free
               </h2>
             </div>
-            
+
             <p className="text-lg text-gray-700 text-center mb-8 max-w-2xl mx-auto">
-              Start with our free plan and experience the power of organized business emails. 
+              Start with our free plan and experience the power of organized business emails.
               Create your first domain, set up aliases, and manage emails from one dashboard—no credit card required.
             </p>
 

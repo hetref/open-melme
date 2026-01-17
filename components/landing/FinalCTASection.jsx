@@ -14,8 +14,8 @@ export default function FinalCTASection() {
             Join businesses using MelMe to manage their domain emails professionally
           </p>
           <Link href="/register">
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="bg-white text-gray-900 hover:bg-gray-100 text-base px-8 py-6 rounded-full shadow-lg hover:shadow-xl transition-all"
             >
               Create Free Account

@@ -89,21 +89,19 @@ export default function PricingSection() {
             <div className="inline-flex items-center rounded-full bg-gray-100 p-1">
               <button
                 onClick={() => setBillingPeriod("monthly")}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  billingPeriod === "monthly"
+                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${billingPeriod === "monthly"
                     ? "bg-white text-gray-900 shadow-sm"
                     : "text-gray-600 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 Monthly
               </button>
               <button
                 onClick={() => setBillingPeriod("yearly")}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  billingPeriod === "yearly"
+                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${billingPeriod === "yearly"
                     ? "bg-white text-gray-900 shadow-sm"
                     : "text-gray-600 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 Yearly
                 <span className="ml-1.5 text-xs text-green-600 font-semibold">Save 17%</span>
@@ -116,11 +114,10 @@ export default function PricingSection() {
             {plans.map((plan, index) => (
               <div
                 key={index}
-                className={`relative rounded-2xl ${
-                  plan.highlighted
+                className={`relative rounded-2xl ${plan.highlighted
                     ? "bg-linear-to-b from-blue-50 to-white border-2 border-blue-500 shadow-xl"
                     : "bg-white border border-gray-200 shadow-sm"
-                }`}
+                  }`}
               >
                 {/* Badge */}
                 {plan.badge && (
@@ -163,11 +160,10 @@ export default function PricingSection() {
                   {/* CTA Button */}
                   <Link href={plan.href}>
                     <Button
-                      className={`w-full mb-6 ${
-                        plan.highlighted
+                      className={`w-full mb-6 ${plan.highlighted
                           ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
                           : "bg-gray-900 hover:bg-gray-800 text-white"
-                      }`}
+                        }`}
                       size="lg"
                     >
                       {plan.cta}
