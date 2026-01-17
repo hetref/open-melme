@@ -1,96 +1,114 @@
 "use client"
 
-import GoogleAuthButton from "@/components/GoogleAuthButton";
-import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import Loading from "@/components/Loading";
-import PasskeyButton from "@/components/PasskeyButton";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
-import AppSidebar from "@/app/(dashboard)/_components/Sidebar";
+import HeroSection from "@/components/landing/HeroSection";
+import ProblemSolutionSection from "@/components/landing/ProblemSolutionSection";
+import FeaturesSection from "@/components/landing/FeaturesSection";
+import FreemiumSection from "@/components/landing/FreemiumSection";
+import PricingSection from "@/components/landing/PricingSection";
+import FinalCTASection from "@/components/landing/FinalCTASection";
 
 export default function Home() {
   const { data: session, isPending: loading } = authClient.useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (session && !loading) {
+      router.push("/domains");
+    }
+  }, [session, loading, router]);
 
   if (loading) {
     return <Loading />;
   }
 
   if (session) {
-    return (
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <header className="flex h-18 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger className="-ml-1" />
-            <div className="flex-1" />
-          </header>
-          <div className="flex-1 min-h-screen bg-linear-to-br from-gray-50 to-gray-100 p-4 md:p-8">
-            <div className="container mx-auto">
-              <div className="max-w-2xl mx-auto text-center">
-                <h1 className="text-5xl font-bold mb-4 text-gray-900">Welcome to MelMe</h1>
-                <p className="text-xl text-gray-600 mb-12">Your central hub for managing sales and inventory.</p>
-                <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-semibold text-gray-900">Welcome back, {session.user.name}!</h2>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Link href="/profile">
-                      <Button>
-                        Go to Profile
-                      </Button>
-                    </Link>
-                    <Link href="/domains">
-                      <Button variant="outline">
-                        Go to Domains
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
-    );
+    return <Loading />;
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-5xl font-bold mb-4 text-gray-900">Welcome to MelMe</h1>
-          <p className="text-xl text-gray-600 mb-12">Your central hub for managing sales and inventory.</p>
-
-          <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
-            <div className="space-y-4">
-              <div className="flex flex-col gap-3">
-                <Link href="/login">
-                  <Button className="w-full" size="lg">Login</Button>
-                </Link>
-                <Link href="/register">
-                  <Button variant="outline" className="w-full" size="lg">Register</Button>
-                </Link>
-              </div>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
+    <div className="min-h-screen bg-white">
+      {/* Navigation Bar */}
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center">
+              <Link href="/" className="flex items-center gap-2">
+                <div className="text-2xl font-bold text-gray-900">
+                  MelMe
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-gray-500">Or continue with</span>
-                </div>
-              </div>
-              <GoogleAuthButton />
-              <PasskeyButton />
+              </Link>
             </div>
-            <div className="pt-4 border-t space-y-2">
-              <Link href="/forget-password" className="text-sm text-gray-600 hover:text-gray-900 block">
-                Forgot your password?
+            <div className="flex items-center gap-4">
+              <Link 
+                href="/login" 
+                className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+              >
+                Login
+              </Link>
+              <Link 
+                href="/register" 
+                className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 font-medium transition-colors"
+              >
+                Get Started
               </Link>
             </div>
           </div>
         </div>
-      </div>
+      </nav>
+
+      {/* Landing Page Sections */}
+      <HeroSection />
+      <ProblemSolutionSection />
+      <FeaturesSection />
+      <FreemiumSection />
+      <PricingSection />
+      <FinalCTASection />
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-gray-400 py-12">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-4 gap-8">
+            <div>
+              <div className="text-xl font-bold text-white mb-4">MelMe</div>
+              <p className="text-sm">
+                Professional domain-based email management for businesses.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-4">Product</h3>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/register" className="hover:text-white transition-colors">Features</Link></li>
+                <li><Link href="/register" className="hover:text-white transition-colors">Pricing</Link></li>
+                <li><Link href="/register" className="hover:text-white transition-colors">FAQ</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-4">Company</h3>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/register" className="hover:text-white transition-colors">About</Link></li>
+                <li><Link href="/register" className="hover:text-white transition-colors">Blog</Link></li>
+                <li><Link href="/register" className="hover:text-white transition-colors">Contact</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-4">Legal</h3>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/register" className="hover:text-white transition-colors">Privacy</Link></li>
+                <li><Link href="/register" className="hover:text-white transition-colors">Terms</Link></li>
+                <li><Link href="/register" className="hover:text-white transition-colors">Security</Link></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
+            <p>&copy; {new Date().getFullYear()} MelMe. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -13,7 +13,7 @@ const layout = ({ children }) => {
   useEffect(() => {
     if (!isPending) {
       if (session != null) {
-        router.push('/')
+        router.push('/domains')
       } else {
         setIsChecking(false)
       }
