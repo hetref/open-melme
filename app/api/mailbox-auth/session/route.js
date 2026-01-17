@@ -42,7 +42,6 @@ export async function GET(req) {
         slug: mailboxSession.mailbox.slug,
         senderName: mailboxSession.mailbox.senderName,
         description: mailboxSession.mailbox.description,
-        domain: mailboxSession.mailbox.domain?.fullDomain || null,
         aliases: mailboxSession.mailbox.aliases,
         isActive: mailboxSession.mailbox.isActive,
       },

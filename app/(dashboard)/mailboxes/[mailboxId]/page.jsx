@@ -386,7 +386,6 @@ const SingleMailboxPage = () => {
                 {mailbox.isActive ? 'Active' : 'Inactive'}
               </Badge>
             </div>
-            <p className="text-gray-600">{mailbox.domain.fullDomain}</p>
             <p className="text-sm text-gray-500 mt-1">Created {formatDate(mailbox.createdAt)}</p>
           </div>
 
@@ -517,7 +516,7 @@ const SingleMailboxPage = () => {
                       <div className="space-y-1">
                         {mailbox.aliases.map((alias) => (
                           <p key={alias.id} className="text-sm font-mono">
-                            {alias.localPart}@{mailbox.domain?.fullDomain || 'N/A'}
+                            {alias.localPart}@{alias.domain?.fullDomain || 'N/A'}
                           </p>
                         ))}
                       </div>
@@ -562,7 +561,7 @@ const SingleMailboxPage = () => {
               {mailbox.aliases && mailbox.aliases.length > 0 ? (
                 <div className="space-y-2">
                   {mailbox.aliases.map((alias) => {
-                    const fullEmail = `${alias.localPart}@${mailbox.domain.fullDomain}`
+                    const fullEmail = `${alias.localPart}@${alias.domain?.fullDomain || 'unknown'}`
                     return (
                       <div
                         key={alias.id}
@@ -619,7 +618,7 @@ const SingleMailboxPage = () => {
                         <div className="mt-1 space-y-1">
                           {mailbox.aliases.map((alias) => (
                             <p key={alias.id} className="text-sm font-mono text-gray-900">
-                              {alias.localPart}@{mailbox.domain?.fullDomain || 'N/A'}
+                              {alias.localPart}@{alias.domain?.fullDomain || 'N/A'}
                             </p>
                           ))}
                         </div>

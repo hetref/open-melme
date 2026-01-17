@@ -90,7 +90,19 @@ const DomainDetailsPage = () => {
         throw new Error(data.error || 'Failed to delete domain')
       }
 
-      toast.success('Domain deleted successfully!')
+      const data = await response.json()
+
+      // Show success with stats
+      const statsMessage = data.stats
+        ? ` (${data.stats.aliasesDeleted} aliases, ${data.stats.emailsDeleted} emails, ${data.stats.attachmentsDeleted} attachments deleted)`
+        : ''
+
+      toast.success(`Domain deleted successfully${statsMessage}`)
+
+      if (data.warnings) {
+        toast.warning(data.warnings.message, { duration: 5000 })
+      }
+
       setIsDeleteDialogOpen(false)
 
       // Redirect to domains list
@@ -516,8 +528,13 @@ const DomainDetailsPage = () => {
                 <li>Domain: <strong>{domain.fullDomain}</strong></li>
                 <li>AWS SES identity and all DNS configurations</li>
                 <li>All email aliases associated with this domain</li>
-                <li>All email logs for this domain</li>
+                <li>All emails received/sent by those aliases</li>
+                <li>All email attachments stored in S3</li>
               </ul>
+              <p className="text-sm text-red-900 mt-3 font-medium">
+                ⚠️ This action is permanent and cannot be undone. The deletion may take a few seconds
+                for large datasets as all S3 objects are removed in batches.
+              </p>
             </div>
           </div>
           <DialogFooter>

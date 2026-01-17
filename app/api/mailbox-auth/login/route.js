@@ -35,12 +35,6 @@ export async function POST(req) {
         description: true,
         isActive: true,
         passwordHash: true,
-        domainId: true,
-        domain: {
-          select: {
-            fullDomain: true,
-          },
-        },
         aliases: {
           select: {
             id: true,
@@ -106,7 +100,6 @@ export async function POST(req) {
         slug: mailbox.slug,
         senderName: mailbox.senderName,
         description: mailbox.description,
-        domain: mailbox.domain?.fullDomain || null,
         aliases: mailbox.aliases,
       },
       expiresAt: mailboxSession.expiresAt,

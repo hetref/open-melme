@@ -35,13 +35,6 @@ export async function GET(request) {
         id: mailboxSession.mailboxId,
       },
       include: {
-        domain: {
-          select: {
-            id: true,
-            fullDomain: true,
-            verificationStatus: true,
-          },
-        },
         aliases: {
           where: {
             mode: 'mailbox',
@@ -120,8 +113,6 @@ export async function GET(request) {
         slug: mailbox.slug,
         senderName: mailbox.senderName,
         description: mailbox.description,
-        domainId: mailbox.domainId,
-        domain: mailbox.domain,
         isActive: mailbox.isActive,
         createdAt: mailbox.createdAt,
       },

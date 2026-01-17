@@ -97,9 +97,9 @@ const AliasDetailPage = () => {
       const response = await fetch('/api/mailboxes')
       if (!response.ok) throw new Error('Failed to fetch mailboxes')
       const data = await response.json()
-      // Filter mailboxes for this domain
-      const domainMailboxes = data.mailboxes.filter(m => m.domainId === domainId && m.isActive)
-      setMailboxes(domainMailboxes)
+      // Show ALL active mailboxes for the user (no domain filtering)
+      const activeMailboxes = data.mailboxes.filter(m => m.isActive)
+      setMailboxes(activeMailboxes)
     } catch (error) {
       console.error('Error fetching mailboxes:', error)
     }

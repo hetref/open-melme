@@ -20,13 +20,6 @@ export async function GET(req, { params }) {
         userId: session.user.id,
       },
       include: {
-        domain: {
-          select: {
-            id: true,
-            fullDomain: true,
-            verificationStatus: true,
-          },
-        },
         aliases: {
           select: {
             id: true,
@@ -34,6 +27,11 @@ export async function GET(req, { params }) {
             mode: true,
             domainId: true,
             isActive: true,
+            domain: {
+              select: {
+                fullDomain: true,
+              },
+            },
           },
           where: {
             mode: 'mailbox',
@@ -161,13 +159,6 @@ export async function PATCH(req, { params }) {
       where: { id: mailboxId },
       data: updateData,
       include: {
-        domain: {
-          select: {
-            id: true,
-            fullDomain: true,
-            verificationStatus: true,
-          },
-        },
         aliases: {
           select: {
             id: true,
@@ -175,6 +166,11 @@ export async function PATCH(req, { params }) {
             mode: true,
             domainId: true,
             isActive: true,
+            domain: {
+              select: {
+                fullDomain: true,
+              },
+            },
           },
         },
       },

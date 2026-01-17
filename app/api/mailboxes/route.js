@@ -25,19 +25,16 @@ export async function GET(req) {
         isActive: true,
         createdAt: true,
         updatedAt: true,
-        domainId: true,
-        domain: {
-          select: {
-            id: true,
-            fullDomain: true,
-            verificationStatus: true,
-          },
-        },
         aliases: {
           select: {
             id: true,
             localPart: true,
             isActive: true,
+            domain: {
+              select: {
+                fullDomain: true,
+              },
+            },
           },
         },
         _count: {
@@ -128,7 +125,7 @@ export async function POST(req) {
     // Hash password
     const passwordHash = await hashPassword(password)
 
-    // Create mailbox independently (no alias dependency)
+    // Create mailbox independently (no domain dependency)
     const mailbox = await prisma.mailbox.create({
       data: {
         userId: session.user.id,
@@ -137,7 +134,6 @@ export async function POST(req) {
         senderName,
         description: description || null,
         passwordHash,
-        domainId: null, // No domain required at creation
       },
     })
 
