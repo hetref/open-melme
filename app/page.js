@@ -1,10 +1,6 @@
 "use client"
 
-import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import Loading from "@/components/Loading";
 import HeroSection from "@/components/landing/HeroSection";
 import ProblemSolutionSection from "@/components/landing/ProblemSolutionSection";
 import FeaturesSection from "@/components/landing/FeaturesSection";
@@ -13,22 +9,6 @@ import PricingSection from "@/components/landing/PricingSection";
 import FinalCTASection from "@/components/landing/FinalCTASection";
 
 export default function Home() {
-  const { data: session, isPending: loading } = authClient.useSession();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (session && !loading) {
-      router.push("/domains");
-    }
-  }, [session, loading, router]);
-
-  if (loading) {
-    return <Loading />;
-  }
-
-  if (session) {
-    return <Loading />;
-  }
 
   return (
     <div className="min-h-screen bg-white">
