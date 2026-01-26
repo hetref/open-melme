@@ -23,10 +23,12 @@ import {
   ImageIcon,
   Reply,
   ReplyAll,
+  Forward,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useMailbox } from '../_context/MailboxContext'
 import { ReplyDialog } from '@/components/ReplyDialog'
+import { ForwardDialog } from '@/components/ForwardDialog'
 
 export function EmailListView({ emailType = 'received' }) {
   const { session } = useMailbox()
@@ -45,6 +47,7 @@ export function EmailListView({ emailType = 'received' }) {
   const [aliases, setAliases] = useState([])
   const [isReplyOpen, setIsReplyOpen] = useState(false)
   const [isReplyAllOpen, setIsReplyAllOpen] = useState(false)
+  const [isForwardOpen, setIsForwardOpen] = useState(false)
 
   const [filters, setFilters] = useState({
     query: '',
@@ -375,6 +378,11 @@ export function EmailListView({ emailType = 'received' }) {
     setIsReplyAllOpen(true)
   }
 
+  const handleForward = () => {
+    if (!selectedEmail) return
+    setIsForwardOpen(true)
+  }
+
   const handleEmailSent = async () => {
     // Refresh the email list
     await fetchEmails(pagination.page)
@@ -614,28 +622,35 @@ export function EmailListView({ emailType = 'received' }) {
                     </CardDescription>
                   </div>
                   <div className="flex gap-2">
-                    {emailType !== 'sent' && selectedEmail.status === 'received' && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleReply}
-                          title="Reply to sender"
-                        >
-                          <Reply className="w-4 h-4 mr-1" />
-                          Reply
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleReplyAll}
-                          title="Reply to all recipients"
-                        >
-                          <ReplyAll className="w-4 h-4 mr-1" />
-                          Reply All
-                        </Button>
-                      </>
-                    )}
+                    {/* Reply and Reply All buttons - available for both sent and received emails */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleReply}
+                      title="Reply to this email"
+                    >
+                      <Reply className="w-4 h-4 mr-1" />
+                      Reply
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleReplyAll}
+                      title="Reply to all recipients"
+                    >
+                      <ReplyAll className="w-4 h-4 mr-1" />
+                      Reply All
+                    </Button>
+                    {/* Forward button - available for all emails */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleForward}
+                      title="Forward this email or conversation"
+                    >
+                      <Forward className="w-4 h-4 mr-1" />
+                      Forward
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -693,7 +708,7 @@ export function EmailListView({ emailType = 'received' }) {
                                 <Badge variant="secondary" className={getStatusBadge(email.status)}>
                                   {email.status}
                                 </Badge>
-                                {isLastEmail && emailType !== 'sent' && email.status === 'received' && (
+                                {isLastEmail && (
                                   <div className="flex gap-1">
                                     <Button
                                       variant="outline"
@@ -712,6 +727,15 @@ export function EmailListView({ emailType = 'received' }) {
                                       className="h-7 px-2"
                                     >
                                       <ReplyAll className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={handleForward}
+                                      title="Forward"
+                                      className="h-7 px-2"
+                                    >
+                                      <Forward className="w-3 h-3" />
                                     </Button>
                                   </div>
                                 )}
@@ -856,8 +880,8 @@ export function EmailListView({ emailType = 'received' }) {
         </div>
       </div>
 
-      {/* Reply Dialog */}
-      {session && selectedEmail && emailType !== 'sent' && (
+      {/* Reply and Forward Dialogs */}
+      {session && selectedEmail && (
         <>
           <ReplyDialog
             open={isReplyOpen}
@@ -876,6 +900,16 @@ export function EmailListView({ emailType = 'received' }) {
             aliases={aliases}
             originalEmail={selectedEmail}
             replyAll={true}
+            onEmailSent={handleEmailSent}
+          />
+
+          <ForwardDialog
+            open={isForwardOpen}
+            onOpenChange={setIsForwardOpen}
+            mailbox={session.mailbox}
+            aliases={aliases}
+            originalEmail={selectedEmail}
+            conversationEmails={selectedEmailDetail?.emails || [selectedEmail]}
             onEmailSent={handleEmailSent}
           />
         </>

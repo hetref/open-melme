@@ -75,7 +75,10 @@ export async function POST(req) {
       subject,
       text, // TEXT ONLY - NO HTML ALLOWED
       replyToEmailLogId,
+      forwardedFromEmailLogId,
+      forwardConversation = false,
       attachmentKeys = [],
+      forwardedAttachmentIds = [],
     } = body
 
     // Validate mailbox ownership
@@ -249,6 +252,51 @@ export async function POST(req) {
 
       // Build reply subject
       finalSubject = buildReplySubject(originalEmail.subject || subject)
+    } else if (forwardedFromEmailLogId) {
+      // Handle forwarding - maintain conversation context
+      const originalEmail = await prisma.emailLog.findUnique({
+        where: { id: forwardedFromEmailLogId },
+        include: {
+          alias: {
+            include: {
+              domain: true,
+            },
+          },
+        },
+      })
+
+      if (!originalEmail) {
+        return NextResponse.json(
+          { error: 'Original email not found' },
+          { status: 404 }
+        )
+      }
+
+      // Verify original email belongs to same mailbox
+      if (originalEmail.alias?.mailboxId !== mailboxId) {
+        return NextResponse.json(
+          { error: 'Original email does not belong to this mailbox' },
+          { status: 403 }
+        )
+      }
+
+      if (forwardConversation) {
+        // Forward entire conversation - use same conversation ID
+        conversationId = originalEmail.conversationId
+        // Don't set replyToMessageId or references for forwards - start fresh threading
+        replyToMessageId = null
+        replyReferences = null
+      } else {
+        // Forward single email - create new conversation
+        conversationId = await resolveConversationId({
+          messageId,
+          inReplyTo: null,
+          references: null,
+        })
+      }
+
+      // Keep subject as-is (already has Fwd: prefix from frontend)
+      finalSubject = subject
     } else {
       // New conversation - generate new conversation ID
       conversationId = await resolveConversationId({
@@ -261,6 +309,8 @@ export async function POST(req) {
     // Fetch attachments from S3 and prepare metadata
     const attachments = []
     const attachmentMetadata = [] // Store metadata for DB records
+
+    // Handle new uploaded attachments
     if (attachmentKeys.length > 0) {
       for (const key of attachmentKeys) {
         try {
@@ -299,6 +349,73 @@ export async function POST(req) {
             { status: 400 }
           )
         }
+      }
+    }
+
+    // Handle forwarded attachments from original email(s)
+    if (forwardedAttachmentIds.length > 0) {
+      try {
+        // Fetch original attachments from database
+        const originalAttachments = await prisma.emailAttachment.findMany({
+          where: {
+            id: { in: forwardedAttachmentIds },
+          },
+        })
+
+        console.log(`Found ${originalAttachments.length} original attachments to forward`)
+
+        // Fetch each attachment from S3, upload to new S3 key, and add to the email
+        for (const originalAtt of originalAttachments) {
+          try {
+            // Fetch the original attachment content from S3
+            const buffer = await fetchEmailFromS3(originalAtt.s3Bucket, originalAtt.s3Key)
+
+            // Generate a NEW S3 key for the forwarded attachment
+            // Use the same pattern as uploaded attachments: timestamp-uuid-filename
+            const timestamp = Date.now()
+            const uniqueId = crypto.randomUUID()
+            const sanitizedFilename = originalAtt.filename.replace(/[^a-zA-Z0-9.-]/g, '_')
+            const newS3Key = `attachments/${timestamp}-${uniqueId}-${sanitizedFilename}`
+
+            // Upload to new S3 key
+            const putCommand = new PutObjectCommand({
+              Bucket: S3_BUCKET,
+              Key: newS3Key,
+              Body: buffer,
+              ContentType: originalAtt.mimeType,
+            })
+            await s3Client.send(putCommand)
+
+            console.log(`Copied forwarded attachment to new S3 key: ${newS3Key}`)
+
+            // Add to attachments array for email composition
+            attachments.push({
+              filename: originalAtt.filename,
+              contentType: originalAtt.mimeType,
+              content: buffer,
+            })
+
+            // Store metadata with NEW S3 key
+            attachmentMetadata.push({
+              filename: originalAtt.filename,
+              mimeType: originalAtt.mimeType,
+              size: originalAtt.size,
+              s3Bucket: S3_BUCKET,
+              s3Key: newS3Key, // Use the new S3 key
+            })
+
+            console.log(`Added forwarded attachment: ${originalAtt.filename}`)
+          } catch (error) {
+            console.error(`Error forwarding attachment ${originalAtt.id}:`, error)
+            // Continue with other attachments instead of failing the entire email
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching original attachments:', error)
+        return NextResponse.json(
+          { error: 'Failed to fetch original attachments' },
+          { status: 500 }
+        )
       }
     }
 
