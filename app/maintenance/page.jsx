@@ -29,14 +29,14 @@ export default function MaintenancePage() {
     }, [router])
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
             <div className="max-w-2xl w-full">
                 <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 border border-gray-100">
                     {/* Icon */}
                     <div className="flex justify-center mb-6">
                         <div className="relative">
                             <div className="absolute inset-0 bg-blue-500 opacity-20 blur-xl rounded-full animate-pulse"></div>
-                            <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-6 rounded-full">
+                            <div className="relative bg-linear-to-br from-blue-500 to-purple-600 p-6 rounded-full">
                                 <Wrench className="w-12 h-12 text-white animate-bounce" />
                             </div>
                         </div>
@@ -82,7 +82,7 @@ export default function MaintenancePage() {
                         </p>
                         <a
                             href="mailto:support@melme.com"
-                            className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                            className="inline-block px-6 py-3 bg-linear-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl"
                         >
                             Contact Support
                         </a>
