@@ -18,8 +18,9 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import GoogleAuthButton from "./GoogleAuthButton"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Lock } from "lucide-react"
 import PasskeyButton from "./PasskeyButton"
+import { useEffect, useState } from "react"
 
 const registerSchema = z.object({
 	name: z.string().min(2).max(100),
@@ -29,6 +30,9 @@ const registerSchema = z.object({
 
 const RegisterForm = () => {
 	const router = useRouter()
+	const [isRegistrationAllowed, setIsRegistrationAllowed] = useState(true)
+	const [isCheckingStatus, setIsCheckingStatus] = useState(true)
+
 	const form = useForm({
 		resolver: zodResolver(registerSchema),
 		defaultValues: {
@@ -38,7 +42,29 @@ const RegisterForm = () => {
 		}
 	})
 
+	useEffect(() => {
+		// Check if registration is allowed
+		const checkStatus = async () => {
+			try {
+				const response = await fetch('/api/status')
+				const data = await response.json()
+				setIsRegistrationAllowed(data.isRegistrationAllowed)
+			} catch (error) {
+				console.error('Error checking registration status:', error)
+			} finally {
+				setIsCheckingStatus(false)
+			}
+		}
+
+		checkStatus()
+	}, [])
+
 	const handleRegister = async (data) => {
+		if (!isRegistrationAllowed) {
+			toast.error("New user registration is currently disabled. Please contact support.")
+			return
+		}
+
 		await authClient.signUp.email(
 			{ ...data, callbackURL: "/" },
 			{
@@ -54,6 +80,60 @@ const RegisterForm = () => {
 		await new Promise((resolve) => setTimeout(resolve, 2000))
 	}
 
+	if (isCheckingStatus) {
+		return (
+			<div className="bg-white rounded-2xl shadow-lg p-8">
+				<div className="text-center">
+					<p className="text-gray-600">Loading...</p>
+				</div>
+			</div>
+		)
+	}
+
+	if (!isRegistrationAllowed) {
+		return (
+			<div className="bg-white rounded-2xl shadow-lg p-8">
+				<Link href="/" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-6">
+					<ArrowLeft className="w-4 h-4 mr-2" />
+					Back to Home
+				</Link>
+
+				<div className="text-center mb-8">
+					<div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mb-4">
+						<Lock className="w-8 h-8 text-orange-600" />
+					</div>
+					<h1 className="text-3xl font-bold text-gray-900 mb-2">Registration Disabled</h1>
+					<p className="text-gray-600">New user registration is currently disabled.</p>
+				</div>
+
+				<div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
+					<h3 className="font-semibold text-blue-900 mb-2">Existing Users</h3>
+					<p className="text-blue-800 text-sm mb-4">
+						If you already have an account, you can still sign in and access all features.
+					</p>
+					<Link href="/login">
+						<Button className="w-full" variant="default">
+							Go to Login
+						</Button>
+					</Link>
+				</div>
+
+				<div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+					<h3 className="font-semibold text-gray-900 mb-2">Need Access?</h3>
+					<p className="text-gray-600 text-sm mb-4">
+						If you need to create a new account, please contact our support team for assistance.
+					</p>
+					<a
+						href="mailto:support@melme.com"
+						className="inline-block w-full text-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+					>
+						Contact Support
+					</a>
+				</div>
+			</div>
+		)
+	}
+
 	return (
 		<div className="bg-white rounded-2xl shadow-lg p-8">
 			<Link href="/" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-6">
@@ -63,7 +143,7 @@ const RegisterForm = () => {
 
 			<div className="mb-8">
 				<h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-				<p className="text-gray-600">Sign up to get started with Seller Bord</p>
+				<p className="text-gray-600">Sign up to get started with MelMe</p>
 			</div>
 
 			<Form {...form}>
