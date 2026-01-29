@@ -81,7 +81,7 @@ export default function MaintenancePage() {
                             Need immediate assistance? Contact our support team:
                         </p>
                         <a
-                            href="mailto:support@melme.com"
+                            href="mailto:contact@aryanshinde.in"
                             className="inline-block px-6 py-3 bg-linear-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl"
                         >
                             Contact Support

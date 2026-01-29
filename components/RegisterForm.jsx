@@ -124,7 +124,7 @@ const RegisterForm = () => {
 						If you need to create a new account, please contact our support team for assistance.
 					</p>
 					<a
-						href="mailto:support@melme.com"
+						href="mailto:contact@aryanshinde.in"
 						className="inline-block w-full text-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
 					>
 						Contact Support
