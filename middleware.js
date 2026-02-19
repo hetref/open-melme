@@ -37,29 +37,8 @@ export function middleware(request) {
     //     }
     // }
 
-    // Get session cookie
-    const sessionToken = request.cookies.get('better-auth.session_token');
-
-    // Protected routes that require authentication
-    const protectedRoutes = [
-        '/domains',
-        '/aliases',
-        '/mailboxes',
-        '/my-mailbox',
-        '/profile'
-    ];
-
-    // Check if the current path is a protected route
-    const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-
-    // If it's a protected route and no session, redirect to login
-    if (isProtectedRoute && !sessionToken) {
-        const url = new URL('/login', request.url);
-        url.searchParams.set('redirect', pathname);
-        return NextResponse.redirect(url);
-    }
-
     // Allow the request to continue
+    // Note: Authentication is handled by layout components, not middleware
     return NextResponse.next();
 }
 

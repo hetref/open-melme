@@ -41,7 +41,7 @@ const LoginForm = () => {
 
   const handleLogin = async (data) => {
     await authClient.signIn.email(
-      { ...data, callbackURL: "/" },
+      { ...data, callbackURL: "/domains" },
       {
         onError: (error) => {
           toast.error(error.error.message || "Login failed")
@@ -50,11 +50,10 @@ const LoginForm = () => {
         },
         onSuccess: () => {
           toast.success("Login successful! Welcome back.")
-          // router.push("/")
+          router.push("/domains")
         }
       }
     )
-    await new Promise((resolve) => setTimeout(resolve, 2000))
   }
 
   return (

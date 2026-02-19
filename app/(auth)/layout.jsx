@@ -13,7 +13,12 @@ const layout = ({ children }) => {
   useEffect(() => {
     if (!isPending) {
       if (session != null) {
-        router.push('/domains')
+        // Only redirect if we're actually on an auth page
+        const currentPath = window.location.pathname
+        const authPages = ['/login', '/register', '/forget-password', '/reset-password', '/2fa']
+        if (authPages.some(page => currentPath.startsWith(page))) {
+          router.push('/domains')
+        }
       } else {
         setIsChecking(false)
       }
