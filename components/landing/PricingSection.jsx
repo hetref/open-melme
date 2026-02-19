@@ -90,8 +90,8 @@ export default function PricingSection() {
               <button
                 onClick={() => setBillingPeriod("monthly")}
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${billingPeriod === "monthly"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
                   }`}
               >
                 Monthly
@@ -99,8 +99,8 @@ export default function PricingSection() {
               <button
                 onClick={() => setBillingPeriod("yearly")}
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${billingPeriod === "yearly"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
                   }`}
               >
                 Yearly
@@ -115,8 +115,8 @@ export default function PricingSection() {
               <div
                 key={index}
                 className={`relative rounded-2xl ${plan.highlighted
-                    ? "bg-linear-to-b from-blue-50 to-white border-2 border-blue-500 shadow-xl"
-                    : "bg-white border border-gray-200 shadow-sm"
+                  ? "bg-linear-to-b from-blue-50 to-white border-2 border-blue-500 shadow-xl"
+                  : "bg-white border border-gray-200 shadow-sm"
                   }`}
               >
                 {/* Badge */}
@@ -142,7 +142,7 @@ export default function PricingSection() {
                   <div className="mb-6">
                     <div className="flex items-baseline gap-2">
                       <span className="text-5xl font-bold text-gray-900">
-                        ${plan.price[billingPeriod]}
+                        ₹{plan.price[billingPeriod]}
                       </span>
                       {plan.price.monthly > 0 && (
                         <span className="text-gray-600">
@@ -161,8 +161,8 @@ export default function PricingSection() {
                   <Link href={plan.href}>
                     <Button
                       className={`w-full mb-6 ${plan.highlighted
-                          ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-                          : "bg-gray-900 hover:bg-gray-800 text-white"
+                        ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                        : "bg-gray-900 hover:bg-gray-800 text-white"
                         }`}
                       size="lg"
                     >

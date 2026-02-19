@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export function proxy(request) {
+export function middleware(request) {
     const { pathname } = request.nextUrl;
 
     // Check environment variables for maintenance mode and registration control
