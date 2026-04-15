@@ -6,7 +6,6 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
-import { useMailbox } from '../my-mailbox/_context/MailboxContext'
 import { useMailboxStore } from '@/lib/stores/mailboxStore'
 import {
   Sidebar,
@@ -39,16 +38,13 @@ import {
 const AppSidebar = () => {
   const pathname = usePathname()
   const router = useRouter()
-  const mailboxContext = useMailbox()
-  const openComposeDialog = mailboxContext?.openComposeDialog || (() => {
-    // If not in mailbox context, navigate to mailbox
-    router.push('/my-mailbox')
-  })
+  const { data: accountSession } = authClient.useSession()
 
   // Get session status from Zustand store
   const mailboxSession = useMailboxStore((state) => state.session)
   const isSessionValid = useMailboxStore((state) => state.isSessionValid)
   const hasActiveSession = mailboxSession && isSessionValid()
+  const isMailboxRoute = pathname === '/my-mailbox' || pathname.startsWith('/my-mailbox/')
 
   // Auto-expand if we're on a my-mailbox sub-page
   const [mailboxExpanded, setMailboxExpanded] = useState(
@@ -121,6 +117,8 @@ const AppSidebar = () => {
     },
   ]
 
+  const showMainMenuItems = Boolean(accountSession) && !isMailboxRoute
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
@@ -152,6 +150,10 @@ const AppSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => {
+                if (!showMainMenuItems) {
+                  return null
+                }
+
                 const isActive = pathname === item.path || pathname.startsWith(item.path + '/')
                 const Icon = item.icon
                 return (
@@ -178,7 +180,7 @@ const AppSidebar = () => {
                     setMailboxExpanded(!mailboxExpanded)
                     // Navigate to my-mailbox if collapsed
                     if (!mailboxExpanded) {
-                      router.push('/my-mailbox')
+                      router.push(hasActiveSession ? '/my-mailbox/inbox' : '/my-mailbox')
                     }
                   }}
                   isActive={pathname.startsWith('/my-mailbox')}
@@ -204,7 +206,7 @@ const AppSidebar = () => {
                   </div>
                 </SidebarMenuButton>
 
-                {mailboxExpanded && (
+                {mailboxExpanded && hasActiveSession && (
                   <SidebarMenuSub>
                     {mailboxSubItems.map((subItem) => {
                       const SubIcon = subItem.icon
@@ -231,20 +233,22 @@ const AppSidebar = () => {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={handleLogout}
-              tooltip="Logout"
-              className="hover:bg-destructive hover:text-white transition-colors"
-            >
-              <LogOut />
-              <span>Logout</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+      {accountSession && !isMailboxRoute && (
+        <SidebarFooter className="border-t border-sidebar-border">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={handleLogout}
+                tooltip="Logout"
+                className="hover:bg-destructive hover:text-white transition-colors"
+              >
+                <LogOut />
+                <span>Logout</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      )}
 
       <SidebarRail />
     </Sidebar>

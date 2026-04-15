@@ -1,19 +1,11 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { cookies } from 'next/headers'
-import { auth } from '@/lib/auth'
 import { validateMailboxSession } from '@/lib/mailbox'
 
 // GET /api/my-mailbox/settings - Get current mailbox settings and stats
 export async function GET(request) {
   try {
-    // Verify user is authenticated
-    const userSession = await auth.api.getSession({ headers: request.headers })
-
-    if (!userSession) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     // Get mailbox session from cookie
     const cookieStore = await cookies()
     const sessionId = cookieStore.get('melme_mailbox_session')?.value
@@ -23,7 +15,7 @@ export async function GET(request) {
     }
 
     // Validate mailbox session
-    const mailboxSession = await validateMailboxSession(sessionId, userSession.user.id)
+    const mailboxSession = await validateMailboxSession(sessionId)
 
     if (!mailboxSession) {
       return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 })
@@ -92,6 +84,13 @@ export async function GET(request) {
 
     const totalBytes = emailSizes._sum.size || 0
 
+    const assignedPersonalEmails = [...new Set(
+      mailbox.aliases
+        .map((alias) => alias.personalEmail)
+        .filter(Boolean)
+    )]
+    const resolvedPersonalEmail = mailbox.personalEmail || assignedPersonalEmails[0] || null
+
     // Format storage
     let storageUsed = '0 B'
     if (totalBytes > 0) {
@@ -110,8 +109,10 @@ export async function GET(request) {
       mailbox: {
         id: mailbox.id,
         name: mailbox.name,
-        slug: mailbox.slug,
         senderName: mailbox.senderName,
+        personalEmail: resolvedPersonalEmail,
+        assignedPersonalEmails,
+        tags: mailbox.tags,
         description: mailbox.description,
         isActive: mailbox.isActive,
         createdAt: mailbox.createdAt,

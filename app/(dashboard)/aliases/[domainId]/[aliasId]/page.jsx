@@ -694,7 +694,7 @@ const AliasDetailPage = () => {
                     <option value="">Select a mailbox...</option>
                     {mailboxes.map((mailbox) => (
                       <option key={mailbox.id} value={mailbox.id}>
-                        {mailbox.name} ({mailbox.slug})
+                        {mailbox.name}
                       </option>
                     ))}
                   </select>

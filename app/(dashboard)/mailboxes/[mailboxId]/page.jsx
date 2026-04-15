@@ -27,6 +27,37 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
+const MAX_TAGS = 20
+const MAX_TAG_LENGTH = 30
+
+function parseTagsInput(inputValue) {
+  const parts = inputValue
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  const tags = []
+  const seen = new Set()
+
+  for (const part of parts) {
+    if (part.length > MAX_TAG_LENGTH) {
+      return { error: `Each tag must be ${MAX_TAG_LENGTH} characters or less` }
+    }
+
+    const canonical = part.toLowerCase()
+    if (!seen.has(canonical)) {
+      seen.add(canonical)
+      tags.push(part)
+    }
+  }
+
+  if (tags.length > MAX_TAGS) {
+    return { error: `A mailbox can have at most ${MAX_TAGS} tags` }
+  }
+
+  return { tags }
+}
+
 const SingleMailboxPage = () => {
   const router = useRouter()
   const params = useParams()
@@ -51,8 +82,11 @@ const SingleMailboxPage = () => {
   const [settingsData, setSettingsData] = useState({
     name: '',
     senderName: '',
+    personalEmail: '',
+    tags: [],
     description: '',
   })
+  const [tagsInput, setTagsInput] = useState('')
 
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
 
@@ -77,12 +111,19 @@ const SingleMailboxPage = () => {
       }
       const data = await response.json()
       setMailbox(data.mailbox)
+      const resolvedPersonalEmail =
+        data.mailbox.personalEmail || data.mailbox.assignedPersonalEmails?.[0] || ''
+      const resolvedTags = data.mailbox.tags || []
+
       // Initialize settings data
       setSettingsData({
         name: data.mailbox.name || '',
         senderName: data.mailbox.senderName || '',
+        personalEmail: resolvedPersonalEmail,
+        tags: resolvedTags,
         description: data.mailbox.description || '',
       })
+      setTagsInput(resolvedTags.join(', '))
     } catch (error) {
       console.error('Error fetching mailbox:', error)
       toast.error('Failed to load mailbox')
@@ -165,6 +206,23 @@ const SingleMailboxPage = () => {
       return
     }
 
+    if (!settingsData.personalEmail.trim()) {
+      toast.error('Personal email is required')
+      return
+    }
+
+    const personalEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!personalEmailRegex.test(settingsData.personalEmail.trim())) {
+      toast.error('Personal email is invalid')
+      return
+    }
+
+    const parsedTags = parseTagsInput(tagsInput)
+    if (parsedTags.error) {
+      toast.error(parsedTags.error)
+      return
+    }
+
     setIsSavingSettings(true)
 
     try {
@@ -176,6 +234,8 @@ const SingleMailboxPage = () => {
         body: JSON.stringify({
           name: settingsData.name.trim(),
           senderName: settingsData.senderName.trim(),
+          personalEmail: settingsData.personalEmail.trim().toLowerCase(),
+          tags: parsedTags.tags,
           description: settingsData.description.trim() || null,
         }),
       })
@@ -190,8 +250,12 @@ const SingleMailboxPage = () => {
       setSettingsData({
         name: data.mailbox.name || '',
         senderName: data.mailbox.senderName || '',
+        personalEmail:
+          data.mailbox.personalEmail || data.mailbox.assignedPersonalEmails?.[0] || '',
+        tags: data.mailbox.tags || [],
         description: data.mailbox.description || '',
       })
+      setTagsInput((data.mailbox.tags || []).join(', '))
       toast.success('Settings updated successfully')
     } catch (error) {
       console.error('Error updating settings:', error)
@@ -279,8 +343,8 @@ const SingleMailboxPage = () => {
   const handleDeleteMailbox = async (e) => {
     e.preventDefault()
 
-    if (deleteConfirmation !== mailbox.slug) {
-      toast.error('Slug does not match')
+    if (deleteConfirmation !== mailbox.name) {
+      toast.error('Mailbox name does not match')
       return
     }
 
@@ -355,6 +419,9 @@ const SingleMailboxPage = () => {
       </div>
     )
   }
+
+  const displayPersonalEmail =
+    mailbox.personalEmail || mailbox.assignedPersonalEmails?.[0] || 'Not set'
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -498,16 +565,30 @@ const SingleMailboxPage = () => {
                   </p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Identifier (Slug)</Label>
-                  <p className="text-sm font-mono mt-1 p-2 bg-gray-50 rounded border">
-                    {mailbox.slug}
-                  </p>
-                </div>
-                <div>
                   <Label className="text-sm font-medium text-gray-600">Sender Name</Label>
                   <p className="text-sm mt-1 p-2 bg-gray-50 rounded border">
                     {mailbox.senderName}
                   </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Personal Email</Label>
+                  <p className="text-sm mt-1 p-2 bg-gray-50 rounded border break-all">
+                    {displayPersonalEmail}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Tags</Label>
+                  <div className="mt-1 p-2 bg-gray-50 rounded border min-h-10 flex flex-wrap gap-1.5">
+                    {(mailbox.tags || []).length > 0 ? (
+                      mailbox.tags.map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-xs font-normal">
+                          {tag}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">No tags assigned</p>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600">Assigned Aliases</Label>
@@ -607,12 +688,6 @@ const SingleMailboxPage = () => {
                   {/* Read-only info */}
                   <div className="p-4 bg-gray-50 border rounded-lg space-y-3">
                     <div>
-                      <Label className="text-sm font-medium text-gray-600">Mailbox Identifier</Label>
-                      <p className="text-sm font-mono mt-1 text-gray-900">
-                        {mailbox.slug}
-                      </p>
-                    </div>
-                    <div>
                       <Label className="text-sm font-medium text-gray-600">Assigned Aliases</Label>
                       {mailbox.aliases && mailbox.aliases.length > 0 ? (
                         <div className="mt-1 space-y-1">
@@ -625,6 +700,21 @@ const SingleMailboxPage = () => {
                       ) : (
                         <p className="text-sm text-gray-500 mt-1">No aliases assigned</p>
                       )}
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Tags</Label>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {(mailbox.tags || []).length > 0 ? (
+                          mailbox.tags.map((tag) => (
+                            <Badge key={tag} variant="outline" className="text-xs font-normal">
+                              {tag}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 mt-1">No tags assigned</p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -672,6 +762,41 @@ const SingleMailboxPage = () => {
                   </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="personalEmail">
+                      Personal Email <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="personalEmail"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={settingsData.personalEmail}
+                      onChange={(e) =>
+                        setSettingsData({ ...settingsData, personalEmail: e.target.value })
+                      }
+                      disabled={isSavingSettings}
+                      required
+                    />
+                    <p className="text-xs text-gray-500">
+                      Used to map mailbox access to your email identity
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tagsInput">Tags</Label>
+                    <Input
+                      id="tagsInput"
+                      type="text"
+                      placeholder="billing, primary, internal"
+                      value={tagsInput}
+                      onChange={(e) => setTagsInput(e.target.value)}
+                      disabled={isSavingSettings}
+                    />
+                    <p className="text-xs text-gray-500">
+                      Comma-separated tags. These tags can only be changed by the mailbox creator.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="description">Description (Optional)</Label>
                     <textarea
                       id="description"
@@ -702,8 +827,12 @@ const SingleMailboxPage = () => {
                       setSettingsData({
                         name: mailbox.name || '',
                         senderName: mailbox.senderName || '',
+                        personalEmail:
+                          mailbox.personalEmail || mailbox.assignedPersonalEmails?.[0] || '',
+                        tags: mailbox.tags || [],
                         description: mailbox.description || '',
                       })
+                      setTagsInput((mailbox.tags || []).join(', '))
                     }}
                     disabled={isSavingSettings}
                   >
@@ -1029,12 +1158,12 @@ const SingleMailboxPage = () => {
 
             <div className="space-y-2">
               <Label htmlFor="deleteConfirmation">
-                Type <span className="font-mono font-bold">{mailbox.slug}</span> to confirm
+                Type <span className="font-bold">{mailbox.name}</span> to confirm
               </Label>
               <Input
                 id="deleteConfirmation"
                 type="text"
-                placeholder={mailbox.slug}
+                placeholder={mailbox.name}
                 value={deleteConfirmation}
                 onChange={(e) => setDeleteConfirmation(e.target.value)}
                 disabled={isSubmitting}
@@ -1057,7 +1186,7 @@ const SingleMailboxPage = () => {
               <Button
                 type="submit"
                 variant="destructive"
-                disabled={isSubmitting || deleteConfirmation !== mailbox.slug}
+                disabled={isSubmitting || deleteConfirmation !== mailbox.name}
               >
                 {isSubmitting ? 'Deleting...' : 'Delete Mailbox'}
               </Button>

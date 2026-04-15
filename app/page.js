@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link";
+import { authClient } from "@/lib/auth-client";
 import HeroSection from "@/components/landing/HeroSection";
 import ProblemSolutionSection from "@/components/landing/ProblemSolutionSection";
 import FeaturesSection from "@/components/landing/FeaturesSection";
@@ -9,6 +10,7 @@ import PricingSection from "@/components/landing/PricingSection";
 import FinalCTASection from "@/components/landing/FinalCTASection";
 
 export default function Home() {
+  const { data: session, isPending } = authClient.useSession();
 
   return (
     <div className="min-h-screen bg-white">
@@ -24,18 +26,31 @@ export default function Home() {
               </Link>
             </div>
             <div className="flex items-center gap-4">
-              <Link
-                href="/login"
-                className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
-              >
-                Login
-              </Link>
-              <Link
-                href="/register"
-                className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 font-medium transition-colors"
-              >
-                Get Started
-              </Link>
+              {isPending ? (
+                <div className="h-10 w-28 rounded-full bg-gray-100" />
+              ) : session ? (
+                <Link
+                  href="/domains"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 font-medium transition-colors"
+                >
+                  Manage
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 font-medium transition-colors"
+                  >
+                    Get Started
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

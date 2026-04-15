@@ -77,7 +77,6 @@ export default function SentPage() {
             <h1 className="text-3xl font-bold text-gray-900">
               {session.mailbox.name}
             </h1>
-            <p className="text-sm text-gray-500 font-mono mt-1">{session.mailbox.slug}</p>
             <p className="text-gray-600 mt-2">Sent Emails</p>
           </div>
 

@@ -11,11 +11,30 @@ import { Label } from '@/components/ui/label'
 import { Plus, Trash2, Edit2, Power, PowerOff, ArrowLeft, Mail, RefreshCw, AlertCircle, Inbox } from 'lucide-react'
 import { toast } from 'sonner'
 import { AliasDeletionModal } from '@/components/AliasDeletionModal'
+import { authClient } from '@/lib/auth-client'
+
+const personalEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function buildInitialAliasFormData(defaultPersonalEmail = '') {
+  return {
+    localPart: '',
+    forwardTo: defaultPersonalEmail,
+    mode: 'forward', // 'forward' or 'mailbox' or 'createMailbox'
+    mailboxId: '',
+    mailboxName: '',
+    senderName: 'Melme',
+    personalEmail: defaultPersonalEmail,
+    mailboxPassword: '',
+    confirmMailboxPassword: '',
+  }
+}
 
 const DomainAliasesPage = () => {
   const params = useParams()
   const router = useRouter()
   const domainId = params.domainId
+
+  const { data: session } = authClient.useSession()
 
   const [domain, setDomain] = useState(null)
   const [aliases, setAliases] = useState([])
@@ -28,13 +47,19 @@ const DomainAliasesPage = () => {
   const [deletingAlias, setDeletingAlias] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isRechecking, setIsRechecking] = useState(false)
+  const [mailboxNameTouched, setMailboxNameTouched] = useState(false)
 
-  const [formData, setFormData] = useState({
-    localPart: '',
-    forwardTo: '',
-    mode: 'forward', // 'forward' or 'mailbox'
-    mailboxId: '',
-  })
+  const [formData, setFormData] = useState(() => buildInitialAliasFormData())
+
+  useEffect(() => {
+    if (session?.user?.email && !formData.personalEmail) {
+      setFormData((prev) => ({
+        ...prev,
+        personalEmail: session.user.email,
+        forwardTo: prev.mode === 'forward' && !prev.forwardTo ? session.user.email : prev.forwardTo,
+      }))
+    }
+  }, [session?.user?.email, formData.personalEmail])
 
   useEffect(() => {
     if (domainId) {
@@ -105,19 +130,69 @@ const DomainAliasesPage = () => {
       return
     }
 
+    if (!formData.personalEmail.trim()) {
+      toast.error('Personal email is required')
+      return
+    }
+
+    const normalizedPersonalEmail = formData.personalEmail.trim().toLowerCase()
+    if (!personalEmailRegex.test(normalizedPersonalEmail)) {
+      toast.error('Personal email is invalid')
+      return
+    }
+
+    if (formData.mode === 'createMailbox') {
+      if (!formData.mailboxName.trim()) {
+        toast.error('Mailbox name is required')
+        return
+      }
+
+      if (!formData.senderName.trim()) {
+        toast.error('Sender name is required')
+        return
+      }
+
+      if (!formData.mailboxPassword || !formData.confirmMailboxPassword) {
+        toast.error('Mailbox password and confirm password are required')
+        return
+      }
+
+      if (formData.mailboxPassword.length < 8) {
+        toast.error('Mailbox password must be at least 8 characters')
+        return
+      }
+
+      if (formData.mailboxPassword !== formData.confirmMailboxPassword) {
+        toast.error('Mailbox passwords do not match')
+        return
+      }
+    }
+
     setIsSubmitting(true)
 
     try {
+      const normalizedForwardTo = formData.mode === 'forward'
+        ? (formData.forwardTo.trim() || normalizedPersonalEmail)
+        : ''
+
       const body = {
         domainId,
         localPart: formData.localPart.trim(),
         mode: formData.mode,
+        personalEmail: normalizedPersonalEmail,
       }
 
       if (formData.mode === 'forward') {
-        body.forwardTo = formData.forwardTo.trim()
-      } else {
+        body.forwardTo = normalizedForwardTo
+      } else if (formData.mode === 'mailbox') {
         body.mailboxId = formData.mailboxId
+      } else {
+        body.createMailbox = {
+          name: formData.mailboxName.trim(),
+          senderName: formData.senderName.trim(),
+          password: formData.mailboxPassword,
+          confirmPassword: formData.confirmMailboxPassword,
+        }
       }
 
       const response = await fetch('/api/aliases', {
@@ -134,9 +209,14 @@ const DomainAliasesPage = () => {
         throw new Error(data.error || 'Failed to create alias')
       }
 
+      if (data.warning) {
+        toast.warning(data.warning)
+      }
+
       toast.success('Alias created successfully!')
       setIsCreateDialogOpen(false)
-      setFormData({ localPart: '', forwardTo: '', mode: 'forward', mailboxId: '' })
+      setFormData(buildInitialAliasFormData(session?.user?.email || ''))
+      setMailboxNameTouched(false)
       fetchAliases()
     } catch (error) {
       console.error('Error creating alias:', error)
@@ -235,6 +315,7 @@ const DomainAliasesPage = () => {
   const openEditDialog = (alias) => {
     setEditingAlias(alias)
     setFormData({
+      ...buildInitialAliasFormData(session?.user?.email || ''),
       localPart: alias.localPart,
       forwardTo: alias.forwardTo || '',
       mode: alias.mode,
@@ -357,9 +438,14 @@ const DomainAliasesPage = () => {
                       type="text"
                       placeholder="support"
                       value={formData.localPart}
-                      onChange={(e) =>
-                        setFormData({ ...formData, localPart: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const nextLocalPart = e.target.value
+                        setFormData((prev) => ({
+                          ...prev,
+                          localPart: nextLocalPart,
+                          mailboxName: mailboxNameTouched ? prev.mailboxName : nextLocalPart,
+                        }))
+                      }}
                       disabled={isSubmitting}
                       autoComplete="off"
                       className="flex-1"
@@ -369,7 +455,7 @@ const DomainAliasesPage = () => {
                     </span>
                   </div>
                   <p className="text-sm text-gray-500">
-                    Use lowercase letters, numbers, and hyphens only (no dots)
+                    Use lowercase letters, numbers, dots, hyphens, or underscores
                   </p>
                 </div>
 
@@ -381,7 +467,11 @@ const DomainAliasesPage = () => {
                         type="radio"
                         value="forward"
                         checked={formData.mode === 'forward'}
-                        onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({
+                          ...prev,
+                          mode: e.target.value,
+                          forwardTo: prev.forwardTo || prev.personalEmail,
+                        }))}
                         disabled={isSubmitting}
                       />
                       <span className="text-sm">Forward to email</span>
@@ -396,7 +486,52 @@ const DomainAliasesPage = () => {
                       />
                       <span className="text-sm">Store in mailbox</span>
                     </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        value="createMailbox"
+                        checked={formData.mode === 'createMailbox'}
+                        onChange={(e) => {
+                          const nextMode = e.target.value
+                          setFormData((prev) => ({
+                            ...prev,
+                            mode: nextMode,
+                            mailboxName: (!mailboxNameTouched && !prev.mailboxName)
+                              ? prev.localPart
+                              : prev.mailboxName,
+                          }))
+                        }}
+                        disabled={isSubmitting}
+                      />
+                      <span className="text-sm">Create mailbox</span>
+                    </label>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="personalEmail">Personal Email</Label>
+                  <Input
+                    id="personalEmail"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={formData.personalEmail}
+                    onChange={(e) => {
+                      const nextPersonalEmail = e.target.value
+                      setFormData((prev) => ({
+                        ...prev,
+                        personalEmail: nextPersonalEmail,
+                        forwardTo:
+                          prev.mode === 'forward' && (!prev.forwardTo || prev.forwardTo === prev.personalEmail)
+                            ? nextPersonalEmail
+                            : prev.forwardTo,
+                      }))
+                    }}
+                    disabled={isSubmitting}
+                    autoComplete="email"
+                  />
+                  <p className="text-sm text-gray-500">
+                    Used as your primary contact email for this alias setup.
+                  </p>
                 </div>
 
                 {formData.mode === 'forward' ? (
@@ -417,7 +552,7 @@ const DomainAliasesPage = () => {
                       Emails will be forwarded to this address
                     </p>
                   </div>
-                ) : (
+                ) : formData.mode === 'mailbox' ? (
                   <div className="space-y-2">
                     <Label htmlFor="mailboxId">Select Mailbox</Label>
                     {mailboxes.length === 0 ? (
@@ -435,13 +570,77 @@ const DomainAliasesPage = () => {
                         <option value="">Select a mailbox...</option>
                         {mailboxes.map((mailbox) => (
                           <option key={mailbox.id} value={mailbox.id}>
-                            {mailbox.name} ({mailbox.slug})
+                            {mailbox.name}
                           </option>
                         ))}
                       </select>
                     )}
                     <p className="text-sm text-gray-500">
                       Emails will be stored in the selected mailbox (not forwarded)
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="mailboxName">Mailbox Name</Label>
+                      <Input
+                        id="mailboxName"
+                        type="text"
+                        placeholder="Support"
+                        value={formData.mailboxName}
+                        onChange={(e) => {
+                          setMailboxNameTouched(true)
+                          setFormData({ ...formData, mailboxName: e.target.value })
+                        }}
+                        disabled={isSubmitting}
+                        autoComplete="off"
+                      />
+                      <p className="text-sm text-gray-500">
+                        Defaults to alias name and can be changed
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="senderName">Sender Name</Label>
+                      <Input
+                        id="senderName"
+                        type="text"
+                        placeholder="Melme"
+                        value={formData.senderName}
+                        onChange={(e) => setFormData({ ...formData, senderName: e.target.value })}
+                        disabled={isSubmitting}
+                        autoComplete="off"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="mailboxPassword">Mailbox Password</Label>
+                      <Input
+                        id="mailboxPassword"
+                        type="password"
+                        placeholder="At least 8 characters"
+                        value={formData.mailboxPassword}
+                        onChange={(e) => setFormData({ ...formData, mailboxPassword: e.target.value })}
+                        disabled={isSubmitting}
+                        autoComplete="new-password"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmMailboxPassword">Confirm Password</Label>
+                      <Input
+                        id="confirmMailboxPassword"
+                        type="password"
+                        placeholder="Confirm mailbox password"
+                        value={formData.confirmMailboxPassword}
+                        onChange={(e) => setFormData({ ...formData, confirmMailboxPassword: e.target.value })}
+                        disabled={isSubmitting}
+                        autoComplete="new-password"
+                      />
+                    </div>
+
+                    <p className="text-sm text-gray-500">
+                      Mailbox access details will be sent to the personal email above.
                     </p>
                   </div>
                 )}
@@ -488,7 +687,8 @@ const DomainAliasesPage = () => {
                     variant="outline"
                     onClick={() => {
                       setIsCreateDialogOpen(false)
-                      setFormData({ localPart: '', forwardTo: '', mode: 'forward', mailboxId: '' })
+                      setFormData(buildInitialAliasFormData(session?.user?.email || ''))
+                      setMailboxNameTouched(false)
                     }}
                     disabled={isSubmitting}
                   >
@@ -657,7 +857,7 @@ const DomainAliasesPage = () => {
                     <option value="">Select a mailbox...</option>
                     {mailboxes.map((mailbox) => (
                       <option key={mailbox.id} value={mailbox.id}>
-                        {mailbox.name} ({mailbox.slug})
+                        {mailbox.name}
                       </option>
                     ))}
                   </select>
@@ -675,7 +875,7 @@ const DomainAliasesPage = () => {
                 onClick={() => {
                   setIsEditDialogOpen(false)
                   setEditingAlias(null)
-                  setFormData({ localPart: '', forwardTo: '', mode: 'forward', mailboxId: '' })
+                  setFormData(buildInitialAliasFormData(session?.user?.email || ''))
                 }}
                 disabled={isSubmitting}
               >

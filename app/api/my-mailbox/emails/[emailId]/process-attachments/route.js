@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { validateMailboxSession } from '@/lib/mailbox'
 import { fetchEmailFromS3, uploadAttachmentToS3, sanitizeFilename, listS3Objects } from '@/lib/s3'
@@ -9,13 +8,6 @@ import { simpleParser } from 'mailparser'
 // POST /api/my-mailbox/emails/[emailId]/process-attachments
 export async function POST(request, { params }) {
   try {
-    // Get user session first
-    const session = await auth.api.getSession({ headers: request.headers })
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     // Validate mailbox session
     const cookieStore = await cookies()
     const sessionToken = cookieStore.get('melme_mailbox_session')?.value
@@ -24,7 +16,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'No mailbox session' }, { status: 401 })
     }
 
-    const mailboxSession = await validateMailboxSession(sessionToken, session.user.id)
+    const mailboxSession = await validateMailboxSession(sessionToken)
 
     if (!mailboxSession) {
       return NextResponse.json({ error: 'Invalid or expired mailbox session' }, { status: 401 })
@@ -50,21 +42,12 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Email not found' }, { status: 404 })
     }
 
-    // For sent emails (status='sent'), verify via userId
-    // For received emails, verify via mailbox alias
-    const isSentEmail = email.status === 'sent'
-
-    if (isSentEmail) {
-      // Sent emails: verify by userId
-      if (email.userId !== session.user.id) {
-        return NextResponse.json({ error: 'Email does not belong to you' }, { status: 403 })
-      }
-    } else {
-      // Received emails: verify by mailbox
-      if (email.alias?.mailboxId !== mailboxSession.mailbox.id) {
-        return NextResponse.json({ error: 'Email does not belong to your mailbox' }, { status: 403 })
-      }
+    // Verify email belongs to the logged mailbox.
+    if (email.alias?.mailboxId !== mailboxSession.mailbox.id) {
+      return NextResponse.json({ error: 'Email does not belong to your mailbox' }, { status: 403 })
     }
+
+    const isSentEmail = email.status === 'sent'
 
     // Check if email has S3 storage
     if (!email.s3Bucket || !email.s3Key) {

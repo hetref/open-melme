@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { validateMailboxSession } from '@/lib/mailbox'
 import { fetchEmailFromS3 } from '@/lib/s3'
 import {
@@ -46,16 +45,10 @@ const sesClient = new SESv2Client({
  */
 export async function POST(req) {
   try {
-    // Authenticate user
-    const session = await auth.api.getSession({ headers: req.headers })
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     // Validate mailbox session
     const cookieStore = await cookies()
     const sessionId = cookieStore.get('melme_mailbox_session')?.value
-    const mailboxSession = await validateMailboxSession(sessionId, session.user.id)
+    const mailboxSession = await validateMailboxSession(sessionId)
 
     if (!mailboxSession) {
       return NextResponse.json(
@@ -468,7 +461,7 @@ export async function POST(req) {
     // Create new EmailLog entry
     const emailLog = await prisma.emailLog.create({
       data: {
-        userId: session.user.id,
+        userId: mailboxSession.userId,
         domainId: alias.domainId,
         aliasId: aliasId.startsWith('mailbox-') ? null : aliasId,
         fromEmail,

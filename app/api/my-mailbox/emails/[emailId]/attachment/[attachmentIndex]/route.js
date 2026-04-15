@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { validateMailboxSession } from '@/lib/mailbox'
 import prisma from '@/lib/prisma'
 import { fetchEmailFromS3, generatePresignedDownloadUrl } from '@/lib/s3'
@@ -8,17 +7,11 @@ import { cookies } from 'next/headers'
 
 export async function GET(req, { params }) {
   try {
-    const session = await auth.api.getSession({ headers: req.headers })
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     // Get and validate mailbox session
     const cookieStore = await cookies()
     const sessionId = cookieStore.get('melme_mailbox_session')?.value
 
-    const mailboxSession = await validateMailboxSession(sessionId, session.user.id)
+    const mailboxSession = await validateMailboxSession(sessionId)
 
     if (!mailboxSession) {
       return NextResponse.json(

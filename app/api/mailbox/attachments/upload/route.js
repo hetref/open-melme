@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { validateMailboxSession } from '@/lib/mailbox'
 import { uploadAttachmentToS3, sanitizeFilename } from '@/lib/s3'
 import { cookies } from 'next/headers'
@@ -24,16 +23,10 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024
  */
 export async function POST(req) {
   try {
-    // Authenticate user
-    const session = await auth.api.getSession({ headers: req.headers })
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     // Validate mailbox session
     const cookieStore = await cookies()
     const sessionId = cookieStore.get('melme_mailbox_session')?.value
-    const mailboxSession = await validateMailboxSession(sessionId, session.user.id)
+    const mailboxSession = await validateMailboxSession(sessionId)
 
     if (!mailboxSession) {
       return NextResponse.json(

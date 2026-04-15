@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { validateMailboxSession } from '@/lib/mailbox'
 import prisma from '@/lib/prisma'
 import { fetchEmailFromS3 } from '@/lib/s3'
@@ -9,17 +8,11 @@ import { generateSafeEmailVariants } from '@/lib/email-sanitizer'
 
 export async function GET(req, { params }) {
   try {
-    const session = await auth.api.getSession({ headers: req.headers })
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     // Get and validate mailbox session
     const cookieStore = await cookies()
     const sessionId = cookieStore.get('melme_mailbox_session')?.value
 
-    const mailboxSession = await validateMailboxSession(sessionId, session.user.id)
+    const mailboxSession = await validateMailboxSession(sessionId)
 
     if (!mailboxSession) {
       return NextResponse.json(
@@ -46,18 +39,9 @@ export async function GET(req, { params }) {
     const email = await prisma.emailLog.findFirst({
       where: {
         id: emailId,
-        OR: [
-          {
-            aliasId: {
-              in: aliasIds,
-            },
-          },
-          {
-            aliasId: null,
-            userId: session.user.id,
-            fromEmail: mailboxSession.mailbox.emailAlias,
-          },
-        ],
+        aliasId: {
+          in: aliasIds,
+        },
       },
       select: {
         conversationId: true,
@@ -80,18 +64,9 @@ export async function GET(req, { params }) {
     const conversationEmails = await prisma.emailLog.findMany({
       where: {
         ...whereConversation,
-        OR: [
-          {
-            aliasId: {
-              in: aliasIds,
-            },
-          },
-          {
-            aliasId: null,
-            userId: session.user.id,
-            fromEmail: mailboxSession.mailbox.emailAlias,
-          },
-        ],
+        aliasId: {
+          in: aliasIds,
+        },
       },
       include: {
         alias: {

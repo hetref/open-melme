@@ -1,7 +1,7 @@
 "use client"
 
 import { authClient } from '@/lib/auth-client'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import Loading from '@/components/Loading'
@@ -11,20 +11,23 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/s
 const layout = ({ children }) => {
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter()
+  const pathname = usePathname()
   const [isChecking, setIsChecking] = useState(true)
+  const isPublicMailboxRoute = pathname === '/my-mailbox' || pathname?.startsWith('/my-mailbox/')
+  const shouldRedirectToLogin = !isPending && session == null && !isPublicMailboxRoute
 
   useEffect(() => {
     if (!isPending) {
-      if (session == null) {
+      if (shouldRedirectToLogin) {
         toast.error('You must be logged in to access the dashboard.')
-        router.push('/login')
+        router.replace('/login')
       } else {
         setIsChecking(false)
       }
     }
-  }, [session, isPending, router])
+  }, [session, isPending, shouldRedirectToLogin, router])
 
-  if (isPending || isChecking) {
+  if (isPending || isChecking || shouldRedirectToLogin) {
     return <Loading />
   }
 

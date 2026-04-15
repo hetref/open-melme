@@ -170,14 +170,15 @@ model Domain {
 }
 
 model Alias {
-  id        String    @id @default(cuid())
-  userId    String
-  domainId  String
-  localPart String
-  forwardTo String?
-  mode      AliasMode @default(forward)
-  mailboxId String?
-  isActive  Boolean   @default(true)
+  id            String    @id @default(cuid())
+  userId        String
+  domainId      String
+  localPart     String
+  personalEmail String
+  forwardTo     String?
+  mode          AliasMode @default(forward)
+  mailboxId     String?
+  isActive      Boolean   @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -240,10 +241,12 @@ model Mailbox {
   userId String
 
   // Identity fields for independent mailbox creation
-  name        String
-  slug        String  @unique
-  senderName  String // Used as sender name in outbound emails
-  description String?
+  name          String
+  slug          String   @unique
+  senderName    String // Used as sender name in outbound emails
+  personalEmail String?
+  tags          String[] @default([])
+  description   String?
 
   passwordHash String
   isActive     Boolean @default(true)

@@ -103,7 +103,6 @@ export default function SettingsPage() {
             <h1 className="text-3xl font-bold text-gray-900">
               {session.mailbox.name}
             </h1>
-            <p className="text-sm text-gray-500 font-mono mt-1">{session.mailbox.slug}</p>
             <p className="text-gray-600 mt-2">Mailbox Settings</p>
           </div>
 
@@ -157,8 +156,26 @@ export default function SettingsPage() {
                 <p className="text-lg mt-1">{settingsData?.mailbox?.senderName}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Identifier (Slug)</p>
-                <p className="text-lg font-mono mt-1">{settingsData?.mailbox?.slug}</p>
+                <p className="text-sm font-medium text-gray-500">Personal / Assigned Email</p>
+                <p className="text-lg mt-1 break-all">
+                  {settingsData?.mailbox?.personalEmail ||
+                    settingsData?.mailbox?.assignedPersonalEmails?.[0] ||
+                    'Not set'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Tags</p>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {(settingsData?.mailbox?.tags || []).length > 0 ? (
+                    settingsData.mailbox.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-xs font-normal">
+                        {tag}
+                      </Badge>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">No tags assigned</p>
+                  )}
+                </div>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Status</p>

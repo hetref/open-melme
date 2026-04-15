@@ -1,16 +1,9 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { validateMailboxSession } from '@/lib/mailbox'
 import { cookies } from 'next/headers'
 
 export async function GET(req) {
   try {
-    const session = await auth.api.getSession({ headers: req.headers })
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     // Get session ID from cookie
     const cookieStore = await cookies()
     const sessionId = cookieStore.get('melme_mailbox_session')?.value
@@ -23,7 +16,7 @@ export async function GET(req) {
     }
 
     // Validate session
-    const mailboxSession = await validateMailboxSession(sessionId, session.user.id)
+    const mailboxSession = await validateMailboxSession(sessionId)
 
     if (!mailboxSession) {
       // Clear invalid cookie
@@ -39,8 +32,10 @@ export async function GET(req) {
       mailbox: {
         id: mailboxSession.mailbox.id,
         name: mailboxSession.mailbox.name,
-        slug: mailboxSession.mailbox.slug,
         senderName: mailboxSession.mailbox.senderName,
+        personalEmail: mailboxSession.mailbox.personalEmail,
+        assignedPersonalEmails: mailboxSession.mailbox.assignedPersonalEmails,
+        tags: mailboxSession.mailbox.tags,
         description: mailboxSession.mailbox.description,
         aliases: mailboxSession.mailbox.aliases,
         isActive: mailboxSession.mailbox.isActive,

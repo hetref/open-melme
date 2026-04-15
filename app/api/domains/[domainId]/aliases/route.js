@@ -76,6 +76,7 @@ export async function GET(request, { params }) {
       id: alias.id,
       localPart: alias.localPart,
       mode: alias.mode,
+      personalEmail: alias.personalEmail,
       forwardTo: alias.forwardTo,
       mailboxId: alias.mailboxId,
       mailbox: alias.mailbox,

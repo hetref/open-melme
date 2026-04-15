@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { validateMailboxSession } from '@/lib/mailbox'
 import { generatePresignedDownloadUrl } from '@/lib/s3'
@@ -8,13 +7,6 @@ import { generatePresignedDownloadUrl } from '@/lib/s3'
 // GET /api/my-mailbox/attachments/[attachmentId]/download
 export async function GET(request, { params }) {
   try {
-    // Get user session first
-    const session = await auth.api.getSession({ headers: request.headers })
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     // Validate mailbox session
     const cookieStore = await cookies()
     const sessionToken = cookieStore.get('melme_mailbox_session')?.value
@@ -23,7 +15,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'No mailbox session' }, { status: 401 })
     }
 
-    const mailboxSession = await validateMailboxSession(sessionToken, session.user.id)
+    const mailboxSession = await validateMailboxSession(sessionToken)
 
     if (!mailboxSession) {
       return NextResponse.json({ error: 'Invalid or expired mailbox session' }, { status: 401 })
@@ -39,7 +31,6 @@ export async function GET(request, { params }) {
       include: {
         emailLog: {
           select: {
-            userId: true,
             aliasId: true,
             alias: {
               select: {
@@ -55,11 +46,10 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Attachment not found' }, { status: 404 })
     }
 
-    // Verify attachment belongs to user (for sent emails) or user's mailbox (for received emails)
-    const belongsToUser = attachment.emailLog.userId === session.user.id
+    // Verify attachment belongs to this mailbox session.
     const belongsToMailbox = attachment.emailLog.alias?.mailboxId === mailboxSession.mailbox.id
 
-    if (!belongsToUser && !belongsToMailbox) {
+    if (!belongsToMailbox) {
       return NextResponse.json(
         { error: 'Attachment does not belong to your mailbox' },
         { status: 403 }

@@ -3,6 +3,46 @@ import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { bulkDeleteAliases } from '@/lib/alias-deletion'
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MAX_TAGS = 20
+const MAX_TAG_LENGTH = 30
+
+function normalizeTags(tags) {
+  if (!Array.isArray(tags)) {
+    return null
+  }
+
+  const normalized = []
+  const seen = new Set()
+
+  for (const rawTag of tags) {
+    if (typeof rawTag !== 'string') {
+      continue
+    }
+
+    const tag = rawTag.trim()
+    if (!tag) {
+      continue
+    }
+
+    if (tag.length > MAX_TAG_LENGTH) {
+      return { error: `Each tag must be ${MAX_TAG_LENGTH} characters or less` }
+    }
+
+    const canonical = tag.toLowerCase()
+    if (!seen.has(canonical)) {
+      seen.add(canonical)
+      normalized.push(tag)
+    }
+  }
+
+  if (normalized.length > MAX_TAGS) {
+    return { error: `A mailbox can have at most ${MAX_TAGS} tags` }
+  }
+
+  return { tags: normalized }
+}
+
 // GET /api/mailboxes/[mailboxId] - Get single mailbox details
 export async function GET(req, { params }) {
   try {
@@ -24,6 +64,7 @@ export async function GET(req, { params }) {
           select: {
             id: true,
             localPart: true,
+            personalEmail: true,
             mode: true,
             domainId: true,
             isActive: true,
@@ -49,7 +90,20 @@ export async function GET(req, { params }) {
       return NextResponse.json({ error: 'Mailbox not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ mailbox })
+    const assignedPersonalEmails = [...new Set(
+      mailbox.aliases
+        .map((alias) => alias.personalEmail)
+        .filter(Boolean)
+    )]
+    const { slug: _slug, ...mailboxWithoutSlug } = mailbox
+
+    return NextResponse.json({
+      mailbox: {
+        ...mailboxWithoutSlug,
+        personalEmail: mailboxWithoutSlug.personalEmail || assignedPersonalEmails[0] || null,
+        assignedPersonalEmails,
+      },
+    })
   } catch (error) {
     console.error('Error fetching mailbox:', error)
     return NextResponse.json(
@@ -69,7 +123,7 @@ export async function PATCH(req, { params }) {
     }
 
     const { mailboxId } = await params
-    const { isActive, name, senderName, description } = await req.json()
+    const { isActive, name, senderName, personalEmail, description, tags } = await req.json()
 
     // Verify mailbox belongs to user
     const mailbox = await prisma.mailbox.findFirst({
@@ -147,6 +201,37 @@ export async function PATCH(req, { params }) {
       }
     }
 
+    if (personalEmail !== undefined) {
+      if (personalEmail === null || personalEmail === '') {
+        return NextResponse.json(
+          { error: 'Personal email cannot be empty' },
+          { status: 400 }
+        )
+      }
+
+      const normalizedPersonalEmail = personalEmail.trim().toLowerCase()
+      if (!emailRegex.test(normalizedPersonalEmail)) {
+        return NextResponse.json(
+          { error: 'Invalid personal email address' },
+          { status: 400 }
+        )
+      }
+
+      updateData.personalEmail = normalizedPersonalEmail
+    }
+
+    if (tags !== undefined) {
+      const result = normalizeTags(tags)
+      if (!result || result.error) {
+        return NextResponse.json(
+          { error: result?.error || 'Invalid tags payload' },
+          { status: 400 }
+        )
+      }
+
+      updateData.tags = result.tags
+    }
+
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { error: 'No valid fields to update' },
@@ -163,6 +248,7 @@ export async function PATCH(req, { params }) {
           select: {
             id: true,
             localPart: true,
+            personalEmail: true,
             mode: true,
             domainId: true,
             isActive: true,
@@ -176,9 +262,20 @@ export async function PATCH(req, { params }) {
       },
     })
 
+    const assignedPersonalEmails = [...new Set(
+      updatedMailbox.aliases
+        .map((alias) => alias.personalEmail)
+        .filter(Boolean)
+    )]
+    const { slug: _slug, ...updatedMailboxWithoutSlug } = updatedMailbox
+
     return NextResponse.json({
       message: 'Mailbox updated successfully',
-      mailbox: updatedMailbox,
+      mailbox: {
+        ...updatedMailboxWithoutSlug,
+        personalEmail: updatedMailboxWithoutSlug.personalEmail || assignedPersonalEmails[0] || null,
+        assignedPersonalEmails,
+      },
     })
   } catch (error) {
     console.error('Error updating mailbox:', error)
@@ -231,7 +328,6 @@ export async function DELETE(req, { params }) {
         mailbox: {
           id: mailbox.id,
           name: mailbox.name,
-          slug: mailbox.slug,
         },
         aliases: mailbox.aliases.map(alias => ({
           id: alias.id,

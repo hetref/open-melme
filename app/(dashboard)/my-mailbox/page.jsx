@@ -1,87 +1,133 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useMailbox } from './_context/MailboxContext'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Lock, LogOut, Clock } from 'lucide-react'
-import { toast } from 'sonner'
+import { Clock, Lock, LogOut, Mail } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useMailbox } from "./_context/MailboxContext";
+
+const aliasEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function MyMailboxPage() {
-  const { session, loading, isLoginDialogOpen, setIsLoginDialogOpen, login, logout } = useMailbox()
-  const router = useRouter()
-  const [mailboxes, setMailboxes] = useState([])
-  const [isLoggingIn, setIsLoggingIn] = useState(false)
+  const { session, loading, login, logout } = useMailbox();
+  const router = useRouter();
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isRequestingReset, setIsRequestingReset] = useState(false);
+  const [isForgotDialogOpen, setIsForgotDialogOpen] = useState(false);
   const [loginData, setLoginData] = useState({
-    mailboxId: '',
-    password: '',
-  })
+    aliasEmail: "",
+    password: "",
+  });
+  const [forgotAliasEmail, setForgotAliasEmail] = useState("");
 
   useEffect(() => {
     if (!loading && session) {
       // If already logged in, redirect to inbox
-      router.push('/my-mailbox/inbox')
-    } else if (!loading && !session) {
-      // Not logged in, fetch mailboxes and ensure dialog will open
-      fetchMailboxes()
-      // Open dialog after a short delay to ensure component is mounted
-      setTimeout(() => {
-        setIsLoginDialogOpen(true)
-      }, 100)
+      router.push("/my-mailbox/inbox");
     }
-  }, [loading, session, router, setIsLoginDialogOpen])
-
-  const fetchMailboxes = async () => {
-    try {
-      const response = await fetch('/api/mailboxes')
-      if (!response.ok) {
-        throw new Error('Failed to fetch mailboxes')
-      }
-      const data = await response.json()
-      setMailboxes(data.mailboxes.filter((m) => m.isActive))
-    } catch (error) {
-      console.error('Error fetching mailboxes:', error)
-      toast.error('Failed to load mailboxes')
-    }
-  }
+  }, [loading, session, router]);
 
   const handleLogin = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!loginData.mailboxId || !loginData.password) {
-      toast.error('Please select a mailbox and enter password')
-      return
+    if (!loginData.aliasEmail || !loginData.password) {
+      toast.error("Please enter alias email and mailbox password");
+      return;
     }
 
-    setIsLoggingIn(true)
+    const normalizedAliasEmail = loginData.aliasEmail.trim().toLowerCase();
+    if (!aliasEmailRegex.test(normalizedAliasEmail)) {
+      toast.error("Alias email is invalid");
+      return;
+    }
+
+    setIsLoggingIn(true);
 
     try {
-      await login(loginData.mailboxId, loginData.password)
-      setLoginData({ mailboxId: '', password: '' })
-    } catch (error) {
+      await login(normalizedAliasEmail, loginData.password);
+      setLoginData({ aliasEmail: "", password: "" });
+    } catch {
       // Error is already toasted in the login function
     } finally {
-      setIsLoggingIn(false)
+      setIsLoggingIn(false);
     }
-  }
+  };
+
+  const handleForgotPassword = async (event) => {
+    event.preventDefault();
+
+    const normalizedAliasEmail = forgotAliasEmail.trim().toLowerCase();
+
+    if (!aliasEmailRegex.test(normalizedAliasEmail)) {
+      toast.error("Alias email is invalid");
+      return;
+    }
+
+    setIsRequestingReset(true);
+
+    try {
+      const response = await fetch("/api/mailbox-auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ aliasEmail: normalizedAliasEmail }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Failed to request mailbox password reset",
+        );
+      }
+
+      toast.success(
+        data.message ||
+        "If the alias exists, reset instructions were sent to the connected personal email.",
+      );
+      setIsForgotDialogOpen(false);
+      setForgotAliasEmail("");
+    } catch (error) {
+      console.error("Error requesting mailbox password reset:", error);
+      toast.error(error.message || "Failed to request mailbox password reset");
+    } finally {
+      setIsRequestingReset(false);
+    }
+  };
 
   const getSessionTimeRemaining = () => {
-    if (!session?.expiresAt) return ''
+    if (!session?.expiresAt) return "";
 
-    const now = new Date()
-    const expires = new Date(session.expiresAt)
-    const diffMinutes = Math.floor((expires - now) / (1000 * 60))
+    const now = new Date();
+    const expires = new Date(session.expiresAt);
+    const diffMinutes = Math.floor((expires - now) / (1000 * 60));
 
-    if (diffMinutes <= 0) return 'Expired'
-    if (diffMinutes < 60) return `${diffMinutes} min`
+    if (diffMinutes <= 0) return "Expired";
+    if (diffMinutes < 60) return `${diffMinutes} min`;
 
-    const hours = Math.floor(diffMinutes / 60)
-    const minutes = diffMinutes % 60
-    return `${hours}h ${minutes}m`
-  }
+    const hours = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60;
+    return `${hours}h ${minutes}m`;
+  };
 
   if (loading) {
     return (
@@ -91,7 +137,7 @@ export default function MyMailboxPage() {
           <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (session) {
@@ -104,7 +150,6 @@ export default function MyMailboxPage() {
               <h1 className="text-3xl font-bold text-gray-900">
                 {session.mailbox.name}
               </h1>
-              <p className="text-sm text-gray-500 font-mono mt-1">{session.mailbox.slug}</p>
               <p className="text-gray-600 mt-2">Redirecting to inbox...</p>
             </div>
 
@@ -125,92 +170,129 @@ export default function MyMailboxPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="text-center py-16">
-        <Lock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Mailbox Access Required</h2>
-        <p className="text-gray-600 mb-6">Please login to access your mailbox</p>
-        <Button onClick={() => setIsLoginDialogOpen(true)}>
-          <Lock className="w-4 h-4 mr-2" />
-          Login to Mailbox
-        </Button>
+      <div className="py-12 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-2xl flex items-center gap-2">
+              <Lock className="w-5 h-5" />
+              Mailbox Access
+            </CardTitle>
+            <CardDescription>
+              Login using your alias email and mailbox password.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="aliasEmail">Alias Email *</Label>
+                <Input
+                  id="aliasEmail"
+                  type="email"
+                  placeholder="name@yourdomain.com"
+                  value={loginData.aliasEmail}
+                  onChange={(e) =>
+                    setLoginData({ ...loginData, aliasEmail: e.target.value })
+                  }
+                  disabled={isLoggingIn}
+                  autoComplete="email"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Mailbox Password *</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter mailbox password"
+                  value={loginData.password}
+                  onChange={(e) =>
+                    setLoginData({ ...loginData, password: e.target.value })
+                  }
+                  disabled={isLoggingIn}
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                <p className="text-xs text-blue-800">
+                  Mailbox sessions expire after 1 hour. After login, you'll be
+                  redirected to your inbox.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="px-0 text-sm text-blue-700 hover:text-blue-800"
+                  onClick={() => {
+                    setForgotAliasEmail(loginData.aliasEmail);
+                    setIsForgotDialogOpen(true);
+                  }}
+                  disabled={isLoggingIn}
+                >
+                  Forgot password?
+                </Button>
+                <Button type="submit" disabled={isLoggingIn}>
+                  {isLoggingIn ? "Logging in..." : "Access Mailbox"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Login Dialog */}
-      <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
+      <Dialog open={isForgotDialogOpen} onOpenChange={setIsForgotDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Mailbox Login</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              Reset Mailbox Password
+            </DialogTitle>
             <DialogDescription>
-              Enter your mailbox password to access emails
+              Enter your alias email and we'll send a secure reset link to the
+              connected personal email.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleLogin} className="space-y-4 mt-4">
+          <form onSubmit={handleForgotPassword} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="mailboxId">Select Mailbox *</Label>
-              {mailboxes.length === 0 ? (
-                <div className="text-sm text-gray-600 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                  No active mailboxes available. Please create a mailbox first.
-                </div>
-              ) : (
-                <select
-                  id="mailboxId"
-                  value={loginData.mailboxId}
-                  onChange={(e) => setLoginData({ ...loginData, mailboxId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isLoggingIn}
-                  required
-                >
-                  <option value="">Select a mailbox</option>
-                  {mailboxes.map((mailbox) => (
-                    <option key={mailbox.id} value={mailbox.id}>
-                      {mailbox.name} ({mailbox.slug})
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Mailbox Password *</Label>
+              <Label htmlFor="forgotAliasEmail">Alias Email *</Label>
               <Input
-                id="password"
-                type="password"
-                placeholder="Enter mailbox password"
-                value={loginData.password}
-                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                disabled={isLoggingIn}
+                id="forgotAliasEmail"
+                type="email"
+                placeholder="name@yourdomain.com"
+                value={forgotAliasEmail}
+                onChange={(event) => setForgotAliasEmail(event.target.value)}
+                disabled={isRequestingReset}
+                autoComplete="email"
                 required
               />
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded p-3">
-              <p className="text-xs text-blue-800">
-                Mailbox sessions expire after 1 hour. After login, you'll be redirected to your inbox.
-              </p>
-            </div>
-
-            <div className="flex justify-end gap-2">
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsLoginDialogOpen(false)}
-                disabled={isLoggingIn}
+                onClick={() => setIsForgotDialogOpen(false)}
+                disabled={isRequestingReset}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoggingIn || mailboxes.length === 0}>
-                {isLoggingIn ? 'Logging in...' : 'Access Mailbox'}
+              <Button type="submit" disabled={isRequestingReset}>
+                {isRequestingReset ? "Sending..." : "Send Reset Link"}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

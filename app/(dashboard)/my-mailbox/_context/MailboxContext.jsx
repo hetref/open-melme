@@ -71,14 +71,14 @@ export function MailboxProvider({ children }) {
     return () => clearInterval(checkExpiry)
   }, [session, isSessionValid, router])
 
-  const login = useCallback(async (mailboxId, password) => {
+  const login = useCallback(async (aliasEmail, password) => {
     try {
       const response = await fetch('/api/mailbox-auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ mailboxId, password }),
+        body: JSON.stringify({ aliasEmail, password }),
       })
 
       const data = await response.json()
