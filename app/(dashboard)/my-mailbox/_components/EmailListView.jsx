@@ -774,7 +774,7 @@ export function EmailListView({ emailType = 'received' }) {
                                   return htmlToRender ? (
                                     <div
                                       dangerouslySetInnerHTML={{ __html: htmlToRender }}
-                                      className="prose prose-sm max-w-none"
+                                      className="email-html"
                                     />
                                   ) : (
                                     <pre className="whitespace-pre-wrap text-sm font-sans text-gray-600">

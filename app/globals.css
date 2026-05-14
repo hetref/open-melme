@@ -252,6 +252,22 @@
   font-size: 1rem;
 }
 
+/* Email HTML container (avoid overriding sender styles) */
+.email-html {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.email-html img {
+  max-width: 100%;
+  height: auto;
+}
+
+.email-html table {
+  max-width: 100%;
+}
+
 /* Email image blocked placeholder */
 .email-image-blocked {
   display: flex;
