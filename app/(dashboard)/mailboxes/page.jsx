@@ -95,7 +95,7 @@ const MailboxesPage = () => {
     return (
       <div className="flex flex-wrap items-center gap-1.5">
         {visibleItems.map((item) => (
-          <Badge key={item} variant="outline" className="max-w-44 truncate text-xs font-normal">
+          <Badge key={item} variant="outline" className="truncate text-xs font-normal">
             {item}
           </Badge>
         ))}
