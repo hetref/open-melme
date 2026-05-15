@@ -8,8 +8,9 @@ const SessionsTab = async ({ currentSessionToken }) => {
   const sessions = await auth.api.listSessions({ headers: await headers() })
 
   return (
-    <div><h2 className="text-xl font-semibold mb-2">Active Sessions</h2>
-      <p className="text-gray-600 mb-6">Manage your active sessions here.</p>
+    <div>
+      <h2 className="text-lg font-semibold text-foreground mb-2">Active Sessions</h2>
+      <p className="text-foreground-dim text-sm mb-6">Review and revoke active sessions.</p>
 
       <SessionManagement sessions={sessions} currentSessionToken={currentSessionToken} />
     </div>

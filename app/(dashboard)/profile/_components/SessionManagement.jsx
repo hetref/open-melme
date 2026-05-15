@@ -3,16 +3,22 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { authClient } from '@/lib/auth-client'
 import { Monitor, Smartphone, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import React from 'react'
+import React, { useState } from 'react'
 import { UAParser } from 'ua-parser-js'
 
 const SessionManagement = ({ sessions, currentSessionToken }) => {
   const router = useRouter()
   const otherSessions = sessions.filter(s => s.token !== currentSessionToken)
   const currentSession = sessions.find(s => s.token === currentSessionToken)
+  const [isOpen, setIsOpen] = useState(false)
 
   function revokeOtherSessions() {
     const confirm = window.confirm(
@@ -31,33 +37,45 @@ const SessionManagement = ({ sessions, currentSessionToken }) => {
       {currentSessionToken && (
         <SessionCard session={currentSession} isCurrentSession />
       )}
-
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Other Active Sessions</h3>
-        {otherSessions.length > 0 && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={revokeOtherSessions}
-          >
-            Revoke Other Sessions
-          </Button>
-        )}
-      </div>
-
-      {otherSessions.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            No other active sessions
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {otherSessions.map(session => (
-            <SessionCard key={session.id} session={session} />
-          ))}
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-base font-medium text-foreground">Other Active Sessions</h3>
+          <div className="flex items-center gap-2">
+            {otherSessions.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={revokeOtherSessions}
+              >
+                Revoke Other Sessions
+              </Button>
+            )}
+            {otherSessions.length > 0 && (
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" size="sm">
+                  {isOpen ? "Hide" : `Show ${otherSessions.length}`}
+                </Button>
+              </CollapsibleTrigger>
+            )}
+          </div>
         </div>
-      )}
+
+        <CollapsibleContent className="mt-4">
+          {otherSessions.length === 0 ? (
+            <Card className="bg-surface border border-border">
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No other active sessions
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {otherSessions.map(session => (
+                <SessionCard key={session.id} session={session} />
+              ))}
+            </div>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   )
 }
@@ -102,9 +120,11 @@ function SessionCard({
   }
 
   return (
-    <Card>
+    <Card className="bg-surface border border-border">
       <CardHeader className="flex justify-between">
-        <CardTitle>{getBrowserInformation()}</CardTitle>
+        <CardTitle className="text-base text-foreground">
+          {getBrowserInformation()}
+        </CardTitle>
         {isCurrentSession && <Badge>Current Session</Badge>}
       </CardHeader>
       <CardContent>

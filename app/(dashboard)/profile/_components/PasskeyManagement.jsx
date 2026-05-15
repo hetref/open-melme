@@ -74,10 +74,10 @@ export function PasskeyManagement({ passkeys }) {
   return (
     <div className="space-y-6">
       {passkeys.length === 0 ? (
-        <Card>
+        <Card className="bg-surface border border-border">
           <CardHeader>
-            <CardTitle>No passkeys yet</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-foreground">No passkeys yet</CardTitle>
+            <CardDescription className="text-foreground-dim">
               Add your first passkey for secure, passwordless authentication.
             </CardDescription>
           </CardHeader>
@@ -85,11 +85,11 @@ export function PasskeyManagement({ passkeys }) {
       ) : (
         <div className="space-y-4">
           {passkeys.map(passkey => (
-            <Card key={passkey.id}>
+            <Card key={passkey.id} className="bg-surface border border-border">
               <CardHeader className="flex gap-2 items-center justify-between">
                 <div className="space-y-1">
-                  <CardTitle>{passkey.name}</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-foreground">{passkey.name}</CardTitle>
+                  <CardDescription className="text-foreground-dim">
                     Created {new Date(passkey.createdAt).toLocaleDateString()}
                   </CardDescription>
                 </div>

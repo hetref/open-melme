@@ -18,16 +18,16 @@ const SecurityTab = async ({ email, isTwoFactorEnabled }) => {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-2">Security Settings</h2>
-      <p className="text-gray-600 mb-6">Change your security settings here.</p>
+      <h2 className="text-lg font-semibold text-foreground mb-2">Security</h2>
+      <p className="text-foreground-dim text-sm mb-6">Manage your password, 2FA, and passkeys.</p>
 
       <div className='space-y-4'>
         {
           hasPasswordAccounts ? (
-            <Card>
+            <Card className="bg-surface border border-border">
               <CardHeader>
-                <CardTitle>Change Password</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-foreground">Change Password</CardTitle>
+                <CardDescription className="text-foreground-dim">
                   You can change your account password associated with {email}.
                 </CardDescription>
               </CardHeader>
@@ -36,10 +36,10 @@ const SecurityTab = async ({ email, isTwoFactorEnabled }) => {
               </CardContent>
             </Card>
           ) : (
-            <Card>
+            <Card className="bg-surface border border-border">
               <CardHeader>
-                <CardTitle>Set Password</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-foreground">Set Password</CardTitle>
+                <CardDescription className="text-foreground-dim">
                   You can set a password for your account associated with {email}.
                 </CardDescription>
               </CardHeader>
@@ -51,9 +51,9 @@ const SecurityTab = async ({ email, isTwoFactorEnabled }) => {
         }
 
         {hasPasswordAccounts && (
-          <Card>
+          <Card className="bg-surface border border-border">
             <CardHeader className="flex items-center justify-between gap-2">
-              <CardTitle>Two-Factor Authentication</CardTitle>
+              <CardTitle className="text-foreground">Two-Factor Authentication</CardTitle>
               <Badge variant={isTwoFactorEnabled ? "default" : "secondary"}>
                 {isTwoFactorEnabled ? "Enabled" : "Disabled"}
               </Badge>
@@ -64,9 +64,9 @@ const SecurityTab = async ({ email, isTwoFactorEnabled }) => {
           </Card>
         )}
 
-        <Card>
+        <Card className="bg-surface border border-border">
           <CardHeader>
-            <CardTitle>Passkeys</CardTitle>
+            <CardTitle className="text-foreground">Passkeys</CardTitle>
           </CardHeader>
           <CardContent>
             <PasskeyManagement passkeys={passkeys} />

@@ -60,6 +60,9 @@ model User {
   mailboxes       Mailbox[]
   mailboxSessions MailboxSession[]
 
+  emailNotifications Boolean @default(true)
+  marketingEmails    Boolean @default(false)
+
   @@map("user")
 }
 

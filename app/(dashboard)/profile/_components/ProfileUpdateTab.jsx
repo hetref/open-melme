@@ -64,8 +64,8 @@ const ProfileUpdateTab = ({ user }) => {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-2">Profile Settings</h2>
-      <p className="text-gray-600 mb-6">Make changes to your profile here.</p>
+      <h2 className="text-lg font-semibold text-foreground mb-2">Profile Information</h2>
+      <p className="text-foreground-dim text-sm mb-6">Update your name and email address.</p>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleProfileUpdate)} className="space-y-4">
@@ -89,7 +89,7 @@ const ProfileUpdateTab = ({ user }) => {
             </FormItem>
           )} />
 
-          <Button type="submit" className="w-full" size="lg" disabled={form.formState.isSubmitting}>
+          <Button type="submit" className="w-full rounded-xl" size="lg" disabled={form.formState.isSubmitting}>
             {
               form.formState.isSubmitting ? "Updating profile..." : "Update Profile"
             }

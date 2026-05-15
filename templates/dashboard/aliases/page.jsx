@@ -1,50 +1,32 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { CheckCircle2, Mail, ArrowRight } from "lucide-react"
-import { toast } from "sonner"
 
-const AliasesPage = () => {
-  const [domains, setDomains] = useState([])
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+// Mock data for domains with aliases
+const domainsWithAliases = [
+  {
+    id: "1",
+    domain: "aryanshinde.in",
+    verified: true,
+    totalAliases: 10,
+    activeAliases: 10,
+  },
+  {
+    id: "2",
+    domain: "example.com",
+    verified: true,
+    totalAliases: 5,
+    activeAliases: 3,
+  },
+]
 
-  useEffect(() => {
-    fetchDomains()
-  }, [])
-
-  const fetchDomains = async () => {
-    try {
-      const response = await fetch("/api/aliases")
-      if (!response.ok) {
-        throw new Error("Failed to fetch domains")
-      }
-      const data = await response.json()
-      setDomains(data.domains)
-    } catch (error) {
-      console.error("Error fetching domains:", error)
-      toast.error("Failed to load domains")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[320px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto" />
-          <p className="mt-4 text-foreground-dim">Loading domains...</p>
-        </div>
-      </div>
-    )
-  }
-
+export default function AliasesPage() {
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+      {/* Header */}
       <div className="mb-8">
         <h1 className="font-[var(--font-display)] text-2xl lg:text-3xl font-bold text-foreground mb-2">
           Email Aliases
@@ -54,8 +36,9 @@ const AliasesPage = () => {
         </p>
       </div>
 
+      {/* Domains List */}
       <div className="space-y-4">
-        {domains.length === 0 ? (
+        {domainsWithAliases.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -77,56 +60,60 @@ const AliasesPage = () => {
             </Link>
           </motion.div>
         ) : (
-          domains.map((domain, index) => (
+          domainsWithAliases.map((domain, index) => (
             <motion.div
               key={domain.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
             >
-              <button
-                type="button"
-                onClick={() => router.push(`/aliases/${domain.id}`)}
-                className="w-full text-left bg-surface border border-border rounded-2xl p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition-all duration-200 group"
+              <Link
+                href={`/aliases/${domain.id}`}
+                className="block bg-surface border border-border rounded-2xl p-6 hover:border-primary/30 hover:shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition-all duration-200 group"
               >
+                {/* Domain Header */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <h3 className="font-mono text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
-                      {domain.fullDomain}
+                      {domain.domain}
                     </h3>
-                    {domain.verificationStatus === "verified" && (
+                    {domain.verified && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#22c55e]/10 text-[#22c55e]">
                         <CheckCircle2 size={12} />
                         Verified
                       </span>
                     )}
                   </div>
-                  <ArrowRight
-                    size={20}
-                    className="text-muted group-hover:text-primary group-hover:translate-x-1 transition-all"
-                  />
+                  <ArrowRight size={20} className="text-muted group-hover:text-primary group-hover:translate-x-1 transition-all" />
                 </div>
 
                 <p className="text-sm text-foreground-dim mb-4">
                   Click to manage aliases for this domain
                 </p>
 
+                {/* Stats */}
                 <div className="grid grid-cols-2 gap-4">
+                  {/* Total Aliases - Blue */}
                   <div className="bg-[#3b82f6]/5 border border-[#3b82f6]/10 rounded-xl p-4">
                     <div className="text-2xl font-bold text-[#3b82f6] mb-1">
                       {domain.totalAliases}
                     </div>
-                    <div className="text-sm text-[#3b82f6]/70">Total Aliases</div>
+                    <div className="text-sm text-[#3b82f6]/70">
+                      Total Aliases
+                    </div>
                   </div>
 
+                  {/* Active Aliases - Green */}
                   <div className="bg-[#22c55e]/5 border border-[#22c55e]/10 rounded-xl p-4">
                     <div className="text-2xl font-bold text-[#22c55e] mb-1">
                       {domain.activeAliases}
                     </div>
-                    <div className="text-sm text-[#22c55e]/70">Active Aliases</div>
+                    <div className="text-sm text-[#22c55e]/70">
+                      Active Aliases
+                    </div>
                   </div>
                 </div>
-              </button>
+              </Link>
             </motion.div>
           ))
         )}
@@ -134,5 +121,3 @@ const AliasesPage = () => {
     </div>
   )
 }
-
-export default AliasesPage

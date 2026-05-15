@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Edit2, Power, PowerOff, Trash2, Mail, CheckCircle, XCircle, Clock, Calendar, Forward, AlertCircle, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Edit2, Power, PowerOff, Trash2, Mail, CheckCircle, XCircle, Clock, Calendar, Forward, AlertCircle, RefreshCw, Inbox } from 'lucide-react'
 import { toast } from 'sonner'
 import { AliasDeletionModal } from '@/components/AliasDeletionModal'
 
@@ -281,10 +283,10 @@ const AliasDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-100">
+      <div className="flex items-center justify-center min-h-[320px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading alias details...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto"></div>
+          <p className="mt-4 text-foreground-dim">Loading alias details...</p>
         </div>
       </div>
     )
@@ -292,365 +294,345 @@ const AliasDetailPage = () => {
 
   if (!alias) {
     return (
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="text-center py-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Alias not found</h2>
-          <Button onClick={() => router.push(`/aliases/${domainId}`)} className="mt-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
+          <h2 className="text-2xl font-bold text-foreground mb-2">Alias not found</h2>
+          <button
+            type="button"
+            onClick={() => router.push(`/aliases/${domainId}`)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground"
+          >
+            <ArrowLeft className="w-4 h-4" />
             Back to Aliases
-          </Button>
+          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-8">
-        <Button
-          variant="ghost"
-          onClick={() => router.push(`/aliases/${domainId}`)}
-          className="mb-4"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Aliases
-        </Button>
+    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+      <Link
+        href={`/aliases/${domainId}`}
+        className="inline-flex items-center gap-2 text-foreground-dim hover:text-foreground transition-colors mb-6"
+      >
+        <ArrowLeft size={18} />
+        <span className="text-sm">Back to Aliases</span>
+      </Link>
 
-        <div className="flex justify-between items-start mb-6">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900 font-mono">{alias.fullEmail}</h1>
-              <Badge
-                variant={alias.mode === 'mailbox' ? 'outline' : 'default'}
-                className={
-                  alias.mode === 'mailbox'
-                    ? 'bg-purple-100 text-purple-800 border-purple-300'
-                    : 'bg-blue-100 text-blue-800'
-                }
-              >
-                {alias.mode === 'mailbox' ? 'Mailbox' : 'Forward'}
-              </Badge>
-            </div>
-            <p className="text-gray-600 mt-2">Alias details and email logs</p>
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+        <div>
+          <div className="flex items-center gap-3 flex-wrap mb-2">
+            <h1 className="font-mono text-xl lg:text-2xl font-bold text-foreground">
+              {alias.fullEmail}
+            </h1>
+            {alias.mode === 'mailbox' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                <Inbox size={12} />
+                Mailbox
+              </span>
+            )}
+          </div>
+          <p className="text-foreground-dim mb-3">Alias details and email logs</p>
 
-            {/* Domain Connection Status */}
-            <div className="flex items-center gap-4 mt-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Domain Status:</span>
-                <Badge
-                  variant={alias.domain.verificationStatus === 'verified' ? 'default' : 'secondary'}
-                  className={
-                    alias.domain.verificationStatus === 'verified'
-                      ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                      : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
-                  }
-                >
-                  {alias.domain.verificationStatus === 'verified' ? 'Connected' : 'Disconnected'}
-                </Badge>
-              </div>
-              <div className="text-sm text-gray-600">
-                Last checked: {formatLastChecked(alias.domain.lastCheckedAt)}
-              </div>
-              {alias.statistics.pending > 0 && (
-                <div className="flex items-center gap-1 text-sm text-yellow-700">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>{alias.statistics.pending} pending emails</span>
-                </div>
-              )}
-            </div>
-
-            {/* Warning Message */}
-            {alias.domain.verificationStatus === 'pending' && alias.statistics.pending > 0 && (
-              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800">
-                  Emails were paused because the domain connection was lost.
-                  Recheck the domain to resume delivery and process pending emails.
-                </p>
-              </div>
+          <div className="flex items-center gap-3 text-sm">
+            <span className="text-foreground-dim">Domain Status:</span>
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                alias.domain.verificationStatus === 'verified'
+                  ? 'bg-[#22c55e]/10 text-[#22c55e]'
+                  : 'bg-amber-500/10 text-amber-500'
+              }`}
+            >
+              {alias.domain.verificationStatus === 'verified' ? 'Connected' : 'Pending'}
+            </span>
+            <span className="text-muted">Last checked: {formatLastChecked(alias.domain.lastCheckedAt)}</span>
+            {alias.statistics.pending > 0 && (
+              <span className="inline-flex items-center gap-1 text-amber-600">
+                <AlertCircle className="w-4 h-4" />
+                {alias.statistics.pending} pending emails
+              </span>
             )}
           </div>
 
-          <div className="flex gap-2">
-            {/* Recheck Button */}
-            {alias.domain.verificationStatus === 'pending' && alias.statistics.pending > 0 && (
-              <Button
-                onClick={handleRecheckDomain}
-                disabled={isRechecking}
-                variant="outline"
-                className="gap-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${isRechecking ? 'animate-spin' : ''}`} />
-                {isRechecking ? 'Rechecking...' : 'Recheck & Process'}
-              </Button>
-            )}
-
-            <Button
-              variant="outline"
-              onClick={handleToggleStatus}
-            >
-              {alias.isActive ? (
-                <>
-                  <PowerOff className="w-4 h-4 mr-2" />
-                  Disable
-                </>
-              ) : (
-                <>
-                  <Power className="w-4 h-4 mr-2" />
-                  Enable
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditDialogOpen(true)}
-            >
-              <Edit2 className="w-4 h-4 mr-2" />
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleDeleteAlias}
-              className="hover:bg-red-50 hover:text-red-600 hover:border-red-300"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </Button>
-          </div>
+          {alias.domain.verificationStatus === 'pending' && alias.statistics.pending > 0 && (
+            <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+              <p className="text-sm text-amber-700">
+                Emails were paused because the domain connection was lost.
+                Recheck the domain to resume delivery and process pending emails.
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Alias Details Card */}
-        <div className="grid gap-4 md:grid-cols-2 mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Alias Information</CardTitle>
-              <CardDescription>Configuration and forwarding settings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label className="text-sm text-gray-600">Status</Label>
-                <div className="mt-1">
-                  <Badge
-                    variant={alias.isActive ? 'default' : 'secondary'}
-                    className={
-                      alias.isActive
-                        ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                        : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
-                    }
-                  >
-                    {alias.isActive ? 'Active' : 'Inactive'}
-                  </Badge>
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm text-gray-600">Email Address</Label>
-                <p className="text-sm font-mono mt-1">{alias.fullEmail}</p>
-              </div>
-              <div>
-                <Label className="text-sm text-gray-600">Mode</Label>
-                <div className="mt-1">
-                  <Badge
-                    variant={alias.mode === 'mailbox' ? 'outline' : 'default'}
-                    className={
-                      alias.mode === 'mailbox'
-                        ? 'bg-purple-100 text-purple-800 border-purple-300'
-                        : 'bg-blue-100 text-blue-800'
-                    }
-                  >
-                    {alias.mode === 'mailbox' ? 'Store in Mailbox' : 'Forward to Email'}
-                  </Badge>
-                </div>
-              </div>
-              {alias.mode === 'forward' ? (
-                <div>
-                  <Label className="text-sm text-gray-600">Forwards To</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Forward className="w-4 h-4 text-gray-400" />
-                    <p className="text-sm font-medium">{alias.forwardTo}</p>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <Label className="text-sm text-gray-600">Mailbox</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Mail className="w-4 h-4 text-gray-400" />
-                    <p className="text-sm font-medium">{alias.mailbox?.name || 'Unknown'}</p>
-                  </div>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div>
-                  <Label className="text-sm text-gray-600">Created</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                    <p className="text-sm">{formatDate(alias.createdAt)}</p>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm text-gray-600">Last Updated</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                    <p className="text-sm">{formatDate(alias.updatedAt)}</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {alias.domain.verificationStatus === 'pending' && alias.statistics.pending > 0 && (
+            <button
+              type="button"
+              onClick={handleRecheckDomain}
+              disabled={isRechecking}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-surface-raised text-sm font-medium text-foreground-dim"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRechecking ? 'animate-spin' : ''}`} />
+              {isRechecking ? 'Rechecking...' : 'Recheck & Process'}
+            </button>
+          )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Email Statistics</CardTitle>
-              <CardDescription>Email processing metrics</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-2xl font-bold">{alias.statistics.total}</p>
-                      <p className="text-sm text-gray-600">Total Emails</p>
-                    </div>
-                    <Mail className="w-8 h-8 text-gray-400" />
-                  </div>
-                </div>
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-2xl font-bold text-green-700">{alias.statistics.forwarded}</p>
-                      <p className="text-sm text-gray-600">Forwarded</p>
-                    </div>
-                    <CheckCircle className="w-8 h-8 text-green-400" />
-                  </div>
-                </div>
-                <div className="bg-red-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-2xl font-bold text-red-700">{alias.statistics.failed}</p>
-                      <p className="text-sm text-gray-600">Failed</p>
-                    </div>
-                    <XCircle className="w-8 h-8 text-red-400" />
-                  </div>
-                </div>
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-2xl font-bold text-blue-700">{alias.statistics.received}</p>
-                      <p className="text-sm text-gray-600">Received</p>
-                    </div>
-                    <Clock className="w-8 h-8 text-blue-400" />
-                  </div>
-                </div>
-                {alias.statistics.pending > 0 && (
-                  <div className="bg-yellow-50 p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-2xl font-bold text-yellow-700">{alias.statistics.pending}</p>
-                        <p className="text-sm text-gray-600">Pending</p>
-                      </div>
-                      <AlertCircle className="w-8 h-8 text-yellow-400" />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Email Logs */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Email Logs</CardTitle>
-            <CardDescription>
-              All emails received by this alias ({pagination.totalCount} total)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {emailsLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-              </div>
-            ) : emails.length === 0 ? (
-              <div className="text-center py-12">
-                <Mail className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600">No emails received yet</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Emails sent to {alias.fullEmail} will appear here
-                </p>
-              </div>
+          <button
+            type="button"
+            onClick={handleToggleStatus}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-surface-raised text-sm font-medium text-foreground-dim"
+          >
+            {alias.isActive ? (
+              <>
+                <PowerOff className="w-4 h-4" />
+                Disable
+              </>
             ) : (
               <>
-                <div className="space-y-3">
-                  {emails.map((email) => (
-                    <div
-                      key={email.id}
-                      className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            {getStatusIcon(email.status)}
-                            <h3 className="font-medium text-gray-900 truncate">
-                              {email.subject || '(No Subject)'}
-                            </h3>
-                            <Badge
-                              variant="secondary"
-                              className={getStatusBadge(email.status)}
-                            >
-                              {email.status}
-                            </Badge>
-                          </div>
-                          <div className="grid grid-cols-2 gap-x-4 text-sm text-gray-600">
-                            <p>
-                              <span className="font-medium">From:</span> {email.fromEmail}
-                            </p>
-                            <p>
-                              <span className="font-medium">To:</span> {email.toEmail}
-                            </p>
-                          </div>
+                <Power className="w-4 h-4" />
+                Enable
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsEditDialogOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-surface-raised text-sm font-medium text-foreground-dim"
+          >
+            <Edit2 className="w-4 h-4" />
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={handleDeleteAlias}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-destructive/10 hover:border-destructive/30 text-sm font-medium text-foreground-dim hover:text-destructive"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </button>
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-surface border border-border rounded-2xl p-6"
+        >
+          <h2 className="text-base font-semibold text-foreground mb-1">Alias Information</h2>
+          <p className="text-sm text-foreground-dim mb-5">Configuration and forwarding settings</p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-foreground-dim block mb-1">Status</label>
+              <span
+                className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
+                  alias.isActive ? 'bg-[#22c55e]/10 text-[#22c55e]' : 'bg-muted/20 text-muted'
+                }`}
+              >
+                {alias.isActive ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+
+            <div>
+              <label className="text-sm text-foreground-dim block mb-1">Email Address</label>
+              <p className="font-mono text-sm text-foreground">{alias.fullEmail}</p>
+            </div>
+
+            <div>
+              <label className="text-sm text-foreground-dim block mb-1">Mode</label>
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary">
+                {alias.mode === 'mailbox' ? 'Store in Mailbox' : 'Forward to Email'}
+              </span>
+            </div>
+
+            {alias.mode === 'forward' ? (
+              <div>
+                <label className="text-sm text-foreground-dim block mb-1">Forwards To</label>
+                <div className="flex items-center gap-2 text-sm text-foreground">
+                  <Forward size={14} className="text-muted" />
+                  {alias.forwardTo}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="text-sm text-foreground-dim block mb-1">Mailbox</label>
+                <div className="flex items-center gap-2 text-sm text-foreground">
+                  <Mail size={14} className="text-muted" />
+                  {alias.mailbox?.name || 'Unknown'}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
+              <div>
+                <label className="text-sm text-foreground-dim block mb-1">Created</label>
+                <div className="flex items-center gap-2 text-sm text-foreground">
+                  <Calendar size={14} className="text-muted" />
+                  {formatDate(alias.createdAt)}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-foreground-dim block mb-1">Last Updated</label>
+                <div className="flex items-center gap-2 text-sm text-foreground">
+                  <Calendar size={14} className="text-muted" />
+                  {formatDate(alias.updatedAt)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-surface border border-border rounded-2xl p-6"
+        >
+          <h2 className="text-base font-semibold text-foreground mb-1">Email Statistics</h2>
+          <p className="text-sm text-foreground-dim mb-5">Email processing metrics</p>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-[#3b82f6]/5 border border-[#3b82f6]/10 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-[#3b82f6]">{alias.statistics.total}</div>
+                <div className="text-sm text-[#3b82f6]/70">Total Emails</div>
+              </div>
+              <Mail size={24} className="text-[#3b82f6]/50" />
+            </div>
+            <div className="bg-[#22c55e]/5 border border-[#22c55e]/10 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-[#22c55e]">{alias.statistics.forwarded}</div>
+                <div className="text-sm text-[#22c55e]/70">Forwarded</div>
+              </div>
+              <CheckCircle size={24} className="text-[#22c55e]/50" />
+            </div>
+            <div className="bg-[#ef4444]/5 border border-[#ef4444]/10 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-[#ef4444]">{alias.statistics.failed}</div>
+                <div className="text-sm text-[#ef4444]/70">Failed</div>
+              </div>
+              <XCircle size={24} className="text-[#ef4444]/50" />
+            </div>
+            <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-primary">{alias.statistics.received}</div>
+                <div className="text-sm text-primary/70">Received</div>
+              </div>
+              <Clock size={24} className="text-primary/50" />
+            </div>
+            {alias.statistics.pending > 0 && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-amber-600">{alias.statistics.pending}</div>
+                  <div className="text-sm text-amber-600/70">Pending</div>
+                </div>
+                <AlertCircle size={24} className="text-amber-500/60" />
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-surface border border-border rounded-2xl p-6"
+      >
+        <h2 className="text-base font-semibold text-foreground mb-1">Email Logs</h2>
+        <p className="text-sm text-foreground-dim mb-5">
+          All emails received by this alias ({pagination.totalCount} total)
+        </p>
+
+        {emailsLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
+          </div>
+        ) : emails.length === 0 ? (
+          <div className="text-center py-12">
+            <Mail className="w-12 h-12 text-muted mx-auto mb-4" />
+            <p className="text-foreground-dim">No emails received yet</p>
+            <p className="text-sm text-muted mt-2">
+              Emails sent to {alias.fullEmail} will appear here
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-3">
+              {emails.map((email, index) => (
+                <motion.div
+                  key={email.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + index * 0.05 }}
+                  className="bg-background border border-border rounded-xl p-4 hover:border-primary/20 transition-colors cursor-pointer"
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Clock size={14} className="text-primary" />
                         </div>
-                        <div className="text-right text-sm text-gray-500 ml-4 shrink-0">
-                          <p>{formatDate(email.createdAt)}</p>
-                          <p className="text-xs mt-1">{formatSize(email.size)}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <h4 className="text-sm font-medium text-foreground truncate max-w-md">
+                              {email.subject || '(No Subject)'}
+                            </h4>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusBadge(email.status)}`}>
+                              {email.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-foreground-dim">
+                            <span>From: <span className="text-foreground">{email.fromEmail}</span></span>
+                            <span>To: <span className="text-foreground">{email.toEmail}</span></span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
 
-                {/* Pagination */}
-                {pagination.totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-6 pt-6 border-t">
-                    <p className="text-sm text-gray-600">
-                      Page {pagination.page} of {pagination.totalPages}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fetchEmails(pagination.page - 1)}
-                        disabled={pagination.page === 1}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fetchEmails(pagination.page + 1)}
-                        disabled={!pagination.hasMore}
-                      >
-                        Next
-                      </Button>
+                    <div className="text-right flex-shrink-0 pl-11 lg:pl-0">
+                      <div className="text-xs text-foreground-dim">{formatDate(email.createdAt)}</div>
+                      <div className="text-xs text-muted">{formatSize(email.size)}</div>
                     </div>
                   </div>
-                )}
-              </>
+                </motion.div>
+              ))}
+            </div>
+
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-6 border-t border-border">
+                <p className="text-sm text-foreground-dim">
+                  Page {pagination.page} of {pagination.totalPages}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchEmails(pagination.page - 1)}
+                    disabled={pagination.page === 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchEmails(pagination.page + 1)}
+                    disabled={!pagination.hasMore}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </>
+        )}
+      </motion.div>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-surface border border-border rounded-2xl">
           <DialogHeader>
             <DialogTitle>Edit Alias</DialogTitle>
             <DialogDescription>

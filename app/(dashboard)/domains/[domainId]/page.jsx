@@ -1,13 +1,64 @@
 "use client"
 
-import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ArrowLeft, CheckCircle2, Clock, AlertCircle, Copy, RefreshCw, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
+import { useEffect, useState } from "react"
+import { useRouter, useParams } from "next/navigation"
+import Link from "next/link"
+import { motion } from "framer-motion"
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Copy,
+  Check,
+  RefreshCw,
+  Trash2,
+  HelpCircle,
+  AlertTriangle,
+} from "lucide-react"
+import { toast } from "sonner"
+
+function CopyableField({ label, value, fullWidth = false, onCopy }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await onCopy(value)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className={`space-y-1.5 ${fullWidth ? "col-span-full" : ""}`}>
+      <p className="text-xs font-medium text-muted uppercase tracking-wide">{label}</p>
+      <button
+        onClick={handleCopy}
+        className={`w-full group flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
+          copied
+            ? "bg-[#22c55e]/10 border-[#22c55e]/30"
+            : "bg-background border-border hover:border-primary/40 hover:bg-primary/5"
+        }`}
+      >
+        <code className="text-sm text-foreground font-mono truncate flex-1">{value}</code>
+        <div
+          className={`flex-shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-md transition-all ${
+            copied ? "bg-[#22c55e]/20" : ""
+          }`}
+        >
+          {copied ? (
+            <Check size={14} className="text-[#22c55e]" />
+          ) : (
+            <Copy size={14} className="text-muted group-hover:text-primary transition-colors" />
+          )}
+          <span
+            className={`text-xs font-medium transition-colors ${
+              copied ? "text-[#22c55e]" : "text-muted group-hover:text-primary"
+            }`}
+          >
+            Copy
+          </span>
+        </div>
+      </button>
+    </div>
+  )
+}
 
 const DomainDetailsPage = () => {
   const [domain, setDomain] = useState(null)
@@ -29,14 +80,14 @@ const DomainDetailsPage = () => {
     try {
       const response = await fetch(`/api/domains/${domainId}`)
       if (!response.ok) {
-        throw new Error('Failed to fetch domain')
+        throw new Error("Failed to fetch domain")
       }
       const data = await response.json()
       setDomain(data)
     } catch (error) {
-      console.error('Error fetching domain:', error)
-      toast.error('Failed to load domain details')
-      router.push('/domains')
+      console.error("Error fetching domain:", error)
+      toast.error("Failed to load domain details")
+      router.push("/domains")
     } finally {
       setLoading(false)
     }
@@ -46,56 +97,56 @@ const DomainDetailsPage = () => {
     setVerifying(true)
     try {
       const response = await fetch(`/api/domains/${domainId}/verify`, {
-        method: 'POST',
+        method: "POST",
       })
 
       if (!response.ok) {
-        throw new Error('Failed to verify domain')
+        throw new Error("Failed to verify domain")
       }
 
       const data = await response.json()
 
-      if (data.status === 'verified') {
-        toast.success('Domain verified successfully!')
+      if (data.status === "verified") {
+        toast.success("Domain verified successfully!")
       } else if (data.missing && data.missing.length > 0) {
-        toast.warning(`Verification pending: ${data.missing.join(', ')} records not detected`)
+        toast.warning(
+          `Verification pending: ${data.missing.join(", ")} records not detected`
+        )
       } else {
-        toast.info('Domain verification in progress')
+        toast.info("Domain verification in progress")
       }
 
-      // Refresh domain data
       await fetchDomain()
     } catch (error) {
-      console.error('Error verifying domain:', error)
-      toast.error('Failed to verify domain')
+      console.error("Error verifying domain:", error)
+      toast.error("Failed to verify domain")
     } finally {
       setVerifying(false)
     }
   }
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-    toast.success('Copied to clipboard!')
+  const copyToClipboard = async (text) => {
+    await navigator.clipboard.writeText(text)
+    toast.success("Copied to clipboard!")
   }
 
   const handleDeleteDomain = async () => {
     setIsDeleting(true)
     try {
       const response = await fetch(`/api/domains/${domainId}/delete`, {
-        method: 'DELETE',
+        method: "DELETE",
       })
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || 'Failed to delete domain')
+        throw new Error(data.error || "Failed to delete domain")
       }
 
       const data = await response.json()
 
-      // Show success with stats
       const statsMessage = data.stats
         ? ` (${data.stats.aliasesDeleted} aliases, ${data.stats.emailsDeleted} emails, ${data.stats.attachmentsDeleted} attachments deleted)`
-        : ''
+        : ""
 
       toast.success(`Domain deleted successfully${statsMessage}`)
 
@@ -104,468 +155,352 @@ const DomainDetailsPage = () => {
       }
 
       setIsDeleteDialogOpen(false)
-
-      // Redirect to domains list
-      router.push('/domains')
+      router.push("/domains")
     } catch (error) {
-      console.error('Error deleting domain:', error)
-      toast.error(error.message || 'Failed to delete domain')
+      console.error("Error deleting domain:", error)
+      toast.error(error.message || "Failed to delete domain")
       setIsDeleting(false)
-    }
-  }
-
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'verified':
-        return (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-            <CheckCircle2 className="w-4 h-4 mr-1" />
-            Verified
-          </Badge>
-        )
-      case 'pending':
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-            <Clock className="w-4 h-4 mr-1" />
-            Pending
-          </Badge>
-        )
-      case 'failed':
-        return (
-          <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-            <AlertCircle className="w-4 h-4 mr-1" />
-            Failed
-          </Badge>
-        )
-      default:
-        return <Badge>{status}</Badge>
-    }
-  }
-
-  const getRecordStatusIcon = (status) => {
-    switch (status) {
-      case 'verified':
-        return <CheckCircle2 className="w-5 h-5 text-green-600" />
-      case 'pending':
-        return <Clock className="w-5 h-5 text-yellow-600" />
-      case 'failed':
-        return <AlertCircle className="w-5 h-5 text-red-600" />
-      default:
-        return <Clock className="w-5 h-5 text-gray-400" />
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-100">
+      <div className="flex items-center justify-center min-h-[320px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading domain details...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto" />
+          <p className="mt-4 text-foreground-dim">Loading domain details...</p>
         </div>
       </div>
     )
   }
 
   if (!domain) {
-    return null
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-foreground mb-2">Domain not found</h1>
+          <Link href="/domains" className="text-primary hover:underline">
+            Back to Domains
+          </Link>
+        </div>
+      </div>
+    )
   }
 
+  const isFullyVerified =
+    domain.dkimStatus === "verified" && domain.mxStatus === "verified"
+
   return (
-    <div className="max-w-5xl mx-auto">
-      <Button
-        variant="ghost"
-        className="mb-6 -ml-2"
-        onClick={() => router.push('/domains')}
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Domains
-      </Button>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <Link
+          href="/domains"
+          className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors mb-6"
+        >
+          <ArrowLeft size={16} />
+          Back to Domains
+        </Link>
 
-      <div className="space-y-6">
-        {/* Domain Overview */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="text-2xl mb-2">{domain.fullDomain}</CardTitle>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge variant="outline" className="text-sm">
-                    Root: {domain.rootDomain}
-                  </Badge>
-                  {domain.subdomain && (
-                    <Badge variant="outline" className="text-sm bg-blue-50 text-blue-700">
-                      Subdomain: {domain.subdomain}
-                    </Badge>
-                  )}
-                </div>
-                <CardDescription>
-                  Added on {new Date(domain.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </CardDescription>
-              </div>
-              {getStatusBadge(domain.verificationStatus)}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-surface border border-border rounded-2xl p-6 mb-6"
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h1 className="font-[var(--font-display)] text-2xl font-bold text-foreground">
+                {domain.fullDomain}
+              </h1>
+              <p className="text-sm text-muted mt-1">Root: {domain.rootDomain}</p>
+              {domain.subdomain && (
+                <p className="text-sm text-muted mt-1">Subdomain: {domain.subdomain}</p>
+              )}
+              <p className="text-sm text-muted mt-1">
+                Added on{" "}
+                {new Date(domain.createdAt).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
             </div>
-            {domain.verificationStatus !== 'verified' && (
-              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-yellow-900 mb-1">
-                      Domain verification required
-                    </p>
-                    <p className="text-sm text-yellow-800">
-                      Both DKIM and MX records must be verified to send and receive emails. DKIM verification proves domain ownership and prevents spoofing.
-                    </p>
-                  </div>
-                </div>
+
+            {isFullyVerified ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#22c55e]/10 text-[#22c55e]">
+                <CheckCircle2 size={14} />
+                <span className="text-xs font-medium">Verified</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-500">
+                <AlertTriangle size={14} />
+                <span className="text-xs font-medium">Pending Verification</span>
               </div>
             )}
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-6">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">DKIM Status</p>
-                <div className="flex items-center gap-2">
-                  {getRecordStatusIcon(domain.dkimStatus)}
-                  <span className="font-medium capitalize">{domain.dkimStatus || 'pending'}</span>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">Required for domain ownership</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6 pt-4 border-t border-border">
+            <div>
+              <p className="text-xs text-muted mb-1">DKIM Status</p>
+              <div className="flex items-center gap-2">
+                <CheckCircle2
+                  size={18}
+                  className={domain.dkimStatus === "verified" ? "text-[#22c55e]" : "text-amber-500"}
+                />
+                <span
+                  className={`text-sm font-medium ${
+                    domain.dkimStatus === "verified" ? "text-[#22c55e]" : "text-amber-500"
+                  }`}
+                >
+                  {domain.dkimStatus === "verified" ? "Verified" : "Pending"}
+                </span>
               </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">MX Status</p>
-                <div className="flex items-center gap-2">
-                  {getRecordStatusIcon(domain.mxStatus)}
-                  <span className="font-medium capitalize">{domain.mxStatus || 'pending'}</span>
+              <p className="text-xs text-muted mt-1">Required for domain ownership</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted mb-1">MX Status</p>
+              <div className="flex items-center gap-2">
+                <CheckCircle2
+                  size={18}
+                  className={domain.mxStatus === "verified" ? "text-[#22c55e]" : "text-amber-500"}
+                />
+                <span
+                  className={`text-sm font-medium ${
+                    domain.mxStatus === "verified" ? "text-[#22c55e]" : "text-amber-500"
+                  }`}
+                >
+                  {domain.mxStatus === "verified" ? "Verified" : "Pending"}
+                </span>
+              </div>
+              <p className="text-xs text-muted mt-1">Required for email receiving</p>
+            </div>
+          </div>
+
+          {domain.verificationError && (
+            <div className="mt-4 p-3 bg-destructive/10 border border-destructive/30 rounded-md">
+              <p className="text-sm text-destructive">{domain.verificationError}</p>
+            </div>
+          )}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-surface border border-border rounded-2xl p-6 mb-6"
+        >
+          <div className="mb-8">
+            <h2 className="font-[var(--font-display)] text-xl font-semibold text-foreground">
+              DNS Configuration
+            </h2>
+            <p className="text-sm text-muted mt-2">
+              Add these DNS records to your DNS provider for{" "}
+              <span className="font-medium text-primary">{domain.rootDomain}</span>. Changes may take up to 48 hours to propagate.
+            </p>
+          </div>
+
+          {domain.dnsRecords?.mx && (
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    domain.dkimStatus === "verified" ? "bg-[#22c55e]/10" : "bg-amber-500/10"
+                  }`}
+                >
+                  <CheckCircle2
+                    size={18}
+                    className={domain.dkimStatus === "verified" ? "text-[#22c55e]" : "text-amber-500"}
+                  />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Required for email receiving</p>
+                <div>
+                  <h3 className="font-medium text-foreground">MX Record</h3>
+                  <p className="text-xs text-muted">Required for receiving emails</p>
+                </div>
+              </div>
+
+              <div className="bg-surface-raised/50 rounded-xl p-5 border border-border/50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <CopyableField label="Type" value={domain.dnsRecords.mx.type} onCopy={copyToClipboard} />
+                  <CopyableField label="Host / Name" value={domain.dnsRecords.mx.host} onCopy={copyToClipboard} />
+                  <CopyableField label="Priority" value={domain.dnsRecords.mx.priority} onCopy={copyToClipboard} />
+                  <CopyableField label="Value" value={domain.dnsRecords.mx.value} onCopy={copyToClipboard} />
+                </div>
               </div>
             </div>
-            {domain.verificationError && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-800">{domain.verificationError}</p>
+          )}
+
+          <div className="border-t border-border my-6" />
+
+          {domain.dnsRecords?.dkim?.length > 0 && (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    domain.dkimStatus === "verified" ? "bg-[#22c55e]/10" : "bg-amber-500/10"
+                  }`}
+                >
+                  <CheckCircle2
+                    size={18}
+                    className={domain.dkimStatus === "verified" ? "text-[#22c55e]" : "text-amber-500"}
+                  />
+                </div>
+                <div>
+                  <h3 className="font-medium text-foreground">DKIM Records</h3>
+                  <p className="text-xs text-muted">Required for domain ownership verification</p>
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* DNS Records Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>DNS Configuration</CardTitle>
-            <CardDescription>
-              Add these DNS records to your DNS provider for <strong>{domain.rootDomain}</strong>. Changes may take up to 48 hours to propagate.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {domain.dnsRecords && (
-              <>
-                {/* MX Record */}
-                {domain.dnsRecords.mx && (
-                  <div className="border rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">MX Record (Required for Email Receiving)</h3>
-                        {domain.subdomain && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            Configure this on your root domain's DNS ({domain.rootDomain})
-                          </p>
-                        )}
-                      </div>
-                      {getRecordStatusIcon(domain.mxStatus)}
+              <div className="space-y-4">
+                {domain.dnsRecords.dkim.map((record, index) => (
+                  <div
+                    key={record.id || index}
+                    className="bg-surface-raised/50 rounded-xl p-5 border border-border/50"
+                  >
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="w-6 h-6 rounded-md bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
+                        {index + 1}
+                      </span>
+                      <span className="text-sm font-medium text-foreground-dim">
+                        DKIM Record {index + 1}
+                      </span>
                     </div>
-                    <div className="grid grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-600 font-medium mb-1">Type</p>
-                        <div className="flex items-center gap-2">
-                          <code className="bg-white px-2 py-1 rounded border">
-                            {domain.dnsRecords.mx.type}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(domain.dnsRecords.mx.type)}
-                            className="h-7 w-7 p-0"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-gray-600 font-medium mb-1">Host/Name</p>
-                        <div className="flex items-center gap-2">
-                          <code className="bg-white px-2 py-1 rounded border">
-                            {domain.dnsRecords.mx.host}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(domain.dnsRecords.mx.host)}
-                            className="h-7 w-7 p-0"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="col-span-2">
-                        <p className="text-gray-600 font-medium mb-1">Value</p>
-                        <div className="flex items-center gap-2">
-                          <code className="bg-white px-2 py-1 rounded border flex-1 overflow-x-auto text-xs">
-                            {domain.dnsRecords.mx.value}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(domain.dnsRecords.mx.value)}
-                            className="h-7 w-7 p-0 shrink-0"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="col-span-4">
-                        <p className="text-gray-600 font-medium mb-1">Priority</p>
-                        <div className="flex items-center gap-2">
-                          <code className="bg-white px-2 py-1 rounded border">
-                            {domain.dnsRecords.mx.priority}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(String(domain.dnsRecords.mx.priority))}
-                            className="h-7 w-7 p-0"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      <CopyableField label="Type" value={record.type} onCopy={copyToClipboard} />
+                      <CopyableField label="Host / Name" value={record.host} onCopy={copyToClipboard} />
+                      <CopyableField label="Value" value={record.value} onCopy={copyToClipboard} />
                     </div>
                   </div>
-                )}
+                ))}
+              </div>
+            </div>
+          )}
 
-                {/* DKIM Records */}
-                {domain.dnsRecords.dkim && domain.dnsRecords.dkim.length > 0 && (
-                  <div className="border rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">DKIM Records (Required for Domain Ownership)</h3>
-                        <p className="text-sm text-gray-600 mt-1">
-                          DKIM cryptographically proves you own this domain and prevents email spoofing
-                        </p>
-                        {domain.subdomain && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            These are CNAME records for the full domain: {domain.fullDomain}
-                          </p>
-                        )}
-                      </div>
-                      {getRecordStatusIcon(domain.dkimStatus)}
-                    </div>
-                    <div className="space-y-4">
-                      {domain.dnsRecords.dkim.map((record, index) => (
-                        <div key={index} className="border-t pt-4 first:border-t-0 first:pt-0">
-                          <p className="text-sm font-medium text-gray-700 mb-2">DKIM Record {index + 1}</p>
-                          <div className="grid grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <p className="text-gray-600 font-medium mb-1">Type</p>
-                              <div className="flex items-center gap-2">
-                                <code className="bg-white px-2 py-1 rounded border">
-                                  {record.type}
-                                </code>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => copyToClipboard(record.type)}
-                                  className="h-7 w-7 p-0"
-                                >
-                                  <Copy className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="col-span-3">
-                              <p className="text-gray-600 font-medium mb-1">Host/Name</p>
-                              <div className="flex items-center gap-2">
-                                <code className="bg-white px-2 py-1 rounded border flex-1 overflow-x-auto text-xs">
-                                  {record.host}
-                                </code>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => copyToClipboard(record.host)}
-                                  className="h-7 w-7 p-0 shrink-0"
-                                >
-                                  <Copy className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="col-span-4">
-                              <p className="text-gray-600 font-medium mb-1">Value</p>
-                              <div className="flex items-center gap-2">
-                                <code className="bg-white px-2 py-1 rounded border flex-1 overflow-x-auto text-xs break-all">
-                                  {record.value}
-                                </code>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => copyToClipboard(record.value)}
-                                  className="h-7 w-7 p-0 shrink-0"
-                                >
-                                  <Copy className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Verify Button */}
-            <div className="pt-4 border-t">
-              <Button
+          <div className="mt-8 pt-6 border-t border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <button
                 onClick={handleVerify}
                 disabled={verifying}
-                className="w-full sm:w-auto gap-2"
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-medium bg-primary hover:bg-primary-hover text-primary-foreground transition-colors disabled:opacity-50"
               >
-                {verifying ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4" />
-                    Verify DNS Records
-                  </>
-                )}
-              </Button>
-              <p className="text-sm text-gray-600 mt-2">
+                <RefreshCw size={16} className={verifying ? "animate-spin" : ""} />
+                {verifying ? "Verifying DNS Records..." : "Verify DNS Records"}
+              </button>
+              <p className="text-sm text-muted">
                 Click to check if your DNS records have been configured correctly
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </motion.div>
 
-        {/* Help Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Need Help?</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-surface border border-border rounded-2xl p-6 mb-6"
+        >
+          <h2 className="font-[var(--font-display)] text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <HelpCircle size={20} className="text-muted" />
+            Need Help?
+          </h2>
+
+          <div className="space-y-4">
             <div>
-              <h4 className="font-medium mb-2">What is DKIM?</h4>
-              <p className="text-sm text-gray-600">
-                DKIM (DomainKeys Identified Mail) is a cryptographic signature that proves you own the domain.
-                It prevents email spoofing and ensures your emails are trusted by recipients.
-                <strong> Both DKIM and MX records must be verified before you can send or receive emails.</strong>
+              <h3 className="text-sm font-medium text-foreground mb-1">What is DKIM?</h3>
+              <p className="text-sm text-muted">
+                DKIM (DomainKeys Identified Mail) is a cryptographic signature that proves you own the domain. It prevents email spoofing and ensures your emails are trusted by recipients. <span className="font-medium text-foreground">Both DKIM and MX records must be verified before you can send or receive emails.</span>
               </p>
             </div>
+
             <div>
-              <h4 className="font-medium mb-2">DNS Propagation</h4>
-              <p className="text-sm text-gray-600">
+              <h3 className="text-sm font-medium text-foreground mb-1">DNS Propagation</h3>
+              <p className="text-sm text-muted">
                 DNS changes can take up to 48 hours to propagate globally. If verification fails, please wait a bit and try again.
               </p>
             </div>
+
             <div>
-              <h4 className="font-medium mb-2">Common DNS Providers</h4>
-              <p className="text-sm text-gray-600">
+              <h3 className="text-sm font-medium text-foreground mb-1">Common DNS Providers</h3>
+              <p className="text-sm text-muted">
                 For help adding DNS records, check your provider's documentation: Cloudflare, GoDaddy, Namecheap, Google Domains, etc.
               </p>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Danger Zone */}
-        <Card className="border-red-200">
-          <CardHeader>
-            <CardTitle className="text-red-600">Danger Zone</CardTitle>
-            <CardDescription>
-              Permanently delete this domain and remove it from AWS SES
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h4 className="font-medium mb-1">Delete Domain</h4>
-                <p className="text-sm text-gray-600">
-                  Once you delete this domain, it will be removed from AWS SES and all associated aliases and email logs will be permanently deleted.
-                </p>
-              </div>
-              <Button
-                variant="destructive"
-                onClick={() => setIsDeleteDialogOpen(true)}
-                className="gap-2 ml-4"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete Domain
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Domain</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this domain? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm font-medium text-red-900 mb-2">
-                This will permanently delete:
-              </p>
-              <ul className="list-disc list-inside text-sm text-red-800 space-y-1">
-                <li>Domain: <strong>{domain.fullDomain}</strong></li>
-                <li>AWS SES identity and all DNS configurations</li>
-                <li>All email aliases associated with this domain</li>
-                <li>All emails received/sent by those aliases</li>
-                <li>All email attachments stored in S3</li>
-              </ul>
-              <p className="text-sm text-red-900 mt-3 font-medium">
-                ⚠️ This action is permanent and cannot be undone. The deletion may take a few seconds
-                for large datasets as all S3 objects are removed in batches.
-              </p>
-            </div>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-surface border border-destructive/30 rounded-2xl p-6"
+        >
+          <h2 className="font-[var(--font-display)] text-lg font-semibold text-destructive mb-2">
+            Danger Zone
+          </h2>
+          <p className="text-sm text-muted mb-4">
+            Permanently delete this domain and remove it from AWS SES
+          </p>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-foreground">Delete Domain</h3>
+              <p className="text-xs text-muted mt-0.5">
+                Once you delete this domain, it will be removed from AWS SES and all associated aliases and email logs will be permanently deleted.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsDeleteDialogOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-destructive hover:bg-destructive/90 text-white transition-colors flex-shrink-0 ml-4"
+            >
+              <Trash2 size={16} />
+              Delete Domain
+            </button>
+          </div>
+        </motion.div>
+
+        {isDeleteDialogOpen && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
               onClick={() => setIsDeleteDialogOpen(false)}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteDomain}
-              disabled={isDeleting}
-              className="gap-2"
-            >
-              {isDeleting ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4" />
-                  Delete Permanently
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            />
+            <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-surface border border-border rounded-2xl p-6 shadow-xl">
+              <h3 className="font-[var(--font-display)] text-lg font-semibold text-foreground mb-2">
+                Delete Domain
+              </h3>
+              <p className="text-sm text-muted mb-6">
+                Are you sure you want to delete <span className="font-medium text-foreground">{domain.fullDomain}</span>? This action cannot be undone.
+              </p>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setIsDeleteDialogOpen(false)}
+                  className="px-4 py-2 rounded-xl text-sm font-medium text-foreground-dim hover:bg-surface-raised transition-colors"
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteDomain}
+                  disabled={isDeleting}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-destructive hover:bg-destructive/90 text-white transition-colors"
+                >
+                  {isDeleting ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={16} />
+                      Delete Domain
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

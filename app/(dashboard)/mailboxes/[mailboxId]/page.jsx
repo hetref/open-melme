@@ -2,28 +2,27 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  Mail,
-  ArrowLeft,
-  Lock,
-  Key,
-  Trash2,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Shield,
-  Clock,
-  Database,
-  Activity,
-  LogOut,
-  RefreshCw
+    Activity,
+    AlertCircle,
+    ArrowLeft,
+    CheckCircle,
+    Clock,
+    Database,
+    Key,
+    Lock,
+    LogOut,
+    Mail,
+    RefreshCw,
+    Shield,
+    Trash2,
+    XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -31,1171 +30,1227 @@ const MAX_TAGS = 20
 const MAX_TAG_LENGTH = 30
 
 function parseTagsInput(inputValue) {
-  const parts = inputValue
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
+    const parts = inputValue
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
 
-  const tags = []
-  const seen = new Set()
+    const tags = []
+    const seen = new Set()
 
-  for (const part of parts) {
-    if (part.length > MAX_TAG_LENGTH) {
-      return { error: `Each tag must be ${MAX_TAG_LENGTH} characters or less` }
+    for (const part of parts) {
+        if (part.length > MAX_TAG_LENGTH) {
+            return { error: `Each tag must be ${MAX_TAG_LENGTH} characters or less` }
+        }
+
+        const canonical = part.toLowerCase()
+        if (!seen.has(canonical)) {
+            seen.add(canonical)
+            tags.push(part)
+        }
     }
 
-    const canonical = part.toLowerCase()
-    if (!seen.has(canonical)) {
-      seen.add(canonical)
-      tags.push(part)
+    if (tags.length > MAX_TAGS) {
+        return { error: `A mailbox can have at most ${MAX_TAGS} tags` }
     }
-  }
 
-  if (tags.length > MAX_TAGS) {
-    return { error: `A mailbox can have at most ${MAX_TAGS} tags` }
-  }
+    return { tags }
+}
 
-  return { tags }
+function formatAlias(alias) {
+    return `${alias.localPart}@${alias.domain?.fullDomain || 'N/A'}`
 }
 
 const SingleMailboxPage = () => {
-  const router = useRouter()
-  const params = useParams()
-  const mailboxId = params.mailboxId
+    const router = useRouter()
+    const params = useParams()
+    const mailboxId = params.mailboxId
 
-  const [mailbox, setMailbox] = useState(null)
-  const [sessions, setSessions] = useState([])
-  const [stats, setStats] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [isChangePasswordDialogOpen, setIsChangePasswordDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [refreshingSessions, setRefreshingSessions] = useState(false)
-  const [isSavingSettings, setIsSavingSettings] = useState(false)
+    const [mailbox, setMailbox] = useState(null)
+    const [sessions, setSessions] = useState([])
+    const [stats, setStats] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [isChangePasswordDialogOpen, setIsChangePasswordDialogOpen] = useState(false)
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [refreshingSessions, setRefreshingSessions] = useState(false)
+    const [isSavingSettings, setIsSavingSettings] = useState(false)
+    const [activeTab, setActiveTab] = useState('overview')
 
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  })
-
-  const [settingsData, setSettingsData] = useState({
-    name: '',
-    senderName: '',
-    personalEmail: '',
-    tags: [],
-    description: '',
-  })
-  const [tagsInput, setTagsInput] = useState('')
-
-  const [deleteConfirmation, setDeleteConfirmation] = useState('')
-
-  useEffect(() => {
-    if (mailboxId) {
-      fetchMailbox()
-      fetchSessions()
-      fetchStats()
-    }
-  }, [mailboxId])
-
-  const fetchMailbox = async () => {
-    try {
-      const response = await fetch(`/api/mailboxes/${mailboxId}`)
-      if (!response.ok) {
-        if (response.status === 404) {
-          toast.error('Mailbox not found')
-          router.push('/mailboxes')
-          return
-        }
-        throw new Error('Failed to fetch mailbox')
-      }
-      const data = await response.json()
-      setMailbox(data.mailbox)
-      const resolvedPersonalEmail =
-        data.mailbox.personalEmail || data.mailbox.assignedPersonalEmails?.[0] || ''
-      const resolvedTags = data.mailbox.tags || []
-
-      // Initialize settings data
-      setSettingsData({
-        name: data.mailbox.name || '',
-        senderName: data.mailbox.senderName || '',
-        personalEmail: resolvedPersonalEmail,
-        tags: resolvedTags,
-        description: data.mailbox.description || '',
-      })
-      setTagsInput(resolvedTags.join(', '))
-    } catch (error) {
-      console.error('Error fetching mailbox:', error)
-      toast.error('Failed to load mailbox')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchSessions = async () => {
-    try {
-      const response = await fetch(`/api/mailboxes/${mailboxId}/sessions`)
-      if (response.ok) {
-        const data = await response.json()
-        setSessions(data.sessions || [])
-      }
-    } catch (error) {
-      console.error('Error fetching sessions:', error)
-    }
-  }
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch(`/api/mailboxes/${mailboxId}/stats`)
-      if (response.ok) {
-        const data = await response.json()
-        setStats(data.stats)
-      }
-    } catch (error) {
-      console.error('Error fetching stats:', error)
-    }
-  }
-
-  const handleRefreshSessions = async () => {
-    setRefreshingSessions(true)
-    try {
-      await fetchSessions()
-      toast.success('Sessions refreshed')
-    } catch (error) {
-      toast.error('Failed to refresh sessions')
-    } finally {
-      setRefreshingSessions(false)
-    }
-  }
-
-  const handleToggleStatus = async () => {
-    try {
-      const response = await fetch(`/api/mailboxes/${mailboxId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          isActive: !mailbox.isActive,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update mailbox status')
-      }
-
-      const data = await response.json()
-      setMailbox(data.mailbox)
-      toast.success(`Mailbox ${data.mailbox.isActive ? 'activated' : 'deactivated'}`)
-    } catch (error) {
-      console.error('Error updating mailbox:', error)
-      toast.error('Failed to update mailbox status')
-    }
-  }
-
-  const handleSaveSettings = async (e) => {
-    e.preventDefault()
-
-    if (!settingsData.name.trim()) {
-      toast.error('Mailbox name is required')
-      return
-    }
-
-    if (!settingsData.senderName.trim()) {
-      toast.error('Sender name is required')
-      return
-    }
-
-    if (!settingsData.personalEmail.trim()) {
-      toast.error('Personal email is required')
-      return
-    }
-
-    const personalEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!personalEmailRegex.test(settingsData.personalEmail.trim())) {
-      toast.error('Personal email is invalid')
-      return
-    }
-
-    const parsedTags = parseTagsInput(tagsInput)
-    if (parsedTags.error) {
-      toast.error(parsedTags.error)
-      return
-    }
-
-    setIsSavingSettings(true)
-
-    try {
-      const response = await fetch(`/api/mailboxes/${mailboxId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: settingsData.name.trim(),
-          senderName: settingsData.senderName.trim(),
-          personalEmail: settingsData.personalEmail.trim().toLowerCase(),
-          tags: parsedTags.tags,
-          description: settingsData.description.trim() || null,
-        }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to update settings')
-      }
-
-      const data = await response.json()
-      setMailbox(data.mailbox)
-      setSettingsData({
-        name: data.mailbox.name || '',
-        senderName: data.mailbox.senderName || '',
-        personalEmail:
-          data.mailbox.personalEmail || data.mailbox.assignedPersonalEmails?.[0] || '',
-        tags: data.mailbox.tags || [],
-        description: data.mailbox.description || '',
-      })
-      setTagsInput((data.mailbox.tags || []).join(', '))
-      toast.success('Settings updated successfully')
-    } catch (error) {
-      console.error('Error updating settings:', error)
-      toast.error(error.message)
-    } finally {
-      setIsSavingSettings(false)
-    }
-  }
-
-  const handleChangePassword = async (e) => {
-    e.preventDefault()
-
-    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      toast.error('All fields are required')
-      return
-    }
-
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error('New passwords do not match')
-      return
-    }
-
-    if (passwordData.newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters')
-      return
-    }
-
-    if (passwordData.newPassword === passwordData.currentPassword) {
-      toast.error('New password must be different from current password')
-      return
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      const response = await fetch(`/api/mailboxes/${mailboxId}/change-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(passwordData),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to change password')
-      }
-
-      toast.success('Password changed successfully!')
-      setIsChangePasswordDialogOpen(false)
-      setPasswordData({
+    const [passwordData, setPasswordData] = useState({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
-      })
-      // Refresh sessions as they might be invalidated
-      fetchSessions()
-    } catch (error) {
-      console.error('Error changing password:', error)
-      toast.error(error.message)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleRevokeSession = async (sessionId) => {
-    try {
-      const response = await fetch(`/api/mailboxes/${mailboxId}/sessions/${sessionId}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to revoke session')
-      }
-
-      toast.success('Session revoked')
-      fetchSessions()
-    } catch (error) {
-      console.error('Error revoking session:', error)
-      toast.error('Failed to revoke session')
-    }
-  }
-
-  const handleDeleteMailbox = async (e) => {
-    e.preventDefault()
-
-    if (deleteConfirmation !== mailbox.name) {
-      toast.error('Mailbox name does not match')
-      return
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      const response = await fetch(`/api/mailboxes/${mailboxId}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to delete mailbox')
-      }
-
-      toast.success('Mailbox deleted successfully')
-      router.push('/mailboxes')
-    } catch (error) {
-      console.error('Error deleting mailbox:', error)
-      toast.error(error.message)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const formatDate = (date) => {
-    return new Date(date).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     })
-  }
 
-  const formatTimeRemaining = (expiresAt) => {
-    const now = new Date()
-    const expires = new Date(expiresAt)
-    const diffMinutes = Math.floor((expires - now) / (1000 * 60))
+    const [settingsData, setSettingsData] = useState({
+        name: '',
+        senderName: '',
+        personalEmail: '',
+        tags: [],
+        description: '',
+    })
+    const [tagsInput, setTagsInput] = useState('')
+    const [deleteConfirmation, setDeleteConfirmation] = useState('')
 
-    if (diffMinutes <= 0) return 'Expired'
-    if (diffMinutes < 60) return `${diffMinutes} min`
+    useEffect(() => {
+        if (mailboxId) {
+            fetchMailbox()
+            fetchSessions()
+            fetchStats()
+        }
+    }, [mailboxId])
 
-    const hours = Math.floor(diffMinutes / 60)
-    const minutes = diffMinutes % 60
-    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading mailbox...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!mailbox) {
-    return (
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center py-16">
-          <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Mailbox Not Found</h2>
-          <p className="text-gray-600 mb-6">The mailbox you're looking for doesn't exist.</p>
-          <Button onClick={() => router.push('/mailboxes')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Mailboxes
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  const displayPersonalEmail =
-    mailbox.personalEmail || mailbox.assignedPersonalEmails?.[0] || 'Not set'
-
-  return (
-    <div className="max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <Button
-          variant="ghost"
-          onClick={() => router.push('/mailboxes')}
-          className="mb-4"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Mailboxes
-        </Button>
-
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900 break-all">
-                {mailbox.name}
-              </h1>
-              <Badge
-                variant={mailbox.isActive ? 'default' : 'secondary'}
-                className={
-                  mailbox.isActive
-                    ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                    : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+    const fetchMailbox = async () => {
+        try {
+            const response = await fetch(`/api/mailboxes/${mailboxId}`)
+            if (!response.ok) {
+                if (response.status === 404) {
+                    toast.error('Mailbox not found')
+                    router.push('/mailboxes')
+                    return
                 }
-              >
-                {mailbox.isActive ? 'Active' : 'Inactive'}
-              </Badge>
+                throw new Error('Failed to fetch mailbox')
+            }
+
+            const data = await response.json()
+            setMailbox(data.mailbox)
+
+            const resolvedPersonalEmail =
+                data.mailbox.personalEmail || data.mailbox.assignedPersonalEmails?.[0] || ''
+            const resolvedTags = data.mailbox.tags || []
+
+            setSettingsData({
+                name: data.mailbox.name || '',
+                senderName: data.mailbox.senderName || '',
+                personalEmail: resolvedPersonalEmail,
+                tags: resolvedTags,
+                description: data.mailbox.description || '',
+            })
+            setTagsInput(resolvedTags.join(', '))
+        } catch (error) {
+            console.error('Error fetching mailbox:', error)
+            toast.error('Failed to load mailbox')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const fetchSessions = async () => {
+        try {
+            const response = await fetch(`/api/mailboxes/${mailboxId}/sessions`)
+            if (response.ok) {
+                const data = await response.json()
+                setSessions(data.sessions || [])
+            }
+        } catch (error) {
+            console.error('Error fetching sessions:', error)
+        }
+    }
+
+    const fetchStats = async () => {
+        try {
+            const response = await fetch(`/api/mailboxes/${mailboxId}/stats`)
+            if (response.ok) {
+                const data = await response.json()
+                setStats(data.stats)
+            }
+        } catch (error) {
+            console.error('Error fetching stats:', error)
+        }
+    }
+
+    const handleRefreshSessions = async () => {
+        setRefreshingSessions(true)
+        try {
+            await fetchSessions()
+            toast.success('Sessions refreshed')
+        } catch (error) {
+            toast.error('Failed to refresh sessions')
+        } finally {
+            setRefreshingSessions(false)
+        }
+    }
+
+    const handleToggleStatus = async () => {
+        try {
+            const response = await fetch(`/api/mailboxes/${mailboxId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    isActive: !mailbox.isActive,
+                }),
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to update mailbox status')
+            }
+
+            const data = await response.json()
+            setMailbox(data.mailbox)
+            toast.success(`Mailbox ${data.mailbox.isActive ? 'activated' : 'deactivated'}`)
+        } catch (error) {
+            console.error('Error updating mailbox:', error)
+            toast.error('Failed to update mailbox status')
+        }
+    }
+
+    const handleSaveSettings = async (e) => {
+        e.preventDefault()
+
+        if (!settingsData.name.trim()) {
+            toast.error('Mailbox name is required')
+            return
+        }
+
+        if (!settingsData.senderName.trim()) {
+            toast.error('Sender name is required')
+            return
+        }
+
+        if (!settingsData.personalEmail.trim()) {
+            toast.error('Personal email is required')
+            return
+        }
+
+        const personalEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!personalEmailRegex.test(settingsData.personalEmail.trim())) {
+            toast.error('Personal email is invalid')
+            return
+        }
+
+        const parsedTags = parseTagsInput(tagsInput)
+        if (parsedTags.error) {
+            toast.error(parsedTags.error)
+            return
+        }
+
+        setIsSavingSettings(true)
+
+        try {
+            const response = await fetch(`/api/mailboxes/${mailboxId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: settingsData.name.trim(),
+                    senderName: settingsData.senderName.trim(),
+                    personalEmail: settingsData.personalEmail.trim().toLowerCase(),
+                    tags: parsedTags.tags,
+                    description: settingsData.description.trim() || null,
+                }),
+            })
+
+            if (!response.ok) {
+                const data = await response.json()
+                throw new Error(data.error || 'Failed to update settings')
+            }
+
+            const data = await response.json()
+            setMailbox(data.mailbox)
+            setSettingsData({
+                name: data.mailbox.name || '',
+                senderName: data.mailbox.senderName || '',
+                personalEmail:
+                    data.mailbox.personalEmail || data.mailbox.assignedPersonalEmails?.[0] || '',
+                tags: data.mailbox.tags || [],
+                description: data.mailbox.description || '',
+            })
+            setTagsInput((data.mailbox.tags || []).join(', '))
+            toast.success('Settings updated successfully')
+        } catch (error) {
+            console.error('Error updating settings:', error)
+            toast.error(error.message)
+        } finally {
+            setIsSavingSettings(false)
+        }
+    }
+
+    const handleChangePassword = async (e) => {
+        e.preventDefault()
+
+        if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+            toast.error('All fields are required')
+            return
+        }
+
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            toast.error('New passwords do not match')
+            return
+        }
+
+        if (passwordData.newPassword.length < 8) {
+            toast.error('Password must be at least 8 characters')
+            return
+        }
+
+        if (passwordData.newPassword === passwordData.currentPassword) {
+            toast.error('New password must be different from current password')
+            return
+        }
+
+        setIsSubmitting(true)
+
+        try {
+            const response = await fetch(`/api/mailboxes/${mailboxId}/change-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(passwordData),
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to change password')
+            }
+
+            toast.success('Password changed successfully!')
+            setIsChangePasswordDialogOpen(false)
+            setPasswordData({
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: '',
+            })
+            fetchSessions()
+        } catch (error) {
+            console.error('Error changing password:', error)
+            toast.error(error.message)
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    const handleRevokeSession = async (sessionId) => {
+        try {
+            const response = await fetch(`/api/mailboxes/${mailboxId}/sessions/${sessionId}`, {
+                method: 'DELETE',
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to revoke session')
+            }
+
+            toast.success('Session revoked')
+            fetchSessions()
+        } catch (error) {
+            console.error('Error revoking session:', error)
+            toast.error('Failed to revoke session')
+        }
+    }
+
+    const handleDeleteMailbox = async (e) => {
+        e.preventDefault()
+
+        if (deleteConfirmation !== mailbox.name) {
+            toast.error('Mailbox name does not match')
+            return
+        }
+
+        setIsSubmitting(true)
+
+        try {
+            const response = await fetch(`/api/mailboxes/${mailboxId}`, {
+                method: 'DELETE',
+            })
+
+            if (!response.ok) {
+                const data = await response.json()
+                throw new Error(data.error || 'Failed to delete mailbox')
+            }
+
+            toast.success('Mailbox deleted successfully')
+            router.push('/mailboxes')
+        } catch (error) {
+            console.error('Error deleting mailbox:', error)
+            toast.error(error.message)
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    const formatDate = (date) => {
+        return new Date(date).toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        })
+    }
+
+    const formatTimeRemaining = (expiresAt) => {
+        const now = new Date()
+        const expires = new Date(expiresAt)
+        const diffMinutes = Math.floor((expires - now) / (1000 * 60))
+
+        if (diffMinutes <= 0) return 'Expired'
+        if (diffMinutes < 60) return `${diffMinutes} min`
+
+        const hours = Math.floor(diffMinutes / 60)
+        const minutes = diffMinutes % 60
+        return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
+    }
+
+    if (loading) {
+        return (
+            <div className="flex min-h-[320px] items-center justify-center">
+                <div className="text-center">
+                    <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
+                    <p className="mt-4 text-muted">Loading mailbox...</p>
+                </div>
             </div>
-            <p className="text-sm text-gray-500 mt-1">Created {formatDate(mailbox.createdAt)}</p>
-          </div>
+        )
+    }
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={handleToggleStatus}
-            >
-              {mailbox.isActive ? (
-                <>
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Deactivate
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Activate
-                </>
-              )}
-            </Button>
-            <Button onClick={() => router.push('/my-mailbox')}>
-              <Mail className="w-4 h-4 mr-2" />
-              Access Mailbox
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      {stats && (
-        <div className="grid gap-4 md:grid-cols-4 mb-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Emails</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Mail className="w-5 h-5 text-blue-600" />
-                <span className="text-2xl font-bold">{stats.totalEmails}</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {stats.totalReceived || 0} received • {stats.totalSent || 0} sent
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Active Sessions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-green-600" />
-                <span className="text-2xl font-bold">{sessions.length}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Active Aliases</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-purple-600" />
-                <span className="text-2xl font-bold">{stats.activeAliases}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Storage Used</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Database className="w-5 h-5 text-orange-600" />
-                <span className="text-2xl font-bold">{stats.storageUsed}</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {stats.storageBytes?.toLocaleString() || 0} bytes
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
-        </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Mailbox Information</CardTitle>
-              <CardDescription>Basic details about this mailbox</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Mailbox Name</Label>
-                  <p className="text-sm mt-1 p-2 bg-gray-50 rounded border">
-                    {mailbox.name}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Sender Name</Label>
-                  <p className="text-sm mt-1 p-2 bg-gray-50 rounded border">
-                    {mailbox.senderName}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Personal Email</Label>
-                  <p className="text-sm mt-1 p-2 bg-gray-50 rounded border break-all">
-                    {displayPersonalEmail}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Tags</Label>
-                  <div className="mt-1 p-2 bg-gray-50 rounded border min-h-10 flex flex-wrap gap-1.5">
-                    {(mailbox.tags || []).length > 0 ? (
-                      mailbox.tags.map((tag) => (
-                        <Badge key={tag} variant="outline" className="text-xs font-normal">
-                          {tag}
-                        </Badge>
-                      ))
-                    ) : (
-                      <p className="text-sm text-gray-500">No tags assigned</p>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Assigned Aliases</Label>
-                  <div className="mt-1 p-2 bg-gray-50 rounded border">
-                    {mailbox.aliases && mailbox.aliases.length > 0 ? (
-                      <div className="space-y-1">
-                        {mailbox.aliases.map((alias) => (
-                          <p key={alias.id} className="text-sm font-mono">
-                            {alias.localPart}@{alias.domain?.fullDomain || 'N/A'}
-                          </p>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500">No aliases assigned</p>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Status</Label>
-                  <div className="mt-1">
-                    <Badge
-                      variant={mailbox.isActive ? 'default' : 'secondary'}
-                      className={
-                        mailbox.isActive
-                          ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                          : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
-                      }
-                    >
-                      {mailbox.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Created</Label>
-                  <p className="text-sm mt-1 p-2 bg-gray-50 rounded border">
-                    {formatDate(mailbox.createdAt)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Aliases Using This Mailbox</CardTitle>
-              <CardDescription>
-                Email aliases that forward to this mailbox
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {mailbox.aliases && mailbox.aliases.length > 0 ? (
-                <div className="space-y-2">
-                  {mailbox.aliases.map((alias) => {
-                    const fullEmail = `${alias.localPart}@${alias.domain?.fullDomain || 'unknown'}`
-                    return (
-                      <div
-                        key={alias.id}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium font-mono">{fullEmail}</p>
-                          <p className="text-sm text-gray-500">
-                            Mode: {alias.mode === 'mailbox' ? 'Mailbox' : 'Forward'}
-                          </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => router.push(`/aliases/${alias.domainId}/${alias.id}`)}
-                        >
-                          View
-                        </Button>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Mail className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-600 text-sm">No aliases using this mailbox yet</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Settings Tab */}
-        <TabsContent value="settings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Mailbox Settings</CardTitle>
-              <CardDescription>Update mailbox display information and sender identity</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSaveSettings} className="space-y-6">
-                <div className="space-y-4">
-                  {/* Read-only info */}
-                  <div className="p-4 bg-gray-50 border rounded-lg space-y-3">
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600">Assigned Aliases</Label>
-                      {mailbox.aliases && mailbox.aliases.length > 0 ? (
-                        <div className="mt-1 space-y-1">
-                          {mailbox.aliases.map((alias) => (
-                            <p key={alias.id} className="text-sm font-mono text-gray-900">
-                              {alias.localPart}@{alias.domain?.fullDomain || 'N/A'}
-                            </p>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500 mt-1">No aliases assigned</p>
-                      )}
+    if (!mailbox) {
+        return (
+            <div className="mx-auto max-w-7xl p-6 lg:p-8">
+                <div className="rounded-2xl border border-border bg-surface p-12 text-center">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-raised">
+                        <AlertCircle className="h-8 w-8 text-muted" />
                     </div>
+                    <h2 className="mb-2 text-2xl font-semibold text-foreground">Mailbox Not Found</h2>
+                    <p className="mb-6 text-muted">The mailbox you're looking for doesn't exist.</p>
+                    <Button onClick={() => router.push('/mailboxes')} className="rounded-xl px-5">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Mailboxes
+                    </Button>
+                </div>
+            </div>
+        )
+    }
 
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600">Tags</Label>
-                      <div className="mt-1 flex flex-wrap gap-1.5">
-                        {(mailbox.tags || []).length > 0 ? (
-                          mailbox.tags.map((tag) => (
-                            <Badge key={tag} variant="outline" className="text-xs font-normal">
-                              {tag}
+    const displayPersonalEmail =
+        mailbox.personalEmail || mailbox.assignedPersonalEmails?.[0] || 'Not set'
+    const aliases = mailbox.aliases || []
+    const mailboxTags = mailbox.tags || []
+
+    const tabs = [
+        { id: 'overview', label: 'Overview' },
+        { id: 'settings', label: 'Settings' },
+        { id: 'security', label: 'Security' },
+        { id: 'sessions', label: `Sessions (${sessions.length})` },
+    ]
+
+    return (
+        <div className="mx-auto max-w-7xl p-6 lg:p-8">
+            <div className="mb-8 space-y-4">
+                <Link
+                    href="/mailboxes"
+                    className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-foreground"
+                >
+                    <ArrowLeft size={16} />
+                    Back to Mailboxes
+                </Link>
+
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                                <Mail size={24} className="text-primary" />
+                            </div>
+                            <div>
+                                <h1 className="font-[var(--font-display)] text-3xl font-semibold break-all text-foreground lg:text-4xl">
+                                    {mailbox.name}
+                                </h1>
+                                <p className="mt-1 text-sm text-muted">Created {formatDate(mailbox.createdAt)}</p>
+                            </div>
+                            <Badge
+                                variant={mailbox.isActive ? 'default' : 'secondary'}
+                                className={
+                                    mailbox.isActive
+                                        ? 'rounded-full border-transparent bg-[#22c55e]/10 text-[#22c55e] hover:bg-[#22c55e]/10'
+                                        : 'rounded-full border-transparent bg-muted/20 text-muted hover:bg-muted/20'
+                                }
+                            >
+                                {mailbox.isActive ? 'Active' : 'Inactive'}
                             </Badge>
-                          ))
-                        ) : (
-                          <p className="text-sm text-gray-500 mt-1">No tags assigned</p>
-                        )}
-                      </div>
+                        </div>
+                        <p className="max-w-2xl text-sm text-muted">
+                            {mailbox.description || 'Mailbox configuration, session control, and security actions live here.'}
+                        </p>
                     </div>
-                  </div>
 
-                  {/* Editable fields */}
-                  <div className="space-y-2">
-                    <Label htmlFor="name">
-                      Mailbox Name <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="name"
-                      type="text"
-                      placeholder="e.g., Support Mailbox"
-                      value={settingsData.name}
-                      onChange={(e) =>
-                        setSettingsData({ ...settingsData, name: e.target.value })
-                      }
-                      disabled={isSavingSettings}
-                      maxLength={100}
-                      required
-                    />
-                    <p className="text-xs text-gray-500">
-                      Unique name for this mailbox (max 100 characters)
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="senderName">
-                      Sender Name <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="senderName"
-                      type="text"
-                      placeholder="e.g., John Doe"
-                      value={settingsData.senderName}
-                      onChange={(e) =>
-                        setSettingsData({ ...settingsData, senderName: e.target.value })
-                      }
-                      disabled={isSavingSettings}
-                      maxLength={100}
-                      required
-                    />
-                    <p className="text-xs text-gray-500">
-                      Used as sender name in outbound emails (max 100 characters)
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="personalEmail">
-                      Personal Email <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="personalEmail"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={settingsData.personalEmail}
-                      onChange={(e) =>
-                        setSettingsData({ ...settingsData, personalEmail: e.target.value })
-                      }
-                      disabled={isSavingSettings}
-                      required
-                    />
-                    <p className="text-xs text-gray-500">
-                      Used to map mailbox access to your email identity
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="tagsInput">Tags</Label>
-                    <Input
-                      id="tagsInput"
-                      type="text"
-                      placeholder="billing, primary, internal"
-                      value={tagsInput}
-                      onChange={(e) => setTagsInput(e.target.value)}
-                      disabled={isSavingSettings}
-                    />
-                    <p className="text-xs text-gray-500">
-                      Comma-separated tags. These tags can only be changed by the mailbox creator.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description (Optional)</Label>
-                    <textarea
-                      id="description"
-                      className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      placeholder="Add notes or description for this mailbox..."
-                      value={settingsData.description}
-                      onChange={(e) =>
-                        setSettingsData({ ...settingsData, description: e.target.value })
-                      }
-                      disabled={isSavingSettings}
-                      maxLength={500}
-                      rows={4}
-                    />
-                    <p className="text-xs text-gray-500">
-                      For your reference only (max 500 characters)
-                    </p>
-                  </div>
+                    <div className="flex flex-wrap gap-3">
+                        <Button variant="outline" onClick={handleToggleStatus} className="rounded-xl px-4">
+                            {mailbox.isActive ? (
+                                <>
+                                    <XCircle className="h-4 w-4" />
+                                    Deactivate
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle className="h-4 w-4" />
+                                    Activate
+                                </>
+                            )}
+                        </Button>
+                        <Button onClick={() => router.push('/my-mailbox')} className="rounded-xl px-4">
+                            <Mail className="h-4 w-4" />
+                            Access Mailbox
+                        </Button>
+                    </div>
                 </div>
+            </div>
 
-                <div className="flex items-center gap-3 pt-4 border-t">
-                  <Button type="submit" disabled={isSavingSettings}>
-                    {isSavingSettings ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setSettingsData({
-                        name: mailbox.name || '',
-                        senderName: mailbox.senderName || '',
-                        personalEmail:
-                          mailbox.personalEmail || mailbox.assignedPersonalEmails?.[0] || '',
-                        tags: mailbox.tags || [],
-                        description: mailbox.description || '',
-                      })
-                      setTagsInput((mailbox.tags || []).join(', '))
-                    }}
-                    disabled={isSavingSettings}
-                  >
-                    Reset
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>How Sender Identity Works</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-sm text-gray-600">
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                  <p>
-                    <strong>Sender Name</strong> is shown in recipient's inbox as the sender name
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                  <p>
-                    <strong>Mailbox Name</strong> is used for identification in your UI
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                  <p>
-                    Email address remains the alias address (unchanged)
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                  <p>
-                    Changes apply immediately to new emails
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Security Tab */}
-        <TabsContent value="security" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Password & Security</CardTitle>
-              <CardDescription>Manage mailbox authentication and security settings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <Lock className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-blue-900">Mailbox Password</p>
-                  <p className="text-sm text-blue-700 mt-1">
-                    This password is separate from your account password and is required to access this mailbox.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setIsChangePasswordDialogOpen(true)}
-                >
-                  <Key className="w-4 h-4 mr-2" />
-                  Change Password
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-red-200">
-            <CardHeader>
-              <CardTitle className="text-red-600">Danger Zone</CardTitle>
-              <CardDescription>Irreversible and destructive actions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
-                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-red-900">Delete Mailbox</p>
-                  <p className="text-sm text-red-700 mt-1">
-                    This will permanently delete the mailbox and all associated emails. This action cannot be undone.
-                  </p>
-                </div>
-              </div>
-
-              <Button
-                variant="destructive"
-                onClick={() => setIsDeleteDialogOpen(true)}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Mailbox
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Sessions Tab */}
-        <TabsContent value="sessions" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Active Sessions</CardTitle>
-                  <CardDescription>
-                    Currently authenticated sessions for this mailbox
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleRefreshSessions}
-                  disabled={refreshingSessions}
-                  title="Refresh sessions"
-                >
-                  <RefreshCw className={`w-4 h-4 ${refreshingSessions ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {sessions.length === 0 ? (
-                <div className="text-center py-12">
-                  <Lock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-600">No active sessions</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Sessions appear here when someone logs into this mailbox
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {sessions.map((session) => (
-                    <div
-                      key={session.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+            {stats && (
+                <div className="mb-8 grid grid-cols-2 gap-4 xl:grid-cols-4">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-2xl border border-border bg-surface p-5"
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Activity className="w-4 h-4 text-green-600 shrink-0" />
-                          <p className="font-medium text-sm">Active Session</p>
-                          <Badge variant="outline" className="text-xs">
-                            {new Date(session.expiresAt) > new Date() ? 'Valid' : 'Expired'}
-                          </Badge>
+                        <p className="mb-3 text-sm text-muted">Total Emails</p>
+                        <div className="flex items-center gap-2">
+                            <Mail size={20} className="text-primary" />
+                            <span className="text-2xl font-bold text-foreground">{stats.totalEmails}</span>
                         </div>
-                        <div className="text-sm text-gray-600 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-3 h-3" />
-                            <span>Created: {formatDate(session.createdAt)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-3 h-3" />
-                            <span>
-                              {new Date(session.expiresAt) > new Date()
-                                ? `Expires in ${formatTimeRemaining(session.expiresAt)}`
-                                : 'Expired'}
-                            </span>
-                          </div>
+                        <p className="mt-2 text-xs text-muted">
+                            {stats.totalReceived || 0} received • {stats.totalSent || 0} sent
+                        </p>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.05 }}
+                        className="rounded-2xl border border-border bg-surface p-5"
+                    >
+                        <p className="mb-3 text-sm text-muted">Active Sessions</p>
+                        <div className="flex items-center gap-2">
+                            <Activity size={20} className="text-amber-500" />
+                            <span className="text-2xl font-bold text-foreground">{sessions.length}</span>
                         </div>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRevokeSession(session.id)}
-                        className="shrink-0"
-                      >
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Revoke
-                      </Button>
-                    </div>
-                  ))}
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="rounded-2xl border border-border bg-surface p-5"
+                    >
+                        <p className="mb-3 text-sm text-muted">Active Aliases</p>
+                        <div className="flex items-center gap-2">
+                            <Shield size={20} className="text-violet-500" />
+                            <span className="text-2xl font-bold text-foreground">{stats.activeAliases}</span>
+                        </div>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 }}
+                        className="rounded-2xl border border-border bg-surface p-5"
+                    >
+                        <p className="mb-3 text-sm text-muted">Storage Used</p>
+                        <div className="flex items-center gap-2">
+                            <Database size={20} className="text-emerald-500" />
+                            <span className="text-2xl font-bold text-foreground">{stats.storageUsed}</span>
+                        </div>
+                        <p className="mt-2 text-xs text-muted">
+                            {stats.storageBytes?.toLocaleString() || 0} bytes
+                        </p>
+                    </motion.div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+            )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Session Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-sm text-gray-600">
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                  <p>Sessions expire after 1 hour of inactivity</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                  <p>You can revoke sessions at any time</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                  <p>Changing the mailbox password invalidates all active sessions</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Change Password Dialog */}
-      <Dialog open={isChangePasswordDialogOpen} onOpenChange={setIsChangePasswordDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Change Mailbox Password</DialogTitle>
-            <DialogDescription>
-              Update the password for this mailbox. All active sessions will be invalidated.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleChangePassword} className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="currentPassword">Current Password *</Label>
-              <Input
-                id="currentPassword"
-                type="password"
-                placeholder="Enter current password"
-                value={passwordData.currentPassword}
-                onChange={(e) =>
-                  setPasswordData({ ...passwordData, currentPassword: e.target.value })
-                }
-                disabled={isSubmitting}
-                required
-              />
+            <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl border border-border bg-surface-raised p-1 md:grid-cols-4">
+                {tabs.map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${activeTab === tab.id
+                                ? 'bg-surface text-foreground shadow-sm'
+                                : 'text-muted hover:text-foreground'
+                            }`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password *</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                placeholder="Enter new password"
-                value={passwordData.newPassword}
-                onChange={(e) =>
-                  setPasswordData({ ...passwordData, newPassword: e.target.value })
-                }
-                disabled={isSubmitting}
-                minLength={8}
-                required
-              />
-              <p className="text-xs text-gray-500">At least 8 characters</p>
-            </div>
+            <AnimatePresence mode="wait">
+                {activeTab === 'overview' && (
+                    <motion.div
+                        key="overview"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="space-y-6"
+                    >
+                        <section className="rounded-2xl border border-border bg-surface p-6">
+                            <div className="mb-6">
+                                <h2 className="font-[var(--font-display)] text-xl font-semibold text-foreground">
+                                    Mailbox Information
+                                </h2>
+                                <p className="mt-1 text-sm text-muted">Basic details about this mailbox</p>
+                            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm New Password *</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Confirm new password"
-                value={passwordData.confirmPassword}
-                onChange={(e) =>
-                  setPasswordData({ ...passwordData, confirmPassword: e.target.value })
-                }
-                disabled={isSubmitting}
-                minLength={8}
-                required
-              />
-            </div>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <InfoField label="Mailbox Name" value={mailbox.name} />
+                                <InfoField label="Sender Name" value={mailbox.senderName} />
+                                <InfoField label="Personal Email" value={displayPersonalEmail} mono />
+                                <div className="space-y-1.5">
+                                    <p className="text-xs text-muted">Tags</p>
+                                    <div className="flex min-h-12 flex-wrap gap-1.5 rounded-xl border border-border bg-surface-raised px-4 py-2.5">
+                                        {mailboxTags.length > 0 ? (
+                                            mailboxTags.map((tag) => (
+                                                <Badge key={tag} variant="outline" className="text-xs font-normal">
+                                                    {tag}
+                                                </Badge>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-muted">No tags assigned</p>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <p className="text-xs text-muted">Assigned Aliases</p>
+                                    <div className="rounded-xl border border-border bg-surface-raised px-4 py-2.5">
+                                        {aliases.length > 0 ? (
+                                            <div className="space-y-1">
+                                                {aliases.map((alias) => (
+                                                    <p key={alias.id} className="break-all font-mono text-sm text-foreground">
+                                                        {formatAlias(alias)}
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-muted">No aliases assigned</p>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <p className="text-xs text-muted">Status</p>
+                                    <div className="rounded-xl border border-border bg-surface-raised px-4 py-2.5">
+                                        <Badge
+                                            variant={mailbox.isActive ? 'default' : 'secondary'}
+                                            className={
+                                                mailbox.isActive
+                                                    ? 'rounded-full border-transparent bg-[#22c55e]/10 text-[#22c55e] hover:bg-[#22c55e]/10'
+                                                    : 'rounded-full border-transparent bg-muted/20 text-muted hover:bg-muted/20'
+                                            }
+                                        >
+                                            {mailbox.isActive ? 'Active' : 'Inactive'}
+                                        </Badge>
+                                    </div>
+                                </div>
+                                <InfoField label="Created" value={formatDate(mailbox.createdAt)} />
+                            </div>
+                        </section>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-              <div className="flex gap-2">
-                <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0" />
-                <p className="text-xs text-yellow-800">
-                  Changing the password will log out all active sessions. You'll need to login again with the new password.
-                </p>
-              </div>
-            </div>
+                        <section className="rounded-2xl border border-border bg-surface p-6">
+                            <div className="mb-4">
+                                <h2 className="font-[var(--font-display)] text-xl font-semibold text-foreground">
+                                    Aliases Using This Mailbox
+                                </h2>
+                                <p className="mt-1 text-sm text-muted">Email aliases that forward to this mailbox</p>
+                            </div>
 
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsChangePasswordDialogOpen(false)
-                  setPasswordData({
-                    currentPassword: '',
-                    newPassword: '',
-                    confirmPassword: '',
-                  })
-                }}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Changing...' : 'Change Password'}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+                            {aliases.length > 0 ? (
+                                <div className="space-y-3">
+                                    {aliases.map((alias) => {
+                                        const fullEmail = formatAlias(alias)
+                                        return (
+                                            <div
+                                                key={alias.id}
+                                                className="flex flex-col gap-3 rounded-xl border border-border bg-background/60 p-4 transition-colors hover:border-primary/30 md:flex-row md:items-center md:justify-between"
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="break-all font-mono text-sm font-medium text-foreground">
+                                                        {fullEmail}
+                                                    </p>
+                                                    <p className="text-sm text-muted">
+                                                        Mode: {alias.mode === 'mailbox' ? 'Mailbox' : 'Forward'}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => router.push(`/aliases/${alias.domainId}/${alias.id}`)}
+                                                    className="rounded-xl"
+                                                >
+                                                    View
+                                                </Button>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="py-12 text-center">
+                                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-raised">
+                                        <Mail className="h-8 w-8 text-muted" />
+                                    </div>
+                                    <p className="text-sm text-muted">No aliases using this mailbox yet</p>
+                                </div>
+                            )}
+                        </section>
+                    </motion.div>
+                )}
 
-      {/* Delete Mailbox Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-red-600">Delete Mailbox</DialogTitle>
-            <DialogDescription>
-              This action cannot be undone. This will permanently delete the mailbox and all associated emails.
-            </DialogDescription>
-          </DialogHeader>
+                {activeTab === 'settings' && (
+                    <motion.div
+                        key="settings"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="space-y-6"
+                    >
+                        <section className="rounded-2xl border border-border bg-surface p-6">
+                            <div className="mb-6 flex items-center justify-between gap-4">
+                                <div>
+                                    <h2 className="font-[var(--font-display)] text-xl font-semibold text-foreground">
+                                        Mailbox Settings
+                                    </h2>
+                                    <p className="mt-1 text-sm text-muted">
+                                        Update mailbox display information and sender identity
+                                    </p>
+                                </div>
+                            </div>
 
-          <form onSubmit={handleDeleteMailbox} className="space-y-4 mt-4">
-            <div className="bg-red-50 border border-red-200 rounded p-4">
-              <div className="flex gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-red-900 mb-2">
-                    This will delete:
-                  </p>
-                  <ul className="text-sm text-red-700 space-y-1 list-disc list-inside">
-                    <li>All emails in this mailbox</li>
-                    <li>All active sessions</li>
-                    <li>All aliases will be unlinked (not deleted)</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+                            <form onSubmit={handleSaveSettings} className="space-y-6">
+                                <div className="space-y-3 rounded-xl border border-border bg-surface-raised p-4">
+                                    <div>
+                                        <p className="text-xs text-muted">Assigned Aliases</p>
+                                        {aliases.length > 0 ? (
+                                            <div className="mt-1 space-y-1">
+                                                {aliases.map((alias) => (
+                                                    <p key={alias.id} className="font-mono text-sm text-foreground">
+                                                        {formatAlias(alias)}
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="mt-1 text-sm text-muted">No aliases assigned</p>
+                                        )}
+                                    </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="deleteConfirmation">
-                Type <span className="font-bold">{mailbox.name}</span> to confirm
-              </Label>
-              <Input
-                id="deleteConfirmation"
-                type="text"
-                placeholder={mailbox.name}
-                value={deleteConfirmation}
-                onChange={(e) => setDeleteConfirmation(e.target.value)}
-                disabled={isSubmitting}
-                required
-              />
-            </div>
+                                    <div>
+                                        <p className="text-xs text-muted">Tags</p>
+                                        <div className="mt-1 flex flex-wrap gap-1.5">
+                                            {mailboxTags.length > 0 ? (
+                                                mailboxTags.map((tag) => (
+                                                    <Badge key={tag} variant="outline" className="text-xs font-normal">
+                                                        {tag}
+                                                    </Badge>
+                                                ))
+                                            ) : (
+                                                <p className="mt-1 text-sm text-muted">No tags assigned</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
 
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsDeleteDialogOpen(false)
-                  setDeleteConfirmation('')
-                }}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="destructive"
-                disabled={isSubmitting || deleteConfirmation !== mailbox.name}
-              >
-                {isSubmitting ? 'Deleting...' : 'Delete Mailbox'}
-              </Button>
+                                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                                    <SettingField
+                                        id="name"
+                                        label="Mailbox Name"
+                                        required
+                                        value={settingsData.name}
+                                        onChange={(value) => setSettingsData({ ...settingsData, name: value })}
+                                        placeholder="e.g., Support Mailbox"
+                                        hint="Unique name for this mailbox (max 100 characters)"
+                                        disabled={isSavingSettings}
+                                    />
+
+                                    <SettingField
+                                        id="senderName"
+                                        label="Sender Name"
+                                        required
+                                        value={settingsData.senderName}
+                                        onChange={(value) => setSettingsData({ ...settingsData, senderName: value })}
+                                        placeholder="e.g., John Doe"
+                                        hint="Used as sender name in outbound emails (max 100 characters)"
+                                        disabled={isSavingSettings}
+                                    />
+
+                                    <SettingField
+                                        id="personalEmail"
+                                        label="Personal Email"
+                                        required
+                                        type="email"
+                                        value={settingsData.personalEmail}
+                                        onChange={(value) => setSettingsData({ ...settingsData, personalEmail: value })}
+                                        placeholder="you@example.com"
+                                        hint="Used to map mailbox access to your email identity"
+                                        disabled={isSavingSettings}
+                                    />
+
+                                    <SettingField
+                                        id="tagsInput"
+                                        label="Tags"
+                                        value={tagsInput}
+                                        onChange={setTagsInput}
+                                        placeholder="billing, primary, internal"
+                                        hint="Comma-separated tags. These tags can only be changed by the mailbox creator."
+                                        disabled={isSavingSettings}
+                                    />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-foreground" htmlFor="description">
+                                        Description (Optional)
+                                    </label>
+                                    <textarea
+                                        id="description"
+                                        className="min-h-24 w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                        placeholder="Add notes or description for this mailbox..."
+                                        value={settingsData.description}
+                                        onChange={(event) =>
+                                            setSettingsData({ ...settingsData, description: event.target.value })
+                                        }
+                                        disabled={isSavingSettings}
+                                        maxLength={500}
+                                        rows={4}
+                                    />
+                                    <p className="text-xs text-muted">For your reference only (max 500 characters)</p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+                                    <Button type="submit" disabled={isSavingSettings} className="rounded-xl px-5">
+                                        {isSavingSettings ? 'Saving...' : 'Save Changes'}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => {
+                                            setSettingsData({
+                                                name: mailbox.name || '',
+                                                senderName: mailbox.senderName || '',
+                                                personalEmail:
+                                                    mailbox.personalEmail || mailbox.assignedPersonalEmails?.[0] || '',
+                                                tags: mailbox.tags || [],
+                                                description: mailbox.description || '',
+                                            })
+                                            setTagsInput((mailbox.tags || []).join(', '))
+                                        }}
+                                        disabled={isSavingSettings}
+                                        className="rounded-xl px-5"
+                                    >
+                                        Reset
+                                    </Button>
+                                </div>
+                            </form>
+                        </section>
+
+                        <section className="rounded-2xl border border-border bg-surface p-6">
+                            <div className="mb-4">
+                                <h2 className="font-[var(--font-display)] text-xl font-semibold text-foreground">
+                                    How Sender Identity Works
+                                </h2>
+                            </div>
+                            <div className="space-y-3 text-sm text-muted">
+                                <InfoRow>
+                                    <CheckCircle className="mt-0.5 h-4 w-4 text-[#22c55e]" />
+                                    <p>
+                                        <span className="font-medium text-foreground">Sender Name</span> is shown in recipient's inbox as the sender name
+                                    </p>
+                                </InfoRow>
+                                <InfoRow>
+                                    <CheckCircle className="mt-0.5 h-4 w-4 text-[#22c55e]" />
+                                    <p>
+                                        <span className="font-medium text-foreground">Mailbox Name</span> is used for identification in your UI
+                                    </p>
+                                </InfoRow>
+                                <InfoRow>
+                                    <CheckCircle className="mt-0.5 h-4 w-4 text-[#22c55e]" />
+                                    <p>Email address remains the alias address (unchanged)</p>
+                                </InfoRow>
+                                <InfoRow>
+                                    <CheckCircle className="mt-0.5 h-4 w-4 text-[#22c55e]" />
+                                    <p>Changes apply immediately to new emails</p>
+                                </InfoRow>
+                            </div>
+                        </section>
+                    </motion.div>
+                )}
+
+                {activeTab === 'security' && (
+                    <motion.div
+                        key="security"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="space-y-6"
+                    >
+                        <section className="rounded-2xl border border-border bg-surface p-6">
+                            <div className="mb-6">
+                                <h2 className="font-[var(--font-display)] text-xl font-semibold text-foreground">
+                                    Password & Security
+                                </h2>
+                                <p className="mt-1 text-sm text-muted">
+                                    Manage mailbox authentication and security settings
+                                </p>
+                            </div>
+
+                            <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                                <div className="flex items-start gap-3">
+                                    <Lock className="mt-0.5 h-4 w-4 text-primary" />
+                                    <div>
+                                        <h3 className="text-sm font-medium text-foreground">Mailbox Password</h3>
+                                        <p className="mt-0.5 text-sm text-muted">
+                                            This password is separate from your account password and is required to access this mailbox.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Button
+                                variant="outline"
+                                className="w-full rounded-xl"
+                                onClick={() => setIsChangePasswordDialogOpen(true)}
+                            >
+                                <Key className="h-4 w-4" />
+                                Change Password
+                            </Button>
+                        </section>
+
+                        <section className="rounded-2xl border border-destructive/30 bg-surface p-6">
+                            <div className="mb-4">
+                                <h2 className="font-[var(--font-display)] text-xl font-semibold text-destructive">
+                                    Danger Zone
+                                </h2>
+                                <p className="mt-1 text-sm text-muted">Irreversible and destructive actions</p>
+                            </div>
+
+                            <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="mt-0.5 h-4 w-4 text-destructive" />
+                                    <div>
+                                        <h3 className="text-sm font-medium text-foreground">Delete Mailbox</h3>
+                                        <p className="mt-0.5 text-sm text-destructive">
+                                            This will permanently delete the mailbox and all associated emails. This action cannot be undone.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Button
+                                variant="destructive"
+                                onClick={() => setIsDeleteDialogOpen(true)}
+                                className="rounded-xl"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                Delete Mailbox
+                            </Button>
+                        </section>
+                    </motion.div>
+                )}
+
+                {activeTab === 'sessions' && (
+                    <motion.div
+                        key="sessions"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="space-y-6"
+                    >
+                        <section className="rounded-2xl border border-border bg-surface p-6">
+                            <div className="mb-6 flex items-center justify-between gap-4">
+                                <div>
+                                    <h2 className="font-[var(--font-display)] text-xl font-semibold text-foreground">
+                                        Active Sessions
+                                    </h2>
+                                    <p className="mt-1 text-sm text-muted">
+                                        Currently authenticated sessions for this mailbox
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={handleRefreshSessions}
+                                    disabled={refreshingSessions}
+                                    title="Refresh sessions"
+                                >
+                                    <RefreshCw className={`${refreshingSessions ? 'animate-spin' : ''} h-4 w-4`} />
+                                </Button>
+                            </div>
+
+                            {sessions.length === 0 ? (
+                                <div className="py-16 text-center">
+                                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-raised">
+                                        <Lock className="h-8 w-8 text-muted" />
+                                    </div>
+                                    <p className="text-foreground">No active sessions</p>
+                                    <p className="mt-1 text-sm text-muted">
+                                        Sessions appear here when someone logs into this mailbox
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {sessions.map((session) => (
+                                        <div
+                                            key={session.id}
+                                            className="flex flex-col gap-3 rounded-xl border border-border bg-background/60 p-4 transition-colors hover:border-primary/30 sm:flex-row sm:items-center sm:justify-between"
+                                        >
+                                            <div className="min-w-0 flex-1">
+                                                <div className="mb-1 flex items-center gap-2">
+                                                    <Activity className="h-4 w-4 shrink-0 text-[#22c55e]" />
+                                                    <p className="text-sm font-medium text-foreground">Active Session</p>
+                                                    <Badge variant="outline" className="text-xs">
+                                                        {new Date(session.expiresAt) > new Date() ? 'Valid' : 'Expired'}
+                                                    </Badge>
+                                                </div>
+                                                <div className="space-y-1 text-sm text-muted">
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="h-3 w-3" />
+                                                        <span>Created: {formatDate(session.createdAt)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="h-3 w-3" />
+                                                        <span>
+                                                            {new Date(session.expiresAt) > new Date()
+                                                                ? `Expires in ${formatTimeRemaining(session.expiresAt)}`
+                                                                : 'Expired'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleRevokeSession(session.id)}
+                                                className="shrink-0 rounded-xl"
+                                            >
+                                                <LogOut className="h-4 w-4" />
+                                                Revoke
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+
+                        <section className="rounded-2xl border border-border bg-surface p-6">
+                            <h2 className="mb-4 font-[var(--font-display)] text-xl font-semibold text-foreground">
+                                Session Information
+                            </h2>
+                            <div className="space-y-3 text-sm text-muted">
+                                <InfoRow>
+                                    <CheckCircle className="mt-0.5 h-4 w-4 text-[#22c55e]" />
+                                    <p>Sessions expire after 1 hour of inactivity</p>
+                                </InfoRow>
+                                <InfoRow>
+                                    <CheckCircle className="mt-0.5 h-4 w-4 text-[#22c55e]" />
+                                    <p>You can revoke sessions at any time</p>
+                                </InfoRow>
+                                <InfoRow>
+                                    <CheckCircle className="mt-0.5 h-4 w-4 text-[#22c55e]" />
+                                    <p>Changing the mailbox password invalidates all active sessions</p>
+                                </InfoRow>
+                            </div>
+                        </section>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <Dialog open={isChangePasswordDialogOpen} onOpenChange={setIsChangePasswordDialogOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="font-[var(--font-display)] text-foreground">
+                            Change Mailbox Password
+                        </DialogTitle>
+                        <DialogDescription>
+                            Update the password for this mailbox. All active sessions will be invalidated.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form onSubmit={handleChangePassword} className="mt-4 space-y-4">
+                        <SettingField
+                            id="currentPassword"
+                            label="Current Password"
+                            type="password"
+                            placeholder="Enter current password"
+                            value={passwordData.currentPassword}
+                            onChange={(value) =>
+                                setPasswordData({ ...passwordData, currentPassword: value })
+                            }
+                            disabled={isSubmitting}
+                            required
+                        />
+
+                        <SettingField
+                            id="newPassword"
+                            label="New Password"
+                            type="password"
+                            placeholder="Enter new password"
+                            value={passwordData.newPassword}
+                            onChange={(value) => setPasswordData({ ...passwordData, newPassword: value })}
+                            disabled={isSubmitting}
+                            required
+                        >
+                            <p className="text-xs text-muted">At least 8 characters</p>
+                        </SettingField>
+
+                        <SettingField
+                            id="confirmPassword"
+                            label="Confirm New Password"
+                            type="password"
+                            placeholder="Confirm new password"
+                            value={passwordData.confirmPassword}
+                            onChange={(value) =>
+                                setPasswordData({ ...passwordData, confirmPassword: value })
+                            }
+                            disabled={isSubmitting}
+                            required
+                        />
+
+                        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
+                            <div className="flex items-start gap-2">
+                                <AlertCircle className="mt-0.5 h-4 w-4 text-amber-500" />
+                                <p className="text-xs text-amber-600 dark:text-amber-400">
+                                    Changing the password will log out all active sessions. You'll need to login again with the new password.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setIsChangePasswordDialogOpen(false)
+                                    setPasswordData({
+                                        currentPassword: '',
+                                        newPassword: '',
+                                        confirmPassword: '',
+                                    })
+                                }}
+                                disabled={isSubmitting}
+                                className="rounded-xl"
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isSubmitting} className="rounded-xl">
+                                {isSubmitting ? 'Changing...' : 'Change Password'}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="font-[var(--font-display)] text-destructive">
+                            Delete Mailbox
+                        </DialogTitle>
+                        <DialogDescription>
+                            This action cannot be undone. This will permanently delete the mailbox and all associated emails.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form onSubmit={handleDeleteMailbox} className="mt-4 space-y-4">
+                        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+                            <div className="flex gap-3">
+                                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+                                <div className="flex-1">
+                                    <p className="mb-2 text-sm font-medium text-foreground">This will delete:</p>
+                                    <ul className="list-inside list-disc space-y-1 text-sm text-destructive">
+                                        <li>All emails in this mailbox</li>
+                                        <li>All active sessions</li>
+                                        <li>All aliases will be unlinked (not deleted)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <SettingField
+                            id="deleteConfirmation"
+                            label={
+                                <>
+                                    Type <span className="font-bold">{mailbox.name}</span> to confirm
+                                </>
+                            }
+                            type="text"
+                            placeholder={mailbox.name}
+                            value={deleteConfirmation}
+                            onChange={(value) => setDeleteConfirmation(value)}
+                            disabled={isSubmitting}
+                            required
+                        />
+
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setIsDeleteDialogOpen(false)
+                                    setDeleteConfirmation('')
+                                }}
+                                disabled={isSubmitting}
+                                className="rounded-xl"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                variant="destructive"
+                                disabled={isSubmitting || deleteConfirmation !== mailbox.name}
+                                className="rounded-xl"
+                            >
+                                {isSubmitting ? 'Deleting...' : 'Delete Mailbox'}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+        </div>
+    )
+}
+
+function InfoField({ label, value, mono = false }) {
+    return (
+        <div className="space-y-1.5">
+            <p className="text-xs text-muted">{label}</p>
+            <div className="rounded-xl border border-border bg-surface-raised px-4 py-2.5">
+                <p className={`text-sm text-foreground ${mono ? 'font-mono' : ''}`}>{value}</p>
             </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
+        </div>
+    )
+}
+
+function InfoRow({ children }) {
+    return <div className="flex items-start gap-2">{children}</div>
+}
+
+function SettingField({
+    id,
+    label,
+    value,
+    onChange,
+    placeholder,
+    hint,
+    required = false,
+    type = 'text',
+    disabled = false,
+    children,
+}) {
+    return (
+        <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground" htmlFor={id}>
+                {label}
+                {required ? <span className="text-destructive"> *</span> : null}
+            </label>
+            <Input
+                id={id}
+                type={type}
+                placeholder={placeholder}
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+                disabled={disabled}
+                required={required}
+                className="h-12 rounded-xl border-border bg-background text-foreground placeholder:text-muted focus-visible:border-primary/40"
+            />
+            {hint ? <p className="text-xs text-muted">{hint}</p> : null}
+            {children}
+        </div>
+    )
 }
 
 export default SingleMailboxPage

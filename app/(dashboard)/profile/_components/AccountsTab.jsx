@@ -11,8 +11,9 @@ const AccountsTab = async () => {
   )
 
   return (
-    <div><h2 className="text-xl font-semibold mb-2">Connected Accounts</h2>
-      <p className="text-gray-600 mb-6">Manage your connected accounts here.</p>
+    <div>
+      <h2 className="text-lg font-semibold text-foreground mb-2">Connected Accounts</h2>
+      <p className="text-foreground-dim text-sm mb-6">Connect or unlink your sign-in providers.</p>
       <AccountLinking currentAccounts={nonCredentialAccounts} />
     </div>
   )

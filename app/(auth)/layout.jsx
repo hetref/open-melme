@@ -30,8 +30,9 @@ const layout = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="relative min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none" />
+      <div className="relative z-10 w-full flex justify-center">
         {children}
       </div>
     </div>

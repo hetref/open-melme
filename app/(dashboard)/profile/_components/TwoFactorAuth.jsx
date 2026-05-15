@@ -157,7 +157,10 @@ const QRCodeVerify = ({
         </p>
         <div className="grid grid-cols-2 gap-2 mb-4">
           {backupCodes.map((code, index) => (
-            <div key={index} className="font-mono text-sm">
+            <div
+              key={index}
+              className="font-mono text-sm rounded-md border border-border bg-surface-raised px-2 py-1"
+            >
               {code}
             </div>
           ))}
@@ -197,8 +200,8 @@ const QRCodeVerify = ({
           </Button>
         </form>
       </Form>
-      <div className="p-4 bg-white w-fit">
-        <QRCode size={256} value={totpURI} />
+      <div className="p-4 bg-surface-raised border border-border rounded-lg w-fit">
+        <QRCode size={220} value={totpURI} />
       </div>
     </div>
   )

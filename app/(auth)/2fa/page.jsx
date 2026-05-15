@@ -11,14 +11,14 @@ export default async function TwoFactorPage() {
   if (session != null) return redirect("/")
 
   return (
-    <div className="my-6 px-4">
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">
+    <div className="w-full max-w-[420px] relative">
+      <Card className="w-full bg-surface border border-border rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.06)]">
+        <CardHeader className="text-center pb-4">
+          <CardTitle className="font-[var(--font-display)] text-2xl font-bold text-foreground">
             Two-Factor Authentication
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-2">
           <Tabs defaultValue="totp">
             <TabsList className="grid w-full grid-cols-2 mb-8">
               <TabsTrigger value="totp">Authenticator</TabsTrigger>

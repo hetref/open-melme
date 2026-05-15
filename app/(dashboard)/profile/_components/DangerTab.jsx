@@ -16,8 +16,10 @@ const DangerTab = () => {
   }
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-2 text-red-600">Danger Zone</h2>
-      <p className="text-gray-600 mb-6">Proceed with caution when making changes here.</p>
+      <h2 className="text-lg font-semibold text-destructive mb-2">Danger Zone</h2>
+      <p className="text-foreground-dim text-sm mb-6">
+        Permanently delete your account and all associated data.
+      </p>
 
       <div>
         <Button onClick={deleteUserHandler} variant='destructive' className="w-full">Delete Your Account</Button>

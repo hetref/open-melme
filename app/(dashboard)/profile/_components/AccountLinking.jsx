@@ -11,8 +11,8 @@ const AccountLinking = ({ currentAccounts }) => {
   return (
     <div>
       {currentAccounts.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-secondary-muted">
+        <Card className="bg-surface border border-border">
+          <CardContent className="py-8 text-center text-muted-foreground">
             No linked accounts found
           </CardContent>
         </Card>
@@ -30,7 +30,7 @@ const AccountLinking = ({ currentAccounts }) => {
       {
         !currentAccounts.find(acc => acc.providerId === "google") && (
           <div className="space-y-2 mt-4">
-            <h3 className="text-lg font-medium">Link Other Accounts</h3>
+            <h3 className="text-base font-medium text-foreground">Link Other Accounts</h3>
             <div className="grid gap-3">
               <AccountCard key="google" provider="google" account={null} />
             </div>
@@ -71,13 +71,13 @@ const AccountCard = ({ provider, account }) => {
   }
 
   return (
-    <Card>
+    <Card className="bg-surface border border-border">
       <CardContent>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             {/* {<providerDetails.Icon className="size-5" />} */}
             <div>
-              <p className="font-medium">Google</p>
+              <p className="font-medium text-foreground">Google</p>
               {account == null ? (
                 <p className="text-sm text-muted-foreground">
                   Connect your Google account for easier sign-in

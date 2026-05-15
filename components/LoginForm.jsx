@@ -20,6 +20,7 @@ import GoogleAuthButton from "./GoogleAuthButton"
 import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { motion } from "framer-motion"
 import PasskeyButton from "./PasskeyButton"
 
 const loginSchema = z.object({
@@ -57,102 +58,123 @@ const LoginForm = () => {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-8">
-      <Link href="/" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-6">
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Home
-      </Link>
-
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-        <p className="text-gray-600">Sign in to your account to continue</p>
-      </div>
-
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4">
-          <FormField control={form.control} name="email" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input type="email" placeholder="Enter your email" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-
-          <FormField control={form.control} name="password" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="Enter your password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-
-          <div className="flex justify-end">
-            <Link href="/forget-password" className="text-sm text-blue-600 hover:text-blue-700">
-              Forgot password?
-            </Link>
-          </div>
-
-          <Button type="submit" className="w-full" size="lg" disabled={form.formState.isSubmitting}>
-            {
-              form.formState.isSubmitting ? "Logging in..." : "Login"
-            }
-          </Button>
-        </form>
-      </Form>
-
-      {
-        errorCode === "EMAIL_NOT_VERIFIED" && (
-          <div className="mt-4">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={async () => {
-                setIsSendingEmail(true)
-                try {
-                  await authClient.sendVerificationEmail({
-                    email: form.getValues("email"),
-                    callbackURL: "/"
-                  })
-                  toast.success("Verification email sent! Please check your inbox.")
-                } catch (error) {
-                  toast.error("Failed to send verification email. Please try again.")
-                  console.error("Verification email error:", error)
-                } finally {
-                  setIsSendingEmail(false)
-                  setErrorCode(null)
-                }
-              }}
-              disabled={isSendingEmail}
-            >
-              {isSendingEmail ? "Sending verification email..." : "Resend Verification Email"}
-            </Button>
-          </div>
-        )
-      }
-
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-white px-2 text-gray-500">Or continue with</span>
-        </div>
-      </div>
-
-      <GoogleAuthButton />
-      <PasskeyButton />
-
-      <div className="mt-6 text-center text-sm text-gray-600">
-        Don't have an account?{" "}
-        <Link href="/register" className="text-blue-600 hover:text-blue-700 font-medium">
-          Sign up
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="w-full max-w-[420px] relative"
+    >
+      <div className="bg-surface border border-border rounded-2xl p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.06)]">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors mb-8"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Home
         </Link>
+
+        <div className="mb-8">
+          <h1 className="font-[var(--font-display)] text-2xl sm:text-3xl font-bold text-foreground mb-2">
+            Welcome Back
+          </h1>
+          <p className="text-muted text-sm">
+            Sign in to your account to continue
+          </p>
+        </div>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-5">
+            <FormField control={form.control} name="email" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input type="email" placeholder="Enter your email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name="password" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="Enter your password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <div className="flex justify-end">
+              <Link href="/forget-password" className="text-sm text-accent-light hover:text-primary font-medium transition-colors">
+                Forgot password?
+              </Link>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full rounded-xl"
+              size="lg"
+              disabled={form.formState.isSubmitting}
+            >
+              {
+                form.formState.isSubmitting ? "Logging in..." : "Login"
+              }
+            </Button>
+          </form>
+        </Form>
+
+        {
+          errorCode === "EMAIL_NOT_VERIFIED" && (
+            <div className="mt-4">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={async () => {
+                  setIsSendingEmail(true)
+                  try {
+                    await authClient.sendVerificationEmail({
+                      email: form.getValues("email"),
+                      callbackURL: "/"
+                    })
+                    toast.success("Verification email sent! Please check your inbox.")
+                  } catch (error) {
+                    toast.error("Failed to send verification email. Please try again.")
+                    console.error("Verification email error:", error)
+                  } finally {
+                    setIsSendingEmail(false)
+                    setErrorCode(null)
+                  }
+                }}
+                disabled={isSendingEmail}
+              >
+                {isSendingEmail ? "Sending verification email..." : "Resend Verification Email"}
+              </Button>
+            </div>
+          )
+        }
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-surface px-4 text-muted uppercase tracking-wider">
+              Or continue with
+            </span>
+          </div>
+        </div>
+
+        <GoogleAuthButton />
+        <PasskeyButton />
+
+        <div className="mt-6 text-center text-sm text-muted">
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="text-accent-light hover:text-primary font-medium transition-colors">
+            Sign up
+          </Link>
+        </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 

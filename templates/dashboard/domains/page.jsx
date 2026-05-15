@@ -1,34 +1,68 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
+import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import {
-  Plus,
-  Globe,
-  CheckCircle2,
-  Clock,
+import { 
+  Plus, 
+  Globe, 
+  CheckCircle2, 
   AlertCircle,
   X,
   ChevronRight,
+  Clock
 } from "lucide-react"
-import { toast } from "sonner"
+import Link from "next/link"
 
-function AddDomainModal({
-  isOpen,
-  onClose,
-  rootDomain,
-  subdomain,
-  setRootDomain,
-  setSubdomain,
-  onSubmit,
-  isSubmitting,
+// Mock data for domains
+const mockDomains = [
+  {
+    id: "1",
+    domain: "aryanshinde.in",
+    root: "aryanshinde.in",
+    addedOn: "March 31, 2026",
+    dkimStatus: "verified",
+    mxStatus: "verified",
+  },
+  {
+    id: "2", 
+    domain: "example.com",
+    root: "example.com",
+    addedOn: "March 15, 2026",
+    dkimStatus: "pending",
+    mxStatus: "verified",
+  },
+]
+
+type Domain = typeof mockDomains[0]
+
+// Add Domain Modal Component
+function AddDomainModal({ 
+  isOpen, 
+  onClose 
+}: { 
+  isOpen: boolean
+  onClose: () => void 
 }) {
+  const [rootDomain, setRootDomain] = useState("")
+  const [subdomain, setSubdomain] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    setIsLoading(false)
+    onClose()
+    setRootDomain("")
+    setSubdomain("")
+  }
+
   return (
     <AnimatePresence>
       {isOpen && (
         <>
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -36,7 +70,8 @@ function AddDomainModal({
             onClick={onClose}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
           />
-
+          
+          {/* Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -45,14 +80,14 @@ function AddDomainModal({
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
           >
             <div className="bg-surface border border-border rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] overflow-hidden">
-              <div className="flex items-start justify-between p-6 pb-0">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 pb-0">
                 <div>
                   <h2 className="font-[var(--font-display)] text-xl font-semibold text-foreground">
                     Add New Domain
                   </h2>
                   <p className="text-sm text-muted mt-1">
-                    Configure your domain for email receiving. You can add a root
-                    domain or specify a subdomain explicitly.
+                    Configure your domain for email receiving. You can add a root domain or specify a subdomain explicitly.
                   </p>
                 </div>
                 <button
@@ -63,7 +98,9 @@ function AddDomainModal({
                 </button>
               </div>
 
-              <form onSubmit={onSubmit} className="p-6 space-y-5">
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                {/* Root Domain */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">
                     Root Domain <span className="text-muted">(Required)</span>
@@ -71,10 +108,9 @@ function AddDomainModal({
                   <input
                     type="text"
                     value={rootDomain}
-                    onChange={(event) => setRootDomain(event.target.value)}
+                    onChange={(e) => setRootDomain(e.target.value)}
                     placeholder="mydomain.com or example.co.in"
                     required
-                    disabled={isSubmitting}
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                   />
                   <p className="text-xs text-muted">
@@ -82,6 +118,7 @@ function AddDomainModal({
                   </p>
                 </div>
 
+                {/* Subdomain */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">
                     Subdomain <span className="text-muted">(Optional)</span>
@@ -89,9 +126,8 @@ function AddDomainModal({
                   <input
                     type="text"
                     value={subdomain}
-                    onChange={(event) => setSubdomain(event.target.value)}
+                    onChange={(e) => setSubdomain(e.target.value)}
                     placeholder="mail or emails"
-                    disabled={isSubmitting}
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                   />
                   <p className="text-xs text-muted">
@@ -99,17 +135,7 @@ function AddDomainModal({
                   </p>
                 </div>
 
-                {(rootDomain || subdomain) && (
-                  <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                    <p className="text-xs font-medium text-foreground">Preview</p>
-                    <p className="text-xs text-foreground-dim font-mono mt-1">
-                      {subdomain
-                        ? `${subdomain}.${rootDomain || "___"}`
-                        : rootDomain || "___"}
-                    </p>
-                  </div>
-                )}
-
+                {/* Actions */}
                 <div className="flex items-center justify-end gap-3 pt-2">
                   <button
                     type="button"
@@ -120,10 +146,10 @@ function AddDomainModal({
                   </button>
                   <button
                     type="submit"
-                    disabled={!rootDomain || isSubmitting}
+                    disabled={!rootDomain || isLoading}
                     className="px-5 py-2.5 rounded-xl text-sm font-medium bg-primary hover:bg-primary-hover text-primary-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    {isSubmitting ? (
+                    {isLoading ? (
                       <>
                         <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                         Adding...
@@ -142,10 +168,8 @@ function AddDomainModal({
   )
 }
 
-function DomainCard({ domain }) {
-  const isVerified =
-    domain.dkimStatus === "verified" && domain.mxStatus === "verified"
-
+// Domain Card Component
+function DomainCard({ domain }: { domain: Domain }) {
   return (
     <Link href={`/domains/${domain.id}`}>
       <motion.div
@@ -162,52 +186,44 @@ function DomainCard({ domain }) {
             </div>
             <div>
               <h3 className="font-[var(--font-display)] text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
-                {domain.fullDomain}
+                {domain.domain}
               </h3>
-              <p className="text-sm text-muted mt-0.5">Root: {domain.rootDomain}</p>
-              {domain.subdomain && (
-                <p className="text-sm text-muted mt-1">Subdomain: {domain.subdomain}</p>
-              )}
-              <p className="text-sm text-muted mt-1">
-                Added on{" "}
-                {new Date(domain.createdAt).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
+              <p className="text-sm text-muted mt-0.5">
+                Root: {domain.root}
               </p>
-
+              <p className="text-sm text-muted mt-1">
+                Added on {domain.addedOn}
+              </p>
+              
+              {/* Status Badges */}
               <div className="flex items-center gap-4 mt-3">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-muted">DKIM:</span>
-                  <span
-                    className={`text-xs font-medium ${
-                      domain.dkimStatus === "verified"
-                        ? "text-[#22c55e]"
-                        : "text-amber-500"
-                    }`}
-                  >
-                    {domain.dkimStatus || "pending"}
+                  <span className={`text-xs font-medium ${
+                    domain.dkimStatus === "verified" 
+                      ? "text-[#22c55e]" 
+                      : "text-amber-500"
+                  }`}>
+                    {domain.dkimStatus}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-muted">MX:</span>
-                  <span
-                    className={`text-xs font-medium ${
-                      domain.mxStatus === "verified"
-                        ? "text-[#22c55e]"
-                        : "text-amber-500"
-                    }`}
-                  >
-                    {domain.mxStatus || "pending"}
+                  <span className={`text-xs font-medium ${
+                    domain.mxStatus === "verified" 
+                      ? "text-[#22c55e]" 
+                      : "text-amber-500"
+                  }`}>
+                    {domain.mxStatus}
                   </span>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* Verified Badge */}
           <div className="flex items-center gap-2">
-            {isVerified ? (
+            {domain.dkimStatus === "verified" && domain.mxStatus === "verified" ? (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#22c55e]/10 text-[#22c55e]">
                 <CheckCircle2 size={14} />
                 <span className="text-xs font-medium">Verified</span>
@@ -226,7 +242,8 @@ function DomainCard({ domain }) {
   )
 }
 
-function EmptyState({ onAddDomain }) {
+// Empty State Component
+function EmptyState({ onAddDomain }: { onAddDomain: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -253,91 +270,14 @@ function EmptyState({ onAddDomain }) {
   )
 }
 
-const DomainsPage = () => {
-  const [domains, setDomains] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [rootDomain, setRootDomain] = useState("")
-  const [subdomain, setSubdomain] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const router = useRouter()
-
-  useEffect(() => {
-    fetchDomains()
-  }, [])
-
-  const fetchDomains = async () => {
-    try {
-      const response = await fetch("/api/domains")
-      if (!response.ok) {
-        throw new Error("Failed to fetch domains")
-      }
-      const data = await response.json()
-      setDomains(data.domains)
-    } catch (error) {
-      console.error("Error fetching domains:", error)
-      toast.error("Failed to load domains")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleAddDomain = async (event) => {
-    event.preventDefault()
-
-    if (!rootDomain.trim()) {
-      toast.error("Please enter a root domain")
-      return
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      const response = await fetch("/api/domains", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          rootDomain: rootDomain.trim(),
-          subdomain: subdomain.trim() || null,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to add domain")
-      }
-
-      toast.success("Domain added successfully!")
-      setIsAddDialogOpen(false)
-      setRootDomain("")
-      setSubdomain("")
-
-      router.push(`/domains/${data.domainId}`)
-    } catch (error) {
-      console.error("Error adding domain:", error)
-      toast.error(error.message)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[320px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto" />
-          <p className="mt-4 text-foreground-dim">Loading domains...</p>
-        </div>
-      </div>
-    )
-  }
+export default function DomainsPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [domains] = useState<Domain[]>(mockDomains)
 
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-6 py-8">
+        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="font-[var(--font-display)] text-3xl font-bold text-foreground">
@@ -348,7 +288,7 @@ const DomainsPage = () => {
             </p>
           </div>
           <button
-            onClick={() => setIsAddDialogOpen(true)}
+            onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-primary hover:bg-primary-hover text-primary-foreground transition-colors shadow-sm"
           >
             <Plus size={18} />
@@ -356,6 +296,7 @@ const DomainsPage = () => {
           </button>
         </div>
 
+        {/* Domain List */}
         {domains.length > 0 ? (
           <div className="space-y-4">
             {domains.map((domain) => (
@@ -363,22 +304,15 @@ const DomainsPage = () => {
             ))}
           </div>
         ) : (
-          <EmptyState onAddDomain={() => setIsAddDialogOpen(true)} />
+          <EmptyState onAddDomain={() => setIsModalOpen(true)} />
         )}
       </div>
 
-      <AddDomainModal
-        isOpen={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
-        rootDomain={rootDomain}
-        subdomain={subdomain}
-        setRootDomain={setRootDomain}
-        setSubdomain={setSubdomain}
-        onSubmit={handleAddDomain}
-        isSubmitting={isSubmitting}
+      {/* Add Domain Modal */}
+      <AddDomainModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
       />
     </div>
   )
 }
-
-export default DomainsPage

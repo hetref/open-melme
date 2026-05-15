@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -375,10 +376,10 @@ const DomainAliasesPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-100">
+      <div className="flex items-center justify-center min-h-[320px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading aliases...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto"></div>
+          <p className="mt-4 text-foreground-dim">Loading aliases...</p>
         </div>
       </div>
     )
@@ -386,49 +387,59 @@ const DomainAliasesPage = () => {
 
   if (!domain) {
     return (
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="text-center py-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Domain not found</h2>
-          <Button onClick={() => router.push('/aliases')} className="mt-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
+          <h2 className="text-2xl font-bold text-foreground mb-2">Domain not found</h2>
+          <button
+            type="button"
+            onClick={() => router.push('/aliases')}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground"
+          >
+            <ArrowLeft className="w-4 h-4" />
             Back to Aliases
-          </Button>
+          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-8">
-        <Button
-          variant="ghost"
-          onClick={() => router.push('/aliases')}
-          className="mb-4"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Domains
-        </Button>
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{domain.fullDomain}</h1>
-            <p className="text-gray-600 mt-2">Manage email aliases for this domain</p>
-          </div>
+    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+      <Link
+        href="/aliases"
+        className="inline-flex items-center gap-2 text-foreground-dim hover:text-foreground transition-colors mb-6"
+      >
+        <ArrowLeft size={18} />
+        <span className="text-sm">Back to Domains</span>
+      </Link>
 
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="w-4 h-4" />
-                Create Alias
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Alias</DialogTitle>
-                <DialogDescription>
-                  Create a new email alias for {domain.fullDomain}
-                </DialogDescription>
-              </DialogHeader>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <h1 className="font-mono text-2xl lg:text-3xl font-bold text-foreground mb-2">
+            {domain.fullDomain}
+          </h1>
+          <p className="text-foreground-dim">
+            Manage email aliases for this domain
+          </p>
+        </div>
+
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-primary-foreground px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Plus size={18} />
+              Create Alias
+            </button>
+          </DialogTrigger>
+          <DialogContent className="bg-surface border border-border rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>Create New Alias</DialogTitle>
+              <DialogDescription>
+                Create a new email alias for {domain.fullDomain}
+              </DialogDescription>
+            </DialogHeader>
               <form onSubmit={handleCreateAlias} className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="localPart">Local Part</Label>
@@ -648,23 +659,23 @@ const DomainAliasesPage = () => {
                 {/* Domain Status Info */}
                 <div className="flex items-center gap-4 mt-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Status:</span>
+                    <span className="text-sm text-foreground-dim">Status:</span>
                     <Badge
                       variant={domain.verificationStatus === 'verified' ? 'default' : 'secondary'}
                       className={
                         domain.verificationStatus === 'verified'
-                          ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                          : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+                          ? 'bg-[#22c55e]/10 text-[#22c55e] hover:bg-[#22c55e]/10'
+                          : 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/10'
                       }
                     >
                       {domain.verificationStatus === 'verified' ? 'Connected' : 'Disconnected'}
                     </Badge>
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-foreground-dim">
                     Last checked: {formatDate(domain.lastCheckedAt)}
                   </div>
                   {domain.pendingEmailCount > 0 && (
-                    <div className="flex items-center gap-1 text-sm text-yellow-700">
+                    <div className="flex items-center gap-1 text-sm text-amber-600">
                       <AlertCircle className="w-4 h-4" />
                       <span>{domain.pendingEmailCount} pending emails</span>
                     </div>
@@ -673,8 +684,8 @@ const DomainAliasesPage = () => {
 
                 {/* Warning Message */}
                 {domain.verificationStatus === 'pending' && domain.pendingEmailCount > 0 && (
-                  <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-800">
+                  <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                    <p className="text-sm text-amber-700">
                       Emails were paused because the domain connection was lost.
                       Recheck the domain to resume delivery and process pending emails.
                     </p>
@@ -682,138 +693,139 @@ const DomainAliasesPage = () => {
                 )}
 
                 <div className="flex justify-end gap-2">
-                  <Button
+                  <button
                     type="button"
-                    variant="outline"
                     onClick={() => {
                       setIsCreateDialogOpen(false)
                       setFormData(buildInitialAliasFormData(session?.user?.email || ''))
                       setMailboxNameTouched(false)
                     }}
                     disabled={isSubmitting}
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-surface-raised transition-colors"
                   >
                     Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                  >
                     {isSubmitting ? 'Creating...' : 'Create Alias'}
-                  </Button>
+                  </button>
                 </div>
               </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {aliases.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Mail className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No aliases yet</h3>
-            <p className="text-gray-600 text-center mb-6 max-w-md">
-              Create your first email alias to start forwarding emails
-            </p>
-            <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Create Your First Alias
-            </Button>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-surface border border-border rounded-2xl p-12 text-center"
+        >
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Mail className="w-8 h-8 text-primary" />
+          </div>
+          <h3 className="text-lg font-semibold text-foreground mb-2">No Aliases Yet</h3>
+          <p className="text-foreground-dim mb-6 max-w-sm mx-auto">
+            Create your first email alias to start receiving emails.
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus size={18} />
+            Create Alias
+          </button>
+        </motion.div>
       ) : (
-        <div className="grid gap-4">
-          {aliases.map((alias) => (
-            <Card
+        <div className="space-y-4">
+          {aliases.map((alias, index) => (
+            <motion.div
               key={alias.id}
-              className="cursor-pointer transition-shadow hover:shadow-lg"
-              onClick={() => router.push(`/aliases/${domainId}/${alias.id}`)}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className="bg-surface border border-border rounded-2xl p-5 hover:border-primary/20 transition-all duration-200"
             >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CardTitle className="text-lg font-mono">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <Link href={`/aliases/${domainId}/${alias.id}`} className="group">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <h3 className="font-mono text-base font-semibold text-foreground group-hover:text-primary transition-colors">
                         {alias.localPart}@{domain.fullDomain}
-                      </CardTitle>
-                      <Badge
-                        variant={alias.mode === 'mailbox' ? 'outline' : 'default'}
-                        className={
-                          alias.mode === 'mailbox'
-                            ? 'bg-purple-100 text-purple-800 border-purple-300'
-                            : 'bg-blue-100 text-blue-800'
-                        }
-                      >
-                        {alias.mode === 'mailbox' ? (
-                          <><Inbox className="w-3 h-3 mr-1 inline" />Mailbox</>
-                        ) : (
-                          <><Mail className="w-3 h-3 mr-1 inline" />Forward</>
-                        )}
-                      </Badge>
-                      <Badge
-                        variant={alias.isActive ? 'default' : 'secondary'}
-                        className={
+                      </h3>
+                      {alias.mode === 'mailbox' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                          <Inbox size={10} />
+                          Mailbox
+                        </span>
+                      )}
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           alias.isActive
-                            ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                            : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
-                        }
+                            ? 'bg-[#22c55e]/10 text-[#22c55e]'
+                            : 'bg-muted/20 text-muted'
+                        }`}
                       >
                         {alias.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
+                      </span>
                     </div>
-                    <CardDescription>
-                      {alias.mode === 'forward' ? (
-                        <>Forwards to: <span className="font-medium">{alias.forwardTo}</span></>
-                      ) : (
-                        <>Stored in mailbox: <span className="font-medium">{alias.mailbox?.name || 'Unknown'}</span></>
-                      )}
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleToggleStatus(alias)}
-                      title={alias.isActive ? 'Disable' : 'Enable'}
-                    >
-                      {alias.isActive ? (
-                        <PowerOff className="w-4 h-4" />
-                      ) : (
-                        <Power className="w-4 h-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => openEditDialog(alias)}
-                      title="Edit forwarding email"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDeleteAlias(alias)}
-                      className="hover:bg-red-50 hover:text-red-600 hover:border-red-300"
-                      title="Delete alias"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  </Link>
+
+                  <p className="text-sm text-foreground-dim mb-3">
+                    {alias.mode === 'forward'
+                      ? <>Forwards to: <span className="text-foreground">{alias.forwardTo}</span></>
+                      : <>Stored in mailbox: <span className="text-foreground">{alias.mailbox?.name || 'Unknown'}</span></>
+                    }
+                  </p>
+
+                  <div className="flex items-center gap-2 text-sm text-foreground-dim">
+                    <Mail size={14} />
+                    <span>{alias.emailCount} emails received</span>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Mail className="w-4 h-4" />
-                  <span>{alias.emailCount} emails received</span>
+
+                <div className="flex items-center gap-2 flex-shrink-0" onClick={(event) => event.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleStatus(alias)}
+                    className="p-2.5 rounded-lg border border-border hover:bg-surface-raised hover:border-primary/30 transition-colors group"
+                    title={alias.isActive ? 'Disable' : 'Enable'}
+                  >
+                    {alias.isActive ? (
+                      <PowerOff size={16} className="text-muted group-hover:text-foreground" />
+                    ) : (
+                      <Power size={16} className="text-muted group-hover:text-foreground" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openEditDialog(alias)}
+                    className="p-2.5 rounded-lg border border-border hover:bg-surface-raised hover:border-primary/30 transition-colors group"
+                    title="Edit"
+                  >
+                    <Edit2 size={16} className="text-muted group-hover:text-foreground" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAlias(alias)}
+                    className="p-2.5 rounded-lg border border-border hover:bg-destructive/10 hover:border-destructive/30 transition-colors group"
+                    title="Delete"
+                  >
+                    <Trash2 size={16} className="text-muted group-hover:text-destructive" />
+                  </button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </motion.div>
           ))}
         </div>
       )}
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-surface border border-border rounded-2xl">
           <DialogHeader>
             <DialogTitle>Edit Alias</DialogTitle>
             <DialogDescription>

@@ -1,79 +1,121 @@
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
-import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import React, { Suspense } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ProfileUpdateTab from './_components/ProfileUpdateTab'
 import SecurityTab from './_components/SecurityTab'
 import SessionsTab from './_components/SessionsTab'
 import AccountsTab from './_components/AccountsTab'
 import DangerTab from './_components/DangerTab'
+import NotificationsTab from './_components/NotificationsTab'
 import { Loader2Icon } from 'lucide-react'
+import prisma from '@/lib/prisma'
 
 const page = async () => {
   const session = await auth.api.getSession({ headers: await headers() })
   if (session === null) return redirect('/login')
   // else console.log("SESSION:", session)
 
+  const notificationPrefs = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { emailNotifications: true, marketingEmails: true },
+  })
+
+  const userInitials = session.user?.name
+    ? session.user.name
+        .split(" ")
+        .map(name => name[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "U"
+  const joinedDate = session.user?.createdAt
+    ? new Date(session.user.createdAt).toLocaleDateString(undefined, {
+        month: "long",
+        year: "numeric",
+      })
+    : null
+
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-        {/* Profile Header */}
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-8 py-12">
-          <div className="flex items-center gap-6">
-            {
-              session.user && session.user.image != null && session.user.image.trim() !== "" && (
-                <Image
-                  width={100}
-                  height={100}
-                  src={session?.user?.image?.trim() || "https://placehold.co/400"}
-                  alt="User Profile Image"
-                  className="rounded-full border-4 border-white shadow-lg"
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
+      <div className="mb-8">
+        <h1 className="font-[var(--font-display)] text-2xl sm:text-3xl font-bold text-foreground mb-2">
+          Profile Settings
+        </h1>
+        <p className="text-foreground-dim text-sm sm:text-base">
+          Manage your account information and preferences.
+        </p>
+      </div>
+
+      <div className="grid gap-6">
+        <div className="bg-surface border border-border rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_1px_2px_rgba(0,0,0,0.15)]">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-6">
+            <div className="relative">
+              {session.user?.image ? (
+                <img
+                  src={session.user.image.trim()}
+                  alt="Profile"
+                  className="w-24 h-24 rounded-full object-cover border border-border"
                 />
-              )
-            }
-            <div className="text-white">
-              <h1 className="text-3xl font-bold mb-2">{session.user.name}</h1>
-              <p className="text-blue-100">{session.user.email}</p>
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-3xl font-semibold text-primary">
+                    {userInitials}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                <div>
+                  <h2 className="font-[var(--font-display)] text-xl font-semibold text-foreground">
+                    {session.user.name}
+                  </h2>
+                  <p className="text-foreground-dim text-sm">{session.user.email}</p>
+                </div>
+              </div>
+
+              {joinedDate && (
+                <p className="text-sm text-foreground-dim">Joined {joinedDate}</p>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Tabs Section */}
-        <div className="p-8">
-          <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-8">
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="security">Security</TabsTrigger>
-              <TabsTrigger value="sessions">Sessions</TabsTrigger>
-              <TabsTrigger value="accounts">Accounts</TabsTrigger>
-              <TabsTrigger value="danger">Danger</TabsTrigger>
-            </TabsList>
-            <TabsContent value="profile" className="space-y-4">
-              <ProfileUpdateTab user={session.user} />
-            </TabsContent>
-            <TabsContent value="security" className="space-y-4">
-              <LoadingSuspense>
-                <SecurityTab email={session.user.email} isTwoFactorEnabled={session.user.twoFactorEnabled ?? false} />
-              </LoadingSuspense>
-            </TabsContent>
-            <TabsContent value="sessions" className="space-y-4">
-              <LoadingSuspense>
-                <SessionsTab currentSessionToken={session.session.token} />
-              </LoadingSuspense>
-            </TabsContent>
-            <TabsContent value="accounts" className="space-y-4">
-              <LoadingSuspense>
-                <AccountsTab />
-              </LoadingSuspense>
-            </TabsContent>
-            <TabsContent value="danger" className="space-y-4">
-              <LoadingSuspense>
-                <DangerTab />
-              </LoadingSuspense>
-            </TabsContent>
-          </Tabs>
+        <div className="bg-surface border border-border rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_1px_2px_rgba(0,0,0,0.15)]">
+          <ProfileUpdateTab user={session.user} />
+        </div>
+
+        <div className="bg-surface border border-border rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_1px_2px_rgba(0,0,0,0.15)]">
+          <LoadingSuspense>
+            <SecurityTab email={session.user.email} isTwoFactorEnabled={session.user.twoFactorEnabled ?? false} />
+          </LoadingSuspense>
+        </div>
+
+        <div className="bg-surface border border-border rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_1px_2px_rgba(0,0,0,0.15)]">
+          <LoadingSuspense>
+            <SessionsTab currentSessionToken={session.session.token} />
+          </LoadingSuspense>
+        </div>
+
+        <div className="bg-surface border border-border rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_1px_2px_rgba(0,0,0,0.15)]">
+          <LoadingSuspense>
+            <AccountsTab />
+          </LoadingSuspense>
+        </div>
+
+        <div className="bg-surface border border-border rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_1px_2px_rgba(0,0,0,0.15)]">
+          <NotificationsTab
+            emailNotifications={notificationPrefs?.emailNotifications ?? true}
+            marketingEmails={notificationPrefs?.marketingEmails ?? false}
+          />
+        </div>
+
+        <div className="bg-surface border border-destructive/20 rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_1px_2px_rgba(0,0,0,0.15)]">
+          <LoadingSuspense>
+            <DangerTab />
+          </LoadingSuspense>
         </div>
       </div>
     </div>
