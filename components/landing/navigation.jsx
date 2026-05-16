@@ -15,12 +15,13 @@ import { ScrollToPlugin } from "gsap/ScrollToPlugin"
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 const navLinks = [
-  { name: "Features", link: "#features" },
-  { name: "How It Works", link: "#how-it-works" },
-  { name: "Security", link: "#security" },
-  { name: "Pricing", link: "#pricing" },
+  { name: "Features", link: "#features", inpage: true },
+  { name: "How It Works", link: "#how-it-works", inpage: true },
+  { name: "Security", link: "#security", inpage: true },
+  { name: "My Mailbox", link: "/my-mailbox", inpage: false },
 ]
 
 const MotionLink = motion(Link)
@@ -28,6 +29,7 @@ const MotionLink = motion(Link)
 export function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { scrollY, scrollYProgress } = useScroll()
+  const router = useRouter()
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -52,8 +54,13 @@ export function Navigation() {
   )
   const contentPaddingX = useTransform(smoothProgress, [0, 1], [24, 16])
 
-  const handleSectionClick = (event, href) => {
+  const handleSectionClick = (event, href, inpage) => {
     event.preventDefault()
+    if (!inpage) {
+      setMobileMenuOpen(false)
+      router.push(href)
+      return
+    }
     const id = href.replace("#", "")
     const target = document.getElementById(id)
     if (!target) return
@@ -149,7 +156,7 @@ export function Navigation() {
                 <motion.button
                   key={link.name}
                   type="button"
-                  onClick={(event) => handleSectionClick(event, link.link)}
+                  onClick={(event) => handleSectionClick(event, link.link, link.inpage)}
                   className="px-4 py-2 text-sm font-medium transition-colors rounded-full text-foreground-dim hover:text-foreground hover:bg-surface-raised/50"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -231,7 +238,7 @@ export function Navigation() {
               <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-border">
                 <Link
                   href="/login"
-                  className="text-foreground-dim hover:text-foreground transition-colors text-base font-medium py-3 px-4"
+                  className="text-foreground-dim hover:text-foreground transition-colors text-base font-medium py-3 px-4 text-center"
                 >
                   Log In
                 </Link>

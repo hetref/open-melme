@@ -5,29 +5,21 @@ import { Twitter, Github, Linkedin, Instagram, Youtube } from "lucide-react"
 
 const footerLinks = {
   Product: [
-    { label: "Features", href: "#features" },
-    { label: "Pricing", href: "#pricing" },
-    { label: "Security", href: "#security" },
-    { label: "Roadmap", href: "#" },
-    { label: "Changelog", href: "#" },
+    { label: "WaChat", href: "https://wachat.aryanshinde.in" },
+    { label: "InvoiceGen", href: "https://invoicegen.aryanshinde.in" },
+    { label: "Business Portflio", href: "https://business.aryanshinde.in" },
+    { label: "SMRL", href: "https://smrl.aryanshinde.in" },
+    { label: "Card Saver", href: "https://card-saver.aryanshinde.in" },
   ],
-  Company: [
-    { label: "About", href: "#" },
-    { label: "Blog", href: "#" },
-    { label: "Careers", href: "#" },
-    { label: "Press Kit", href: "#" },
-  ],
-  Legal: [
-    { label: "Privacy Policy", href: "#" },
-    { label: "Terms of Service", href: "#" },
-    { label: "Cookie Policy", href: "#" },
-    { label: "GDPR", href: "#" },
+  Myself: [
+    { label: "Portfolio", href: "https://aryanshinde.in" },
+    { label: "My Projects", href: "https://projects.aryanshinde.in" },
+    { label: "Agency", href: "https://devally.in" }
   ],
   Support: [
-    { label: "Documentation", href: "#" },
-    { label: "API Reference", href: "#" },
-    { label: "Status", href: "#" },
-    { label: "Contact", href: "#" },
+    { label: "Documentation (Soon)", href: "#" },
+    { label: "API Reference (Soon)", href: "#" },
+    { label: "Contact", href: "https://aryanshinde.in/contact" },
   ],
 }
 
@@ -43,7 +35,7 @@ export function Footer() {
     <footer className="border-t border-border pt-16 pb-8">
       <div className="max-w-7xl mx-auto px-6">
         {/* Footer Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-12">
           {Object.entries(footerLinks).map(([category, links], i) => (
             <motion.div
               key={category}
@@ -78,7 +70,7 @@ export function Footer() {
               Mel<span className="text-primary">Me</span>
             </span>
             <span className="text-muted text-sm">
-              © {new Date().getFullYear()} MelMe. All rights reserved.
+              © {new Date().getFullYear()} MelMe. Open Source under MIT License.
             </span>
           </div>
 
