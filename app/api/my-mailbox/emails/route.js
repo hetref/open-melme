@@ -32,6 +32,7 @@ export async function GET(req) {
     const dateFrom = searchParams.get('dateFrom')
     const dateTo = searchParams.get('dateTo')
     const statusFilter = searchParams.get('status') // Filter by email status
+    const unreadOnly = searchParams.get('unread') === 'true'
 
     // Get aliases for this mailbox
     const aliases = await prisma.alias.findMany({
@@ -136,6 +137,8 @@ export async function GET(req) {
         conversationId: true,
         createdAt: true,
         attachmentsStatus: true,
+        status: true,
+        readAt: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -146,6 +149,7 @@ export async function GET(req) {
     const conversationMap = new Map()
     for (const email of allEmails) {
       const convKey = email.conversationId || email.id
+      const isUnread = email.status === 'received' && !email.readAt
 
       if (!conversationMap.has(convKey)) {
         conversationMap.set(convKey, {
@@ -153,6 +157,7 @@ export async function GET(req) {
           lastMessageAt: email.createdAt,
           messageCount: 1,
           hasAttachments: email.attachmentsStatus === 'completed',
+          unreadCount: isUnread ? 1 : 0,
           emailIds: [email.id],
         })
       } else {
@@ -160,6 +165,9 @@ export async function GET(req) {
         conv.messageCount++
         if (email.attachmentsStatus === 'completed') {
           conv.hasAttachments = true
+        }
+        if (isUnread) {
+          conv.unreadCount++
         }
         // Update last message time if this email is newer
         if (email.createdAt > conv.lastMessageAt) {
@@ -173,8 +181,12 @@ export async function GET(req) {
     const sortedConversations = Array.from(conversationMap.values())
       .sort((a, b) => b.lastMessageAt - a.lastMessageAt)
 
+    const filteredConversations = unreadOnly
+      ? sortedConversations.filter((conv) => conv.unreadCount > 0)
+      : sortedConversations
+
     // STEP 4: Apply pagination to conversations
-    const paginatedConversations = sortedConversations.slice(skip, skip + limit)
+    const paginatedConversations = filteredConversations.slice(skip, skip + limit)
 
     // STEP 5: Fetch full details only for paginated conversations' last emails
     const lastEmailIds = paginatedConversations.map(conv =>
@@ -200,6 +212,7 @@ export async function GET(req) {
         createdAt: true,
         attachmentsStatus: true,
         conversationId: true,
+        readAt: true,
         alias: {
           select: {
             id: true,
@@ -228,14 +241,17 @@ export async function GET(req) {
         lastEmail: emailMap.get(lastEmailId),
         messageCount: conv.messageCount,
         hasAttachments: conv.hasAttachments,
+        unreadCount: conv.unreadCount,
       }
     })
 
-    const totalConversations = conversationMap.size
+    const totalConversations = filteredConversations.length
     const totalPages = Math.ceil(totalConversations / limit)
+    const unreadCount = filteredConversations.reduce((total, conv) => total + conv.unreadCount, 0)
 
     return NextResponse.json({
       conversations,
+      unreadCount,
       pagination: {
         page,
         limit,

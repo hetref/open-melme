@@ -42,10 +42,10 @@ export default function InboxPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-foreground-dim">Loading...</p>
         </div>
       </div>
     )
@@ -75,10 +75,10 @@ export default function InboxPage() {
       <div className="mb-6">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-foreground font-[var(--font-display)]">
               {session.mailbox.name}
             </h1>
-            <p className="text-gray-600 mt-2">Inbox - Received Emails</p>
+            <p className="text-foreground-dim mt-2">Inbox - Received Emails</p>
           </div>
 
           <div className="flex gap-2 items-center">
@@ -99,7 +99,7 @@ export default function InboxPage() {
               <LogOut className="w-4 h-4" />
               Exit
             </Button>
-            <div className="text-sm text-gray-600 flex items-center gap-2">
+            <div className="text-sm text-foreground-dim flex items-center gap-2">
               <Clock className="w-4 h-4" />
               Session expires in {getSessionTimeRemaining()}
             </div>

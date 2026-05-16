@@ -374,9 +374,9 @@ export function ForwardDialog({
         <div className="space-y-4">
           {/* Original Email Preview */}
           {originalEmail && (
-            <div className="bg-gray-50 border rounded p-3 space-y-1 text-sm">
+            <div className="bg-muted/40 border border-input rounded p-3 space-y-1 text-sm text-foreground">
               <div className="flex items-center gap-2 mb-2">
-                <ArrowRight className="w-4 h-4 text-gray-500" />
+                <ArrowRight className="w-4 h-4 text-muted-foreground" />
                 <span className="font-medium">
                   {hasConversation ? 'Forwarding Conversation' : 'Forwarding Message'}
                 </span>
@@ -402,7 +402,7 @@ export function ForwardDialog({
               id="from"
               value={formData.aliasId}
               onChange={(e) => setFormData({ ...formData, aliasId: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
               disabled={sending}
             >
               {aliases?.map((alias) => {
@@ -417,7 +417,7 @@ export function ForwardDialog({
             {(() => {
               const selectedAlias = aliases?.find(a => a.id === formData.aliasId)
               return selectedAlias && !selectedAlias.isActive ? (
-                <div className="mt-2 px-3 py-2 border border-orange-300 rounded-md bg-orange-50 text-orange-800 text-sm">
+                <div className="mt-2 px-3 py-2 border border-orange-300 rounded-md bg-orange-50 text-orange-800 text-sm dark:bg-orange-950/40 dark:text-orange-200">
                   ⚠️ This email alias is inactive. You won't be able to send emails from this address until it's activated.
                 </div>
               ) : null
@@ -461,7 +461,7 @@ export function ForwardDialog({
                     setShowBcc(false)
                     setFormData({ ...formData, bcc: '' })
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -481,7 +481,7 @@ export function ForwardDialog({
             <button
               type="button"
               onClick={() => setShowBcc(true)}
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm text-foreground/80 hover:text-foreground hover:underline"
             >
               Add Bcc
             </button>
@@ -505,13 +505,13 @@ export function ForwardDialog({
             <Label htmlFor="body">Message *</Label>
             <textarea
               id="body"
-              className="w-full min-h-50 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              className="w-full min-h-50 px-3 py-2 border border-input rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring font-mono text-sm dark:bg-input/30"
               placeholder="Add your message here..."
               value={formData.text}
               onChange={(e) => setFormData({ ...formData, text: e.target.value })}
               disabled={sending}
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               The forwarded email content is included below your message
             </p>
           </div>
@@ -526,32 +526,32 @@ export function ForwardDialog({
                   Original Attachments ({originalAttachments.length})
                 </Label>
                 {loadingAttachments ? (
-                  <div className="flex items-center justify-center p-4 border rounded bg-gray-50">
-                    <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
-                    <span className="ml-2 text-sm text-gray-600">Loading attachments...</span>
+                  <div className="flex items-center justify-center p-4 border border-input rounded bg-muted/40">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">Loading attachments...</span>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {originalAttachments.map((att) => (
                       <div
                         key={att.id}
-                        className="flex items-center justify-between p-2 border rounded bg-blue-50 border-blue-200"
+                        className="flex items-center justify-between p-2 border border-blue-200 rounded bg-blue-50 dark:bg-blue-950/40 dark:border-blue-900"
                       >
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate flex items-center gap-2">
                             <Paperclip className="w-3 h-3 text-blue-600" />
                             {att.filename}
                           </p>
-                          <p className="text-xs text-gray-500">{formatSize(att.size)}</p>
+                          <p className="text-xs text-muted-foreground">{formatSize(att.size)}</p>
                         </div>
-                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 hover:bg-blue-100">
+                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-900/50 dark:text-blue-100">
                           Will be forwarded
                         </Badge>
                       </div>
                     ))}
                   </div>
                 )}
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   These attachments from the original email will be included and copied to the forwarded message.
                 </p>
               </div>
@@ -586,11 +586,11 @@ export function ForwardDialog({
                   {attachments.map((att, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-2 border rounded bg-gray-50"
+                      className="flex items-center justify-between p-2 border border-input rounded bg-muted/40"
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{att.filename}</p>
-                        <p className="text-xs text-gray-500">{formatSize(att.size)}</p>
+                        <p className="text-xs text-muted-foreground">{formatSize(att.size)}</p>
                       </div>
                       <Button
                         type="button"
@@ -606,7 +606,7 @@ export function ForwardDialog({
                 </div>
               )}
 
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Maximum 10 files total ({originalAttachments.length + attachments.length}/10 used), 10MB each.
               </p>
             </div>

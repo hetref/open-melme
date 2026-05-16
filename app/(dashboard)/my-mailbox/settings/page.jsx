@@ -67,10 +67,10 @@ export default function SettingsPage() {
 
   if (loading || loadingSettings) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading settings...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-foreground-dim">Loading settings...</p>
         </div>
       </div>
     )
@@ -100,10 +100,10 @@ export default function SettingsPage() {
       <div className="mb-6">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-foreground font-[var(--font-display)]">
               {session.mailbox.name}
             </h1>
-            <p className="text-gray-600 mt-2">Mailbox Settings</p>
+            <p className="text-foreground-dim mt-2">Mailbox Settings</p>
           </div>
 
           <div className="flex gap-2 items-center">
@@ -124,7 +124,7 @@ export default function SettingsPage() {
               <LogOut className="w-4 h-4" />
               Exit
             </Button>
-            <div className="text-sm text-gray-600 flex items-center gap-2">
+            <div className="text-sm text-foreground-dim flex items-center gap-2">
               <Clock className="w-4 h-4" />
               Session expires in {getSessionTimeRemaining()}
             </div>
@@ -148,23 +148,23 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm font-medium text-gray-500">Mailbox Name</p>
-                <p className="text-lg mt-1">{settingsData?.mailbox?.name}</p>
+                <p className="text-sm font-medium text-foreground-dim">Mailbox Name</p>
+                <p className="text-lg mt-1 text-foreground">{settingsData?.mailbox?.name}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Sender Name</p>
-                <p className="text-lg mt-1">{settingsData?.mailbox?.senderName}</p>
+                <p className="text-sm font-medium text-foreground-dim">Sender Name</p>
+                <p className="text-lg mt-1 text-foreground">{settingsData?.mailbox?.senderName}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Personal / Assigned Email</p>
-                <p className="text-lg mt-1 break-all">
+                <p className="text-sm font-medium text-foreground-dim">Personal / Assigned Email</p>
+                <p className="text-lg mt-1 break-all text-foreground">
                   {settingsData?.mailbox?.personalEmail ||
                     settingsData?.mailbox?.assignedPersonalEmails?.[0] ||
                     'Not set'}
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Tags</p>
+                <p className="text-sm font-medium text-foreground-dim">Tags</p>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {(settingsData?.mailbox?.tags || []).length > 0 ? (
                     settingsData.mailbox.tags.map((tag) => (
@@ -173,15 +173,15 @@ export default function SettingsPage() {
                       </Badge>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500">No tags assigned</p>
+                    <p className="text-sm text-foreground-dim">No tags assigned</p>
                   )}
                 </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Status</p>
+                <p className="text-sm font-medium text-foreground-dim">Status</p>
                 <div className="mt-1">
                   {settingsData?.mailbox?.isActive ? (
-                    <Badge variant="success" className="bg-green-100 text-green-800">
+                    <Badge variant="success" className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                       <CheckCircle2 className="w-3 h-3 mr-1" />
                       Active
                     </Badge>
@@ -194,8 +194,8 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Created</p>
-                <p className="text-lg mt-1">
+                <p className="text-sm font-medium text-foreground-dim">Created</p>
+                <p className="text-lg mt-1 text-foreground">
                   {settingsData?.mailbox?.createdAt
                     ? new Date(settingsData.mailbox.createdAt).toLocaleDateString()
                     : 'N/A'}
@@ -218,30 +218,30 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-500 mb-2">Storage Used</p>
-                <p className="text-3xl font-bold text-gray-900">
+              <div className="text-center p-4 bg-surface-raised border border-border rounded-lg">
+                <p className="text-sm font-medium text-foreground-dim mb-2">Storage Used</p>
+                <p className="text-3xl font-bold text-foreground">
                   {settingsData?.stats?.storageUsed || '0 B'}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-foreground-dim mt-1">
                   {settingsData?.stats?.storageBytes?.toLocaleString() || 0} bytes
                 </p>
               </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-500 mb-2">Total Emails</p>
-                <p className="text-3xl font-bold text-gray-900">
+              <div className="text-center p-4 bg-surface-raised border border-border rounded-lg">
+                <p className="text-sm font-medium text-foreground-dim mb-2">Total Emails</p>
+                <p className="text-3xl font-bold text-foreground">
                   {settingsData?.stats?.totalEmails?.toLocaleString() || 0}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-foreground-dim mt-1">
                   {settingsData?.stats?.totalReceived || 0} received • {settingsData?.stats?.totalSent || 0} sent
                 </p>
               </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-500 mb-2">Active Aliases</p>
-                <p className="text-3xl font-bold text-gray-900">
+              <div className="text-center p-4 bg-surface-raised border border-border rounded-lg">
+                <p className="text-sm font-medium text-foreground-dim mb-2">Active Aliases</p>
+                <p className="text-3xl font-bold text-foreground">
                   {settingsData?.stats?.activeAliases || 0}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-foreground-dim mt-1">
                   Receiving emails
                 </p>
               </div>
@@ -262,8 +262,8 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             {!settingsData?.aliases || settingsData.aliases.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Mail className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <div className="text-center py-8 text-foreground-dim">
+                <Mail className="w-12 h-12 mx-auto mb-3 text-muted" />
                 <p>No aliases associated with this mailbox</p>
                 <p className="text-sm mt-1">Create an alias to start receiving emails</p>
               </div>
@@ -272,18 +272,18 @@ export default function SettingsPage() {
                 {settingsData.aliases.map((alias) => (
                   <div
                     key={alias.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+                    className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-primary/40 transition-colors bg-surface"
                   >
                     <div className="flex items-center gap-3">
-                      <Mail className="w-5 h-5 text-gray-400" />
+                      <Mail className="w-5 h-5 text-muted" />
                       <div>
                         <p className="font-mono font-medium">{alias.fullEmail}</p>
-                        <p className="text-xs text-gray-500">Local part: {alias.localPart}</p>
+                        <p className="text-xs text-foreground-dim">Local part: {alias.localPart}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {alias.isActive ? (
-                        <Badge variant="success" className="bg-green-100 text-green-800">
+                        <Badge variant="success" className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 className="w-3 h-3 mr-1" />
                           Active
                         </Badge>

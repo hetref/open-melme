@@ -218,6 +218,8 @@ model EmailLog {
   attachmentsStatus AttachmentsStatus @default(not_processed)
   attachmentsError  String?
 
+  readAt DateTime?
+
   // Conversation threading fields
   conversationId String?
   messageId      String? @unique
@@ -234,6 +236,7 @@ model EmailLog {
   @@index([userId])
   @@index([domainId])
   @@index([aliasId])
+  @@index([aliasId, readAt])
   @@index([s3Key])
   @@index([conversationId])
   @@map("email_logs")

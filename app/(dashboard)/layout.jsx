@@ -39,7 +39,7 @@ const layout = ({ children }) => {
           <SidebarTrigger className="-ml-1" />
           <div className="flex-1" />
         </header> */}
-        <div className="flex-1 bg-linear-to-br from-gray-50 to-gray-100 p-4 md:p-8">
+        <div className="flex-1 bg-background p-4 md:p-8">
           <div className="container mx-auto">
             {children}
           </div>

@@ -131,10 +131,10 @@ export default function MyMailboxPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-foreground-dim">Loading...</p>
         </div>
       </div>
     );
@@ -147,14 +147,14 @@ export default function MyMailboxPage() {
         <div className="mb-6">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-foreground font-[var(--font-display)]">
                 {session.mailbox.name}
               </h1>
-              <p className="text-gray-600 mt-2">Redirecting to inbox...</p>
+              <p className="text-foreground-dim mt-2">Redirecting to inbox...</p>
             </div>
 
             <div className="flex gap-2 items-center">
-              <div className="text-sm text-gray-600 flex items-center gap-2">
+              <div className="text-sm text-foreground-dim flex items-center gap-2">
                 <Clock className="w-4 h-4" />
                 Session expires in {getSessionTimeRemaining()}
               </div>
@@ -167,7 +167,7 @@ export default function MyMailboxPage() {
         </div>
 
         <div className="flex items-center justify-center py-16">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
       </div>
     );
@@ -220,8 +220,8 @@ export default function MyMailboxPage() {
                 />
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                <p className="text-xs text-blue-800">
+              <div className="bg-primary/10 border border-primary/20 rounded p-3">
+                <p className="text-xs text-foreground-dim">
                   Mailbox sessions expire after 1 hour. After login, you'll be
                   redirected to your inbox.
                 </p>
@@ -231,7 +231,7 @@ export default function MyMailboxPage() {
                 <Button
                   type="button"
                   variant="ghost"
-                  className="px-0 text-sm text-blue-700 hover:text-blue-800"
+                  className="px-0 text-sm text-foreground-dim hover:text-foreground"
                   onClick={() => {
                     setForgotAliasEmail(loginData.aliasEmail);
                     setIsForgotDialogOpen(true);

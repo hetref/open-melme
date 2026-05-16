@@ -149,7 +149,7 @@ export default function MailboxResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center p-4">
+    <div className="min-h-[70vh] flex items-center justify-center p-4 bg-background text-foreground">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl flex items-center gap-2">
@@ -163,7 +163,7 @@ export default function MailboxResetPasswordPage() {
         <CardContent>
           {isValidating ? (
             <div className="flex items-center justify-center py-6">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">

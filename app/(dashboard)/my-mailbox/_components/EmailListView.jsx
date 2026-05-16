@@ -45,6 +45,7 @@ export function EmailListView({ emailType = 'received' }) {
   const [showImages, setShowImages] = useState(false)
   const [emailView, setEmailView] = useState('html')
   const [aliases, setAliases] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const [isReplyOpen, setIsReplyOpen] = useState(false)
   const [isReplyAllOpen, setIsReplyAllOpen] = useState(false)
   const [isForwardOpen, setIsForwardOpen] = useState(false)
@@ -56,6 +57,7 @@ export function EmailListView({ emailType = 'received' }) {
     hasAttachments: false,
     dateFrom: '',
     dateTo: '',
+    unreadOnly: false,
     status: emailType === 'sent' ? 'sent' : 'received',
   })
 
@@ -79,7 +81,7 @@ export function EmailListView({ emailType = 'received' }) {
     if (session) {
       fetchEmails(1)
     }
-  }, [filters.query, filters.from, filters.aliasId, filters.hasAttachments, filters.dateFrom, filters.dateTo, filters.status])
+  }, [filters.query, filters.from, filters.aliasId, filters.hasAttachments, filters.dateFrom, filters.dateTo, filters.status, filters.unreadOnly])
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -147,6 +149,7 @@ export function EmailListView({ emailType = 'received' }) {
       if (filters.dateFrom) params.append('dateFrom', filters.dateFrom)
       if (filters.dateTo) params.append('dateTo', filters.dateTo)
       if (filters.status) params.append('status', filters.status)
+      if (filters.unreadOnly) params.append('unread', 'true')
 
       const response = await fetch(`/api/my-mailbox/emails?${params.toString()}`)
 
@@ -162,6 +165,7 @@ export function EmailListView({ emailType = 'received' }) {
       const data = await response.json()
       setConversations(data.conversations || [])
       setPagination(data.pagination)
+      setUnreadCount(data.unreadCount || 0)
     } catch (error) {
       console.error('Error fetching emails:', error)
       toast.error('Failed to load emails')
@@ -195,7 +199,54 @@ export function EmailListView({ emailType = 'received' }) {
     }
   }
 
-  const handleEmailClick = (email) => {
+  const markConversationRead = async (email) => {
+    if (emailType === 'sent') return
+    if (email.status !== 'received') return
+
+    const conversationId = email.conversationId || email.id
+    const conversation = conversations.find((item) => item.conversationId === conversationId)
+
+    if (!conversation || conversation.unreadCount === 0) return
+
+    try {
+      const response = await fetch('/api/my-mailbox/emails/mark-read', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ emailId: email.id }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to mark email as read')
+      }
+
+      setUnreadCount((prev) => Math.max(0, prev - conversation.unreadCount))
+
+      setConversations((prev) => {
+        if (filters.unreadOnly) {
+          return prev.filter((item) => item.conversationId !== conversationId)
+        }
+
+        return prev.map((item) => {
+          if (item.conversationId !== conversationId) return item
+
+          return {
+            ...item,
+            unreadCount: 0,
+            lastEmail: {
+              ...item.lastEmail,
+              readAt: new Date().toISOString(),
+            },
+          }
+        })
+      })
+    } catch (error) {
+      console.error('Error marking email as read:', error)
+    }
+  }
+
+  const handleEmailClick = async (email) => {
     if (selectedEmail?.id === email.id) {
       setSelectedEmail(null)
       setSelectedEmailDetail(null)
@@ -206,7 +257,8 @@ export function EmailListView({ emailType = 'received' }) {
     setSelectedEmail(email)
     setShowImages(false)
     setEmailView('html')
-    fetchEmailDetail(email.id)
+    await fetchEmailDetail(email.id)
+    await markConversationRead(email)
 
     if (window.innerWidth < 768) {
       setIsMobilePreview(true)
@@ -227,12 +279,13 @@ export function EmailListView({ emailType = 'received' }) {
       hasAttachments: false,
       dateFrom: '',
       dateTo: '',
+      unreadOnly: false,
       status: emailType === 'sent' ? 'sent' : 'received',
     })
   }
 
   const hasActiveFilters = () => {
-    return filters.query || filters.from || filters.aliasId || filters.hasAttachments || filters.dateFrom || filters.dateTo
+    return filters.query || filters.from || filters.aliasId || filters.hasAttachments || filters.dateFrom || filters.dateTo || filters.unreadOnly
   }
 
   const handleBackToList = () => {
@@ -343,29 +396,31 @@ export function EmailListView({ emailType = 'received' }) {
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
   }
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (status, isUnread) => {
     switch (status) {
       case 'received':
-        return <CheckCircle className="w-4 h-4 text-green-600" />
+        return isUnread
+          ? <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          : <CheckCircle className="w-4 h-4 text-muted-foreground" />
       case 'sent':
-        return <Send className="w-4 h-4 text-blue-600" />
+        return <Send className="w-4 h-4 text-blue-600 dark:text-blue-400" />
       case 'failed':
-        return <XCircle className="w-4 h-4 text-red-600" />
+        return <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
       case 'pending':
-        return <Clock className="w-4 h-4 text-yellow-600" />
+        return <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
       default:
-        return <AlertCircle className="w-4 h-4 text-gray-600" />
+        return <AlertCircle className="w-4 h-4 text-foreground-dim" />
     }
   }
 
   const getStatusBadge = (status) => {
     const variants = {
-      received: 'bg-green-100 text-green-800 hover:bg-green-100',
-      sent: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
-      failed: 'bg-red-100 text-red-800 hover:bg-red-100',
-      pending: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
+      received: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20',
+      sent: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20',
+      failed: 'bg-red-500/15 text-red-700 dark:text-red-300 hover:bg-red-500/20',
+      pending: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20',
     }
-    return variants[status] || 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+    return variants[status] || 'bg-surface-raised text-foreground-dim'
   }
 
   const handleReply = () => {
@@ -404,13 +459,14 @@ export function EmailListView({ emailType = 'received' }) {
       <div className="flex gap-4 h-full">
         {/* Email List */}
         <div className={`${isMobilePreview ? 'hidden md:block' : 'block'} w-full md:w-96 shrink-0`}>
-          <Card className="h-full flex flex-col gap-4">
+          <Card className="h-full flex flex-col gap-4 bg-surface border-border shadow-[0_8px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>{emailType === 'sent' ? 'Sent Emails' : 'Inbox'}</CardTitle>
                   <CardDescription>
                     {pagination.totalCount} emails
+                    {emailType !== 'sent' && ` • ${unreadCount} unread`}
                     {hasActiveFilters() && ' (filtered)'}
                   </CardDescription>
                 </div>
@@ -421,7 +477,7 @@ export function EmailListView({ emailType = 'received' }) {
                     onClick={() => setShowFilters(!showFilters)}
                     title="Toggle filters"
                   >
-                    <Filter className={`w-4 h-4 ${hasActiveFilters() ? 'text-blue-600' : ''}`} />
+                    <Filter className={`w-4 h-4 ${hasActiveFilters() ? 'text-primary' : ''}`} />
                   </Button>
                   <Button
                     variant="ghost"
@@ -437,7 +493,7 @@ export function EmailListView({ emailType = 'received' }) {
 
               {/* Search & Filters */}
               {showFilters && (
-                <div className="space-y-3 pt-3 border-t">
+                <div className="space-y-3 pt-3 border-t border-border">
                   <div>
                     <Input
                       placeholder="Search subject or from..."
@@ -451,7 +507,7 @@ export function EmailListView({ emailType = 'received' }) {
                     <select
                       value={filters.aliasId}
                       onChange={(e) => setFilters({ ...filters, aliasId: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                     >
                       <option value="">All aliases</option>
                       {aliases.map((alias) => (
@@ -468,16 +524,31 @@ export function EmailListView({ emailType = 'received' }) {
                       id="hasAttachments"
                       checked={filters.hasAttachments}
                       onChange={(e) => setFilters({ ...filters, hasAttachments: e.target.checked })}
-                      className="rounded"
+                      className="rounded border-border text-primary focus:ring-primary/40"
                     />
-                    <label htmlFor="hasAttachments" className="text-sm cursor-pointer">
+                    <label htmlFor="hasAttachments" className="text-sm cursor-pointer text-foreground-dim">
                       Has attachments
                     </label>
                   </div>
 
+                  {emailType !== 'sent' && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="unreadOnly"
+                        checked={filters.unreadOnly}
+                        onChange={(e) => setFilters({ ...filters, unreadOnly: e.target.checked })}
+                        className="rounded border-border text-primary focus:ring-primary/40"
+                      />
+                      <label htmlFor="unreadOnly" className="text-sm cursor-pointer text-foreground-dim">
+                        Unread only
+                      </label>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs">From date</Label>
+                      <Label className="text-xs text-foreground-dim">From date</Label>
                       <Input
                         type="date"
                         value={filters.dateFrom}
@@ -486,7 +557,7 @@ export function EmailListView({ emailType = 'received' }) {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">To date</Label>
+                      <Label className="text-xs text-foreground-dim">To date</Label>
                       <Input
                         type="date"
                         value={filters.dateTo}
@@ -512,28 +583,29 @@ export function EmailListView({ emailType = 'received' }) {
             <CardContent className="flex-1 overflow-y-auto">
               {emailsLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
               ) : conversations.length === 0 ? (
                 <div className="text-center py-12">
-                  <Mail className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-600">No emails yet</p>
+                  <Mail className="w-12 h-12 text-muted mx-auto mb-4" />
+                  <p className="text-foreground-dim">No emails yet</p>
                 </div>
               ) : (
                 <>
                   <div className="space-y-2">
                     {conversations.map((conversation) => {
                       const lastEmail = conversation.lastEmail
+                      const isUnread = conversation.unreadCount > 0
                       return (
                         <div
                           key={conversation.conversationId}
-                          className={`border rounded-lg p-3 hover:bg-gray-50 transition-colors cursor-pointer ${selectedEmail?.id === lastEmail.id ? 'bg-blue-50 border-blue-300' : ''
+                          className={`border border-border rounded-lg p-3 hover:bg-surface-raised transition-colors cursor-pointer ${selectedEmail?.id === lastEmail.id ? 'bg-primary/10 border-primary/30' : ''
                             }`}
                           onClick={() => handleEmailClick(lastEmail)}
                         >
                           <div className="flex items-start gap-2 mb-1">
-                            {getStatusIcon(lastEmail.status)}
-                            <h3 className="font-medium text-gray-900 truncate flex-1 text-sm">
+                            {getStatusIcon(lastEmail.status, isUnread)}
+                            <h3 className={`truncate flex-1 text-sm ${isUnread ? 'font-semibold text-foreground' : 'font-medium text-foreground-dim'}`}>
                               {lastEmail.subject || '(No Subject)'}
                             </h3>
                             {conversation.messageCount > 1 && (
@@ -542,14 +614,14 @@ export function EmailListView({ emailType = 'received' }) {
                               </Badge>
                             )}
                             {conversation.hasAttachments && (
-                              <Paperclip className="w-3 h-3 text-gray-400 shrink-0" />
+                              <Paperclip className="w-3 h-3 text-muted shrink-0" />
                             )}
                           </div>
                           <div className="space-y-0.5">
-                            <div className="text-xs text-gray-600 truncate">
+                            <div className="text-xs text-foreground-dim truncate">
                               <span className="font-medium">From:</span> {lastEmail.fromEmail}
                             </div>
-                            <div className="text-xs text-gray-600 truncate">
+                            <div className="text-xs text-foreground-dim truncate">
                               <span className="font-medium">To:</span> {lastEmail.toEmail}
                             </div>
                           </div>
@@ -557,7 +629,7 @@ export function EmailListView({ emailType = 'received' }) {
                             <Badge variant="secondary" className={`text-xs ${getStatusBadge(lastEmail.status)}`}>
                               {lastEmail.status}
                             </Badge>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-foreground-dim">
                               {new Date(lastEmail.createdAt).toLocaleDateString()}
                             </span>
                           </div>
@@ -568,8 +640,8 @@ export function EmailListView({ emailType = 'received' }) {
 
                   {/* Pagination */}
                   {pagination.totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t sticky bottom-0 bg-white">
-                      <p className="text-xs text-gray-600">
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-border sticky bottom-0 bg-surface">
+                      <p className="text-xs text-foreground-dim">
                         Page {pagination.page} of {pagination.totalPages}
                       </p>
                       <div className="flex gap-2">
@@ -601,8 +673,8 @@ export function EmailListView({ emailType = 'received' }) {
         {/* Email Detail - Preview Pane */}
         <div className={`${isMobilePreview ? 'block' : 'hidden md:block'} flex-1`}>
           {selectedEmail ? (
-            <Card className="h-full flex flex-col gap-4">
-              <CardHeader className="border-b">
+            <Card className="h-full flex flex-col gap-4 bg-surface border-border shadow-[0_8px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+              <CardHeader className="border-b border-border">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <Button
@@ -669,14 +741,14 @@ export function EmailListView({ emailType = 'received' }) {
               <CardContent className="flex-1 overflow-y-auto px-4">
                 {emailDetailLoading ? (
                   <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
                 ) : selectedEmailDetail?.emails && selectedEmailDetail.emails.length > 0 ? (
                   <div className="space-y-6">
                     {/* Conversation info */}
                     {selectedEmailDetail.messageCount > 1 && (
-                      <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
-                        <p className="font-medium text-blue-900">
+                      <div className="bg-primary/10 border border-primary/20 rounded p-3 text-sm">
+                        <p className="font-medium text-foreground">
                           Conversation with {selectedEmailDetail.messageCount} messages
                         </p>
                       </div>
@@ -690,7 +762,7 @@ export function EmailListView({ emailType = 'received' }) {
                       return (
                         <div
                           key={email.id}
-                          className={`border rounded-lg p-4 ${isLastEmail ? 'border-blue-300 bg-blue-50/50' : 'bg-gray-50'
+                          className={`border border-border rounded-lg p-4 ${isLastEmail ? 'border-primary/30 bg-primary/5' : 'bg-surface-raised'
                             }`}
                         >
                           {/* Email Headers */}
@@ -746,10 +818,10 @@ export function EmailListView({ emailType = 'received' }) {
                           {/* Email Body */}
                           <div>
                             {hasImages && !showImages && (
-                              <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 flex items-start gap-2">
-                                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                              <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded text-sm text-foreground-dim flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
                                 <div className="flex-1">
-                                  <p className="font-medium">Images are blocked</p>
+                                  <p className="font-medium text-foreground">Images are blocked</p>
                                   <p className="mt-1 text-xs">Click button to load images</p>
                                 </div>
                                 <Button
@@ -764,7 +836,7 @@ export function EmailListView({ emailType = 'received' }) {
                               </div>
                             )}
 
-                            <div className="border rounded p-3 bg-white">
+                            <div className="border border-border rounded p-3 bg-surface">
                               {emailView === 'html' ? (
                                 (() => {
                                   const htmlToRender = showImages
@@ -777,13 +849,13 @@ export function EmailListView({ emailType = 'received' }) {
                                       className="email-html"
                                     />
                                   ) : (
-                                    <pre className="whitespace-pre-wrap text-sm font-sans text-gray-600">
+                                    <pre className="whitespace-pre-wrap text-sm font-sans text-foreground-dim">
                                       {email.body?.text || '(No content)'}
                                     </pre>
                                   )
                                 })()
                               ) : (
-                                <pre className="whitespace-pre-wrap text-sm font-sans">
+                                <pre className="whitespace-pre-wrap text-sm font-sans text-foreground-dim">
                                   {email.body?.text || '(No text content)'}
                                 </pre>
                               )}
@@ -792,7 +864,7 @@ export function EmailListView({ emailType = 'received' }) {
 
                           {/* Attachments for this email */}
                           {email.attachmentsCount > 0 && (
-                            <div className="mt-4 pt-4 border-t">
+                            <div className="mt-4 pt-4 border-t border-border">
                               <div className="flex items-center justify-between mb-2">
                                 <h5 className="font-medium text-sm">
                                   Attachments ({email.attachmentsCount})
@@ -813,11 +885,11 @@ export function EmailListView({ emailType = 'received' }) {
                                 email.processedAttachments.length > 0 && (
                                   <div className="space-y-2">
                                     {email.processedAttachments.map((att) => (
-                                      <div key={att.id} className="flex items-center gap-2 text-sm border rounded p-2 bg-gray-50">
-                                        <Paperclip className="w-4 h-4 text-gray-400 shrink-0" />
+                                      <div key={att.id} className="flex items-center gap-2 text-sm border border-border rounded p-2 bg-surface-raised">
+                                        <Paperclip className="w-4 h-4 text-muted shrink-0" />
                                         <div className="flex-1 min-w-0">
                                           <p className="font-medium truncate">{att.filename}</p>
-                                          <p className="text-xs text-gray-500">{formatSize(att.size)}</p>
+                                          <p className="text-xs text-foreground-dim">{formatSize(att.size)}</p>
                                         </div>
                                         <Button
                                           variant="outline"
@@ -827,7 +899,7 @@ export function EmailListView({ emailType = 'received' }) {
                                           className="shrink-0"
                                         >
                                           {downloadingAttachment === att.id ? (
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                                           ) : (
                                             <>
                                               <Download className="w-4 h-4 mr-1" />
@@ -846,7 +918,7 @@ export function EmailListView({ emailType = 'received' }) {
                     })}
 
                     {/* View toggle at the bottom */}
-                    <div className="flex justify-end pt-2 border-t">
+                    <div className="flex justify-end pt-2 border-t border-border">
                       <Tabs value={emailView} onValueChange={setEmailView} className="w-auto">
                         <TabsList className="h-8">
                           <TabsTrigger value="html" className="text-xs px-3 py-1">
@@ -861,17 +933,17 @@ export function EmailListView({ emailType = 'received' }) {
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-12">
-                    <p className="text-gray-500">No email content available</p>
+                    <p className="text-foreground-dim">No email content available</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           ) : (
-            <Card className="h-full hidden md:flex items-center justify-center">
+            <Card className="h-full hidden md:flex items-center justify-center bg-surface border-border shadow-[0_8px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
               <CardContent className="text-center">
-                <Mail className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600">Select an email to view</p>
-                <p className="text-sm text-gray-500 mt-2">
+                <Mail className="w-16 h-16 text-muted mx-auto mb-4" />
+                <p className="text-foreground-dim">Select an email to view</p>
+                <p className="text-sm text-foreground-dim mt-2">
                   Click on an email from the list to see its contents
                 </p>
               </CardContent>

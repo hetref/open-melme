@@ -311,9 +311,9 @@ export function ReplyDialog({
         <div className="space-y-4">
           {/* Original Email Preview */}
           {originalEmail && (
-            <div className="bg-gray-50 border rounded p-3 space-y-1 text-sm">
+            <div className="bg-muted/40 border border-input rounded p-3 space-y-1 text-sm text-foreground">
               <div className="flex items-center gap-2 mb-2">
-                <ArrowLeft className="w-4 h-4 text-gray-500" />
+                <ArrowLeft className="w-4 h-4 text-muted-foreground" />
                 <span className="font-medium">Original Message</span>
               </div>
               <div><span className="font-medium">From:</span> {originalEmail.fromEmail}</div>
@@ -330,7 +330,7 @@ export function ReplyDialog({
                 id="from"
                 value={formData.aliasId}
                 onChange={(e) => setFormData({ ...formData, aliasId: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
                 disabled={sending}
               >
                 {aliases?.map((alias) => {
@@ -345,7 +345,7 @@ export function ReplyDialog({
               {(() => {
                 const selectedAlias = aliases?.find(a => a.id === formData.aliasId)
                 return selectedAlias && !selectedAlias.isActive ? (
-                  <div className="mt-2 px-3 py-2 border border-orange-300 rounded-md bg-orange-50 text-orange-800 text-sm">
+                  <div className="mt-2 px-3 py-2 border border-orange-300 rounded-md bg-orange-50 text-orange-800 text-sm dark:bg-orange-950/40 dark:text-orange-200">
                     ⚠️ This email alias is inactive. You won't be able to send emails from this address until it's activated.
                   </div>
                 ) : null
@@ -392,7 +392,7 @@ export function ReplyDialog({
                     setShowBcc(false)
                     setFormData({ ...formData, bcc: '' })
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -412,7 +412,7 @@ export function ReplyDialog({
             <button
               type="button"
               onClick={() => setShowBcc(true)}
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm text-foreground/80 hover:text-foreground hover:underline"
             >
               Add Bcc
             </button>
@@ -436,7 +436,7 @@ export function ReplyDialog({
             <Label htmlFor="body">Your Reply *</Label>
             <textarea
               id="body"
-              className="w-full min-h-50 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full min-h-50 px-3 py-2 border border-input rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring dark:bg-input/30"
               placeholder="Type your reply here..."
               value={formData.text}
               onChange={(e) => setFormData({ ...formData, text: e.target.value })}
@@ -473,11 +473,11 @@ export function ReplyDialog({
                 {attachments.map((att, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-2 border rounded bg-gray-50"
+                    className="flex items-center justify-between p-2 border border-input rounded bg-muted/40"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{att.filename}</p>
-                      <p className="text-xs text-gray-500">{formatSize(att.size)}</p>
+                      <p className="text-xs text-muted-foreground">{formatSize(att.size)}</p>
                     </div>
                     <Button
                       type="button"
@@ -493,7 +493,7 @@ export function ReplyDialog({
               </div>
             )}
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Maximum 10 files, 10MB total. Each file max 10MB.
             </p>
           </div>

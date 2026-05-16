@@ -260,12 +260,12 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
           <div className="space-y-2">
             <Label htmlFor="from">From *</Label>
             {aliasesLoading ? (
-              <div className="px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 text-sm flex items-center gap-2">
+              <div className="px-3 py-2 border border-input rounded-md bg-muted/40 text-muted-foreground text-sm flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Loading email addresses...
               </div>
             ) : !aliases || aliases.length === 0 ? (
-              <div className="px-3 py-2 border border-yellow-300 rounded-md bg-yellow-50 text-yellow-800 text-sm">
+              <div className="px-3 py-2 border border-yellow-300 rounded-md bg-yellow-50 text-yellow-800 text-sm dark:bg-yellow-950/40 dark:text-yellow-200">
                 No email aliases available. Please assign an alias to this mailbox first.
               </div>
             ) : (
@@ -274,7 +274,7 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
                   id="from"
                   value={formData.aliasId}
                   onChange={(e) => setFormData({ ...formData, aliasId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
                   disabled={sending}
                 >
                   {aliases.map((alias) => (
@@ -286,7 +286,7 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
                 {(() => {
                   const selectedAlias = aliases.find(a => a.id === formData.aliasId)
                   return selectedAlias && !selectedAlias.isActive ? (
-                    <div className="mt-2 px-3 py-2 border border-orange-300 rounded-md bg-orange-50 text-orange-800 text-sm">
+                    <div className="mt-2 px-3 py-2 border border-orange-300 rounded-md bg-orange-50 text-orange-800 text-sm dark:bg-orange-950/40 dark:text-orange-200">
                       ⚠️ This email alias is inactive. You won't be able to send emails from this address until it's activated.
                     </div>
                   ) : null
@@ -304,7 +304,7 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
                   <button
                     type="button"
                     onClick={() => setShowCc(true)}
-                    className="text-blue-600 hover:underline"
+                    className="text-foreground/80 hover:text-foreground hover:underline"
                   >
                     Cc
                   </button>
@@ -313,7 +313,7 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
                   <button
                     type="button"
                     onClick={() => setShowBcc(true)}
-                    className="text-blue-600 hover:underline"
+                    className="text-foreground/80 hover:text-foreground hover:underline"
                   >
                     Bcc
                   </button>
@@ -341,7 +341,7 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
                     setShowCc(false)
                     setFormData({ ...formData, cc: '' })
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -368,7 +368,7 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
                     setShowBcc(false)
                     setFormData({ ...formData, bcc: '' })
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -402,7 +402,7 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
             <Label htmlFor="body">Message *</Label>
             <textarea
               id="body"
-              className="w-full min-h-50 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full min-h-50 px-3 py-2 border border-input rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring dark:bg-input/30"
               placeholder="Type your message here..."
               value={formData.text}
               onChange={(e) => setFormData({ ...formData, text: e.target.value })}
@@ -439,11 +439,11 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
                 {attachments.map((att, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-2 border rounded bg-gray-50"
+                    className="flex items-center justify-between p-2 border border-input rounded bg-muted/40"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{att.filename}</p>
-                      <p className="text-xs text-gray-500">{formatSize(att.size)}</p>
+                      <p className="text-xs text-muted-foreground">{formatSize(att.size)}</p>
                     </div>
                     <Button
                       type="button"
@@ -459,7 +459,7 @@ export function ComposeDialog({ open, onOpenChange, mailbox, aliases, aliasesLoa
               </div>
             )}
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Maximum 10 files, 10MB total. Each file max 10MB.
             </p>
           </div>
