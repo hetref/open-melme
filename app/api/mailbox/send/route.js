@@ -66,7 +66,8 @@ export async function POST(req) {
       cc = [],
       bcc = [],
       subject,
-      text, // TEXT ONLY - NO HTML ALLOWED
+      text,
+      html,
       replyToEmailLogId,
       forwardedFromEmailLogId,
       forwardConversation = false,
@@ -183,15 +184,15 @@ export async function POST(req) {
       )
     }
 
-    if (!text || text.trim() === '') {
+    if ((!text || text.trim() === '') && (!html || html.trim() === '')) {
       return NextResponse.json(
         { error: 'Email body is required' },
         { status: 400 }
       )
     }
 
-    // TEXT ONLY - No HTML processing
-    const finalText = text.trim()
+    const finalText = text?.trim() || 'This email contains HTML content.'
+    const finalHtml = sanitizeOutboundHtml(html || '')
 
     // Handle reply threading
     let replyToMessageId = null
@@ -420,7 +421,7 @@ export async function POST(req) {
         bcc: sanitizedBcc,
         subject: finalSubject,
         text: finalText,
-        html: '', // No HTML
+        html: finalHtml,
         attachments,
       })
     } catch (error) {
@@ -430,7 +431,7 @@ export async function POST(req) {
       )
     }
 
-    // Build raw MIME email (TEXT ONLY)
+    // Build raw MIME email
     let rawMessage
     try {
       rawMessage = buildRawMimeEmail({
@@ -440,7 +441,7 @@ export async function POST(req) {
         bcc: sanitizedBcc,
         subject: finalSubject,
         text: finalText,
-        html: '', // NO HTML - text only
+        html: finalHtml,
         attachments,
         messageId,
         inReplyTo: replyToMessageId,

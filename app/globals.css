@@ -253,9 +253,12 @@
   word-break: break-word;
 }
 
-.email-html img {
-  max-width: 100%;
-  height: auto;
+.email-html img,
+.email-html video {
+  /* height: 100%;
+  width: 100%; */
+  overflow-clip-margin: content-box;
+  overflow: clip;
 }
 
 .email-html table {

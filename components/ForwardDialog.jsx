@@ -34,6 +34,7 @@ export function ForwardDialog({
     bcc: '',
     subject: '',
     text: '',
+    html: '',
     includeConversation: true,
   })
 
@@ -109,32 +110,89 @@ export function ForwardDialog({
       ? originalEmail.subject
       : `Fwd: ${originalEmail.subject || '(No Subject)'}`
 
+    const stripHtml = (html) => {
+      if (!html) return ''
+      return html
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/?p\b[^>]*>/gi, '\n')
+        .replace(/<\/?div\b[^>]*>/gi, '\n')
+        .replace(/<\/?li\b[^>]*>/gi, '\n- ')
+        .replace(/<\/?ul\b[^>]*>/gi, '\n')
+        .replace(/<\/?ol\b[^>]*>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
+    }
+
+    const getEmailText = (email) => {
+      return (
+        email.body?.text ||
+        stripHtml(email.body?.safeHtmlNoImages || email.body?.safeHtmlWithImages || '') ||
+        '(No text content)'
+      )
+    }
+
+    const getEmailHtml = (email) => {
+      return email.body?.safeHtmlWithImages || email.body?.safeHtmlNoImages || ''
+    }
+
+    const buildForwardTextBlock = (email) => {
+      return [
+        `From: ${email.fromEmail}`,
+        `Date: ${formatDate(email.createdAt)}`,
+        `Subject: ${email.subject || '(No Subject)'}`,
+        `To: ${email.toEmail}`,
+        '',
+        getEmailText(email),
+      ].join('\n')
+    }
+
+    const buildForwardHtmlBlock = (email) => {
+      const htmlContent = getEmailHtml(email)
+      const plainFallback = getEmailText(email)
+
+      return `
+<div style="margin-top:12px; padding:12px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc;">
+  <div style="font-size:12px; color:#334155; line-height:1.5;">
+    <div><strong>From:</strong> ${email.fromEmail}</div>
+    <div><strong>Date:</strong> ${formatDate(email.createdAt)}</div>
+    <div><strong>Subject:</strong> ${email.subject || '(No Subject)'}</div>
+    <div><strong>To:</strong> ${email.toEmail}</div>
+  </div>
+  <div style="margin-top:12px; border-top:1px solid #e2e8f0; padding-top:12px; color:#0f172a;">
+    ${htmlContent || `<pre style="white-space:pre-wrap; font-family:inherit; margin:0;">${plainFallback}</pre>`}
+  </div>
+</div>
+      `.trim()
+    }
+
     // Build forward body with original email content
     let forwardText = ''
+    let forwardHtml = ''
 
     if (conversationEmails && conversationEmails.length > 1) {
       // Multiple emails in conversation - include all
       forwardText = `\n\n---------- Forwarded conversation ----------\n\n`
+      forwardHtml = `<div style="margin-top:12px; font-size:13px; color:#64748b;">---------- Forwarded conversation ----------</div>`
 
       conversationEmails.forEach((email, index) => {
-        forwardText += `From: ${email.fromEmail}\n`
-        forwardText += `Date: ${formatDate(email.createdAt)}\n`
-        forwardText += `Subject: ${email.subject || '(No Subject)'}\n`
-        forwardText += `To: ${email.toEmail}\n\n`
-        forwardText += `${email.body?.text || '(No text content)'}\n\n`
+        forwardText += `${buildForwardTextBlock(email)}\n\n`
+        forwardHtml += buildForwardHtmlBlock(email)
 
         if (index < conversationEmails.length - 1) {
           forwardText += `---\n\n`
+          forwardHtml += `<div style="margin:12px 0; border-top:1px dashed #cbd5f5;"></div>`
         }
       })
     } else {
       // Single email
+      const sourceEmail = conversationEmails?.[0] || originalEmail
       forwardText = `\n\n---------- Forwarded message ---------\n`
-      forwardText += `From: ${originalEmail.fromEmail}\n`
-      forwardText += `Date: ${formatDate(originalEmail.createdAt)}\n`
-      forwardText += `Subject: ${originalEmail.subject || '(No Subject)'}\n`
-      forwardText += `To: ${originalEmail.toEmail}\n\n`
-      forwardText += `${originalEmail.body?.text || '(No text content)'}\n`
+      forwardText += `${buildForwardTextBlock(sourceEmail)}\n`
+      forwardHtml = `<div style="margin-top:12px; font-size:13px; color:#64748b;">---------- Forwarded message ---------</div>`
+      forwardHtml += buildForwardHtmlBlock(sourceEmail)
     }
 
     setFormData({
@@ -144,6 +202,7 @@ export function ForwardDialog({
       bcc: '',
       subject: forwardSubject,
       text: forwardText,
+      html: forwardHtml,
       includeConversation: conversationEmails && conversationEmails.length > 1,
     })
   }, [originalEmail, conversationEmails, aliases, open])
@@ -165,6 +224,7 @@ export function ForwardDialog({
       bcc: '',
       subject: '',
       text: '',
+      html: '',
       includeConversation: true,
     })
     setAttachments([])
@@ -289,6 +349,7 @@ export function ForwardDialog({
           bcc: bccEmails,
           subject: formData.subject,
           text: formData.text,
+          html: formData.html,
           attachmentKeys: attachmentKeys,
           forwardedFromEmailLogId: originalEmail?.id,
           forwardConversation: formData.includeConversation && conversationEmails?.length > 1,
