@@ -231,7 +231,7 @@ export default function MyMailboxPage() {
                 <Button
                   type="button"
                   variant="ghost"
-                  className="px-0 text-sm text-foreground-dim hover:text-foreground"
+                  className="px-0 text-sm text-foreground-dim hover:text-foreground hover:bg-transparent"
                   onClick={() => {
                     setForgotAliasEmail(loginData.aliasEmail);
                     setIsForgotDialogOpen(true);

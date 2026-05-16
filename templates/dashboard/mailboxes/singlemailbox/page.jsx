@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { 
+import {
   ArrowLeft,
   Mail,
   Activity,
@@ -45,22 +45,17 @@ const mailboxData = {
 }
 
 // Help Dialog Component
-function HelpDialog({ 
-  isOpen, 
-  onClose, 
-  title, 
-  children 
-}: { 
-  isOpen: boolean
-  onClose: () => void
-  title: string
-  children: React.ReactNode 
+function HelpDialog({
+  isOpen,
+  onClose,
+  title,
+  children
 }) {
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -88,24 +83,18 @@ function HelpDialog({
 }
 
 // Modal Component
-function Modal({ 
-  isOpen, 
-  onClose, 
+function Modal({
+  isOpen,
+  onClose,
   title,
   description,
-  children 
-}: { 
-  isOpen: boolean
-  onClose: () => void
-  title: string
-  description?: string
-  children: React.ReactNode 
+  children
 }) {
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -138,7 +127,7 @@ function Modal({
 }
 
 // Read-only field component
-function ReadOnlyField({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function ReadOnlyField({ label, value, mono = false }) {
   return (
     <div className="space-y-1.5">
       <p className="text-xs text-muted">{label}</p>
@@ -150,20 +139,13 @@ function ReadOnlyField({ label, value, mono = false }: { label: string; value: s
 }
 
 // Input field component
-function InputField({ 
-  label, 
-  value, 
-  onChange, 
+function InputField({
+  label,
+  value,
+  onChange,
   placeholder,
   hint,
-  required = false 
-}: { 
-  label: string
-  value: string
-  onChange: (value: string) => void
-  placeholder?: string
-  hint?: string
-  required?: boolean
+  required = false
 }) {
   return (
     <div className="space-y-1.5">
@@ -185,38 +167,38 @@ function InputField({
 
 export default function MailboxDetailPage() {
   const params = useParams()
-  const [activeTab, setActiveTab] = useState<"overview" | "settings" | "security" | "sessions">("overview")
+  const [activeTab, setActiveTab] = useState < "overview" | "settings" | "security" | "sessions" > ("overview")
   const [mailbox] = useState(mailboxData)
-  
+
   // Settings state
   const [mailboxName, setMailboxName] = useState(mailbox.name)
   const [senderName, setSenderName] = useState(mailbox.senderName)
   const [personalEmail, setPersonalEmail] = useState(mailbox.email)
   const [tags, setTags] = useState(mailbox.tags.join(", "))
   const [description, setDescription] = useState(mailbox.description)
-  
+
   // Modal states
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showSenderHelp, setShowSenderHelp] = useState(false)
   const [showSessionHelp, setShowSessionHelp] = useState(false)
-  
+
   // Password form state
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
 
   const tabs = [
-    { id: "overview" as const, label: "Overview" },
-    { id: "settings" as const, label: "Settings" },
-    { id: "security" as const, label: "Security" },
-    { id: "sessions" as const, label: `Sessions (${mailbox.stats.activeSessions})` }
+    { id: "overview", label: "Overview" },
+    { id: "settings", label: "Settings" },
+    { id: "security", label: "Security" },
+    { id: "sessions", label: `Sessions (${mailbox.stats.activeSessions})` }
   ]
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
       {/* Back Link */}
-      <Link 
+      <Link
         href="/mailboxes"
         className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors mb-6"
       >
@@ -231,17 +213,16 @@ export default function MailboxDetailPage() {
             <h1 className="font-[var(--font-display)] text-2xl lg:text-3xl font-bold text-foreground">
               {mailbox.name}
             </h1>
-            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-              mailbox.status === "active"
+            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${mailbox.status === "active"
                 ? "bg-[#22c55e]/10 text-[#22c55e]"
                 : "bg-muted/20 text-muted"
-            }`}>
+              }`}>
               {mailbox.status === "active" ? "Active" : "Inactive"}
             </span>
           </div>
           <p className="text-muted mt-1">Created {mailbox.createdAt}</p>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-border hover:bg-surface-raised transition-colors">
             <Power size={16} />
@@ -316,11 +297,10 @@ export default function MailboxDetailPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              activeTab === tab.id
+            className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
                 ? "bg-surface text-foreground shadow-sm"
                 : "text-muted hover:text-foreground"
-            }`}
+              }`}
           >
             {tab.label}
           </button>
@@ -344,7 +324,7 @@ export default function MailboxDetailPage() {
                 <h2 className="font-semibold text-foreground">Mailbox Information</h2>
                 <p className="text-sm text-muted mt-0.5">Basic details about this mailbox</p>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ReadOnlyField label="Mailbox Name" value={mailbox.name} />
                 <ReadOnlyField label="Sender Name" value={mailbox.senderName} />
@@ -353,7 +333,7 @@ export default function MailboxDetailPage() {
                   <p className="text-xs text-muted">Tags</p>
                   <div className="px-4 py-2.5 rounded-xl bg-surface-raised border border-border flex flex-wrap gap-1.5">
                     {mailbox.tags.map(tag => (
-                      <span 
+                      <span
                         key={tag}
                         className="px-2 py-0.5 rounded-md bg-background text-xs text-foreground-dim"
                       >
@@ -381,10 +361,10 @@ export default function MailboxDetailPage() {
                 <h2 className="font-semibold text-foreground">Aliases Using This Mailbox</h2>
                 <p className="text-sm text-muted mt-0.5">Email aliases that forward to this mailbox</p>
               </div>
-              
+
               <div className="space-y-3">
                 {mailbox.aliases.map(alias => (
-                  <div 
+                  <div
                     key={alias}
                     className="flex items-center justify-between p-4 rounded-xl bg-surface-raised border border-border"
                   >
@@ -438,7 +418,7 @@ export default function MailboxDetailPage() {
                   <p className="text-xs text-muted">Tags</p>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {mailbox.tags.map(tag => (
-                      <span 
+                      <span
                         key={tag}
                         className="px-2 py-0.5 rounded-md bg-background text-xs text-foreground-dim"
                       >
@@ -448,7 +428,7 @@ export default function MailboxDetailPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <InputField
                   label="Mailbox Name"
@@ -698,7 +678,7 @@ export default function MailboxDetailPage() {
               className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted focus:outline-none focus:border-primary/40 transition-colors"
             />
           </div>
-          
+
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">
               New Password <span className="text-destructive">*</span>
@@ -712,7 +692,7 @@ export default function MailboxDetailPage() {
             />
             <p className="text-xs text-muted">At least 8 characters</p>
           </div>
-          
+
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">
               Confirm New Password <span className="text-destructive">*</span>
@@ -759,7 +739,7 @@ export default function MailboxDetailPage() {
         <div className="space-y-4">
           <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4">
             <p className="text-sm text-foreground">
-              Are you sure you want to delete <span className="font-semibold">{mailbox.name}</span>? 
+              Are you sure you want to delete <span className="font-semibold">{mailbox.name}</span>?
               This will permanently delete the mailbox and all associated emails.
             </p>
           </div>
