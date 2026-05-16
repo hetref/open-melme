@@ -3,9 +3,9 @@
 import { useState } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { 
-  Mail, 
-  Search, 
+import {
+  Mail,
+  Search,
   Shield,
   HelpCircle,
   X
@@ -60,22 +60,17 @@ const mailboxes = [
 ]
 
 // Help Dialog Component
-function HelpDialog({ 
-  isOpen, 
-  onClose, 
-  title, 
-  children 
-}: { 
-  isOpen: boolean
-  onClose: () => void
-  title: string
-  children: React.ReactNode 
+function HelpDialog({
+  isOpen,
+  onClose,
+  title,
+  children
 }) {
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -106,7 +101,7 @@ export default function MailboxesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showSecurityHelp, setShowSecurityHelp] = useState(false)
 
-  const filteredMailboxes = mailboxes.filter(mailbox => 
+  const filteredMailboxes = mailboxes.filter(mailbox =>
     mailbox.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     mailbox.aliases.some(alias => alias.toLowerCase().includes(searchQuery.toLowerCase())) ||
     mailbox.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -190,11 +185,10 @@ export default function MailboxesPage() {
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Mail size={24} className="text-primary" />
               </div>
-              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                mailbox.status === "active"
+              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${mailbox.status === "active"
                   ? "bg-[#22c55e]/10 text-[#22c55e]"
                   : "bg-muted/20 text-muted"
-              }`}>
+                }`}>
                 {mailbox.status === "active" ? "Active" : "Inactive"}
               </span>
             </div>
@@ -221,7 +215,7 @@ export default function MailboxesPage() {
               {mailbox.tags.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {mailbox.tags.map(tag => (
-                    <span 
+                    <span
                       key={tag}
                       className="px-2 py-0.5 rounded-md bg-surface-raised text-xs text-foreground-dim"
                     >

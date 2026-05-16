@@ -568,7 +568,7 @@ export function EmailListView({ emailType = 'received' }) {
 
                   {/* Pagination */}
                   {pagination.totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t sticky bottom-0 bg-white">
                       <p className="text-xs text-gray-600">
                         Page {pagination.page} of {pagination.totalPages}
                       </p>

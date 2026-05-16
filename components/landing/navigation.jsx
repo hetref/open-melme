@@ -43,7 +43,7 @@ export function Navigation() {
   const navPaddingX = useTransform(smoothProgress, [0, 1], [0, 24])
   const navPaddingTop = useTransform(smoothProgress, [0, 1], [0, 24])
   const containerRadius = useTransform(smoothProgress, [0, 1], [0, 16])
-  const containerMaxWidth = useTransform(smoothProgress, [0, 1], ["100%", "80rem"])
+  const containerMaxWidth = useTransform(smoothProgress, [0, 1], ["100%", "90rem"])
   const containerShadow = useTransform(
     smoothProgress,
     [0, 1],
@@ -99,7 +99,7 @@ export function Navigation() {
             borderRadius: containerRadius,
           }}
           className={cn(
-            "w-full flex flex-col overflow-hidden bg-surface/95 backdrop-blur-xl border border-border"
+            "w-full flex flex-col overflow-hidden backdrop-blur-xl"
           )}
         >
           {/* Nav Content Row */}

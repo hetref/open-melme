@@ -71,7 +71,7 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto h-[calc(100vh-8rem)]">
+    <div className="max-w-7xl mx-auto h-[calc(100svh-64px)]">
       <div className="mb-6">
         <div className="flex justify-between items-start">
           <div>

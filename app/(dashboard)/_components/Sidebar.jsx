@@ -235,7 +235,7 @@ const AppSidebar = () => {
                 <MailOpen
                   size={20}
                   className={cn(
-                    'flex-shrink-0 transition-colors',
+                    'shrink-0 transition-colors',
                     pathname.startsWith('/my-mailbox')
                       ? 'text-primary'
                       : 'text-muted group-hover:text-foreground-dim'
@@ -251,12 +251,12 @@ const AppSidebar = () => {
                     >
                       My Mailbox
                       {hasActiveSession && (
-                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                        <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
                       )}
                     </motion.span>
                   )}
                 </AnimatePresence>
-                {!isCollapsed && (
+                {!isCollapsed && hasActiveSession && (
                   <span className="ml-auto">
                     {mailboxExpanded ? (
                       <ChevronDown size={16} />
@@ -278,24 +278,26 @@ const AppSidebar = () => {
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
                         className={cn(
-                          'flex items-center gap-2 py-2 rounded-lg transition-all duration-200',
+                          'flex items-center gap-2 py-2 px-2 rounded-lg transition-all duration-200',
                           isActive
                             ? 'bg-primary/10 text-primary'
                             : 'text-foreground-dim hover:bg-surface-raised hover:text-foreground'
                         )}
                       >
-                        <Icon size={16} className="flex-shrink-0" />
+                        <Icon size={16} className="shrink-0" />
                         <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>
                       </Link>
                     )
                   })}
                 </div>
+
+
               )}
             </li>
           </ul>
         </nav>
 
-        {accountSession && !isMailboxRoute && (
+        {accountSession && (
           <div className={cn('border-t border-border space-y-1', isCollapsed ? 'p-2' : 'p-3')}>
             <div
               className={cn(
@@ -347,28 +349,33 @@ const AppSidebar = () => {
               </AnimatePresence>
             </button>
 
-            <button
-              onClick={handleLogout}
-              className={cn(
-                'w-full flex items-center gap-3 py-2.5 rounded-lg transition-all duration-200',
-                'text-foreground-dim hover:bg-destructive/10 hover:text-destructive',
-                isCollapsed ? 'justify-center px-2' : 'px-3'
-              )}
-            >
-              <LogOut size={20} className="flex-shrink-0" />
-              <AnimatePresence>
-                {!isCollapsed && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="text-sm font-medium"
-                  >
-                    Log out
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </button>
+            {
+              !isMailboxRoute && (
+                <button
+                  onClick={handleLogout}
+                  className={cn(
+                    'w-full flex items-center gap-3 py-2.5 rounded-lg transition-all duration-200',
+                    'text-foreground-dim hover:bg-destructive/10 hover:text-destructive',
+                    isCollapsed ? 'justify-center px-2' : 'px-3'
+                  )}
+                >
+                  <LogOut size={20} className="flex-shrink-0" />
+                  <AnimatePresence>
+                    {!isCollapsed && (
+                      <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="text-sm font-medium"
+                      >
+                        Log out
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </button>
+              )
+            }
+
           </div>
         )}
       </motion.aside>

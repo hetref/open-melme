@@ -35,10 +35,10 @@ const layout = ({ children }) => {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-18 shrink-0 items-center gap-2 border-b px-4">
+        {/* <header className="flex h-18 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <div className="flex-1" />
-        </header>
+        </header> */}
         <div className="flex-1 bg-linear-to-br from-gray-50 to-gray-100 p-4 md:p-8">
           <div className="container mx-auto">
             {children}
