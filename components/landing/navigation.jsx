@@ -14,6 +14,7 @@ import gsap from "gsap"
 import { ScrollToPlugin } from "gsap/ScrollToPlugin"
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
 import { cn } from "@/lib/utils"
+import Image from "next/image"
 
 const navLinks = [
   { name: "Features", link: "#features" },
@@ -119,7 +120,27 @@ export function Navigation() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              Mel<span className="text-primary">Me</span>
+              <Image
+                src="/accent-logo-shield.png"
+                alt="MelMe Logo"
+                width={1000}
+                height={1000}
+                className="h-14 w-auto object-contain dark:hidden"
+              />
+              <Image
+                src="/accent-logo-text.png"
+                alt="MelMe Logo"
+                width={1000}
+                height={1000}
+                className="h-14 w-auto object-contain dark:hidden"
+              />
+              <Image
+                src="/glassmorphism-logo-shield.png"
+                alt="MelMe Logo"
+                width={1000}
+                height={1000}
+                className="hidden h-14 w-auto object-contain dark:block"
+              />
             </motion.a>
 
             {/* Desktop Nav Links */}

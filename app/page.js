@@ -66,7 +66,7 @@ export default function MelMeLanding() {
             <HowItWorks />
             <MailboxShowcase />
             <Security />
-            <Pricing />
+            {/* <Pricing /> */}
             <FinalCTA />
           </main>
 

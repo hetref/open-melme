@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Twitter, Github, Linkedin } from "lucide-react"
+import { Twitter, Github, Linkedin, Instagram, Youtube } from "lucide-react"
 
 const footerLinks = {
   Product: [
@@ -32,9 +32,10 @@ const footerLinks = {
 }
 
 const socialLinks = [
-  { icon: Twitter, href: "#", label: "Twitter" },
-  { icon: Github, href: "#", label: "GitHub" },
-  { icon: Linkedin, href: "#", label: "LinkedIn" },
+  { icon: Instagram, href: "https://instagram.com/coder_aryu", label: "Instagram" },
+  { icon: Github, href: "https://github.com/hetref", label: "GitHub" },
+  { icon: Youtube, href: "https://www.youtube.com/@aryancodelab", label: "YouTube" },
+  { icon: Linkedin, href: "https://www.linkedin.com/in/shindearyan", label: "LinkedIn" },
 ]
 
 export function Footer() {

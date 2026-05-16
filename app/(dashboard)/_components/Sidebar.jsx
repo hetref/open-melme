@@ -120,7 +120,7 @@ const AppSidebar = () => {
       >
         <div
           className={cn(
-            'h-16 flex items-center border-b border-border',
+            'h-16 flex items-center justify-center border-b border-border',
             isCollapsed ? 'justify-center px-2' : 'px-4'
           )}
         >
@@ -129,13 +129,20 @@ const AppSidebar = () => {
             className={cn('flex items-center gap-2 overflow-hidden', isCollapsed && 'justify-center')}
           >
             <Image
-              src="/accent-logo.png"
+              src="/accent-logo-text.png"
               alt="MelMe Logo"
-              width={32}
-              height={32}
-              className="shrink-0"
+              width={1000}
+              height={1000}
+              className="h-14 w-auto object-contain dark:hidden"
             />
-            <AnimatePresence>
+            <Image
+              src="/glassmorphism-logo-text.png"
+              alt="MelMe Logo"
+              width={1000}
+              height={1000}
+              className="hidden h-14 w-auto object-contain dark:block"
+            />
+            {/* <AnimatePresence>
               {!isCollapsed && (
                 <motion.span
                   initial={{ opacity: 0, width: 0 }}
@@ -146,7 +153,7 @@ const AppSidebar = () => {
                   Mel<span className="text-primary">Me</span>
                 </motion.span>
               )}
-            </AnimatePresence>
+            </AnimatePresence> */}
           </Link>
 
           <button
