@@ -99,13 +99,14 @@ export function Hero() {
               transition={{ duration: 0.6, delay: 0.8 }}
               className="text-lg text-foreground-dim max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed"
             >
-              <EncryptedText
+              {/* <EncryptedText
                 text="Create unlimited email aliases on your domain instantly. No mail server required. Route to any inbox or use our built-in mailbox with full reply identity."
                 revealDelayMs={30}
                 flipDelayMs={40}
                 encryptedClassName="text-muted"
                 revealedClassName="text-foreground-dim"
-              />
+              /> */}
+              <span className="text-foreground-dim">Create unlimited email aliases on your domain instantly. No mail server required. Route to any inbox or use our built-in mailbox with full reply identity.</span>
             </motion.div>
 
             {/* CTA Buttons */}

@@ -4,7 +4,7 @@ import { headers } from 'next/headers'
 import prisma from '@/lib/prisma'
 import { verifyDomainConnection } from '@/lib/ses'
 import { hashPassword } from '@/lib/mailbox'
-import { sendMailboxAccessEmail } from '@/lib/email'
+import { sendAliasCreatedEmail, sendMailboxAccessEmail } from '@/lib/email'
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -165,6 +165,7 @@ export async function POST(request) {
       )
     }
 
+    let selectedMailbox = null
     if (mode === 'mailbox') {
       if (!mailboxId) {
         return NextResponse.json(
@@ -173,7 +174,7 @@ export async function POST(request) {
         )
       }
 
-      const mailbox = await prisma.mailbox.findFirst({
+      selectedMailbox = await prisma.mailbox.findFirst({
         where: {
           id: mailboxId,
           userId: session.user.id,
@@ -181,7 +182,7 @@ export async function POST(request) {
         },
       })
 
-      if (!mailbox) {
+      if (!selectedMailbox) {
         return NextResponse.json(
           { error: 'Mailbox not found or inactive' },
           { status: 404 }
@@ -390,6 +391,25 @@ export async function POST(request) {
           isActive: mode === 'forward' ? true : false,
         },
       })
+    }
+
+    try {
+      const mailboxUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/my-mailbox`
+      await sendAliasCreatedEmail({
+        to: normalizedPersonalEmail,
+        aliasEmail: `${cleanLocalPart}@${domain.fullDomain}`,
+        mode: mode === 'forward' ? 'forward' : 'mailbox',
+        forwardTo: mode === 'forward' ? normalizedForwardTo : null,
+        mailboxName: mode === 'mailbox'
+          ? (selectedMailbox?.name || createdMailbox?.name)
+          : null,
+        mailboxUrl: mode === 'forward' ? null : mailboxUrl,
+      })
+    } catch (emailError) {
+      console.error('Error sending alias created email:', emailError)
+      notificationWarning = notificationWarning
+        ? `${notificationWarning} Alias notification could not be sent.`
+        : 'Alias was created, but notification email could not be sent.'
     }
 
     return NextResponse.json(

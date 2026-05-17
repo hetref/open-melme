@@ -21,6 +21,7 @@ const navLinks = [
   { name: "Features", link: "#features", inpage: true },
   { name: "How It Works", link: "#how-it-works", inpage: true },
   { name: "Security", link: "#security", inpage: true },
+  { name: "Docs", link: "/docs", inpage: false },
   { name: "My Mailbox", link: "/my-mailbox", inpage: false },
 ]
 

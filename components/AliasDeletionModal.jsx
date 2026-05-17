@@ -81,6 +81,40 @@ export function AliasDeletionModal({
       return
     }
 
+    const hasNoMailboxEmails = alias.mode === 'mailbox'
+      && deleteInfo
+      && deleteInfo.stats
+      && deleteInfo.stats.emailCount === 0
+
+    if (hasNoMailboxEmails) {
+      setIsDeleting(true)
+      try {
+        const response = await fetch(`/api/aliases/${alias.id}/delete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'delete' }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to delete alias')
+        }
+
+        toast.success('Alias deleted successfully')
+        onSuccess()
+        onClose()
+      } catch (error) {
+        console.error('Error deleting mailbox alias:', error)
+        toast.error(error.message)
+      } finally {
+        setIsDeleting(false)
+      }
+      return
+    }
+
     // Mailbox alias - require action selection
     if (!selectedAction) {
       toast.error('Please select an action: transfer or delete')
@@ -230,8 +264,8 @@ export function AliasDeletionModal({
                   {/* Option A: Transfer */}
                   <div
                     className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedAction === 'transfer'
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                     onClick={() => setSelectedAction('transfer')}
                   >
@@ -286,8 +320,8 @@ export function AliasDeletionModal({
                   {/* Option B: Delete Everything */}
                   <div
                     className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedAction === 'delete'
-                        ? 'border-red-500 bg-red-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                     onClick={() => setSelectedAction('delete')}
                   >

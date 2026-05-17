@@ -131,14 +131,21 @@ const DomainAliasesPage = () => {
       return
     }
 
-    if (!formData.personalEmail.trim()) {
+    const normalizedForwardTo = formData.mode === 'forward'
+      ? (formData.forwardTo.trim() || '')
+      : ''
+
+    if (formData.mode !== 'forward' && !formData.personalEmail.trim()) {
       toast.error('Personal email is required')
       return
     }
 
-    const normalizedPersonalEmail = formData.personalEmail.trim().toLowerCase()
+    const normalizedPersonalEmail = formData.mode === 'forward'
+      ? normalizedForwardTo
+      : formData.personalEmail.trim().toLowerCase()
+
     if (!personalEmailRegex.test(normalizedPersonalEmail)) {
-      toast.error('Personal email is invalid')
+      toast.error(formData.mode === 'forward' ? 'Forward to email is invalid' : 'Personal email is invalid')
       return
     }
 
@@ -172,10 +179,6 @@ const DomainAliasesPage = () => {
     setIsSubmitting(true)
 
     try {
-      const normalizedForwardTo = formData.mode === 'forward'
-        ? (formData.forwardTo.trim() || normalizedPersonalEmail)
-        : ''
-
       const body = {
         domainId,
         localPart: formData.localPart.trim(),
@@ -440,85 +443,86 @@ const DomainAliasesPage = () => {
                 Create a new email alias for {domain.fullDomain}
               </DialogDescription>
             </DialogHeader>
-              <form onSubmit={handleCreateAlias} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="localPart">Local Part</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="localPart"
-                      type="text"
-                      placeholder="support"
-                      value={formData.localPart}
+            <form onSubmit={handleCreateAlias} className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="localPart">Local Part</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="localPart"
+                    type="text"
+                    placeholder="support"
+                    value={formData.localPart}
+                    onChange={(e) => {
+                      const nextLocalPart = e.target.value
+                      setFormData((prev) => ({
+                        ...prev,
+                        localPart: nextLocalPart,
+                        mailboxName: mailboxNameTouched ? prev.mailboxName : nextLocalPart,
+                      }))
+                    }}
+                    disabled={isSubmitting}
+                    autoComplete="off"
+                    className="flex-1"
+                  />
+                  <span className="text-gray-500 font-mono text-sm">
+                    @{domain.fullDomain}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Use lowercase letters, numbers, dots, hyphens, or underscores
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Alias Mode</Label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="forward"
+                      checked={formData.mode === 'forward'}
+                      onChange={(e) => setFormData((prev) => ({
+                        ...prev,
+                        mode: e.target.value,
+                        forwardTo: prev.forwardTo || prev.personalEmail,
+                      }))}
+                      disabled={isSubmitting}
+                    />
+                    <span className="text-sm">Forward to email</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="mailbox"
+                      checked={formData.mode === 'mailbox'}
+                      onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
+                      disabled={isSubmitting}
+                    />
+                    <span className="text-sm">Store in mailbox</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="createMailbox"
+                      checked={formData.mode === 'createMailbox'}
                       onChange={(e) => {
-                        const nextLocalPart = e.target.value
+                        const nextMode = e.target.value
                         setFormData((prev) => ({
                           ...prev,
-                          localPart: nextLocalPart,
-                          mailboxName: mailboxNameTouched ? prev.mailboxName : nextLocalPart,
+                          mode: nextMode,
+                          mailboxName: (!mailboxNameTouched && !prev.mailboxName)
+                            ? prev.localPart
+                            : prev.mailboxName,
                         }))
                       }}
                       disabled={isSubmitting}
-                      autoComplete="off"
-                      className="flex-1"
                     />
-                    <span className="text-gray-500 font-mono text-sm">
-                      @{domain.fullDomain}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    Use lowercase letters, numbers, dots, hyphens, or underscores
-                  </p>
+                    <span className="text-sm">Create mailbox</span>
+                  </label>
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label>Alias Mode</Label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        value="forward"
-                        checked={formData.mode === 'forward'}
-                        onChange={(e) => setFormData((prev) => ({
-                          ...prev,
-                          mode: e.target.value,
-                          forwardTo: prev.forwardTo || prev.personalEmail,
-                        }))}
-                        disabled={isSubmitting}
-                      />
-                      <span className="text-sm">Forward to email</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        value="mailbox"
-                        checked={formData.mode === 'mailbox'}
-                        onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
-                        disabled={isSubmitting}
-                      />
-                      <span className="text-sm">Store in mailbox</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        value="createMailbox"
-                        checked={formData.mode === 'createMailbox'}
-                        onChange={(e) => {
-                          const nextMode = e.target.value
-                          setFormData((prev) => ({
-                            ...prev,
-                            mode: nextMode,
-                            mailboxName: (!mailboxNameTouched && !prev.mailboxName)
-                              ? prev.localPart
-                              : prev.mailboxName,
-                          }))
-                        }}
-                        disabled={isSubmitting}
-                      />
-                      <span className="text-sm">Create mailbox</span>
-                    </label>
-                  </div>
-                </div>
-
+              {formData.mode !== 'forward' && (
                 <div className="space-y-2">
                   <Label htmlFor="personalEmail">Personal Email</Label>
                   <Input
@@ -531,10 +535,6 @@ const DomainAliasesPage = () => {
                       setFormData((prev) => ({
                         ...prev,
                         personalEmail: nextPersonalEmail,
-                        forwardTo:
-                          prev.mode === 'forward' && (!prev.forwardTo || prev.forwardTo === prev.personalEmail)
-                            ? nextPersonalEmail
-                            : prev.forwardTo,
                       }))
                     }}
                     disabled={isSubmitting}
@@ -544,176 +544,177 @@ const DomainAliasesPage = () => {
                     Used as your primary contact email for this alias setup.
                   </p>
                 </div>
+              )}
 
-                {formData.mode === 'forward' ? (
+              {formData.mode === 'forward' ? (
+                <div className="space-y-2">
+                  <Label htmlFor="forwardTo">Forward To Email</Label>
+                  <Input
+                    id="forwardTo"
+                    type="email"
+                    placeholder="your-email@gmail.com"
+                    value={formData.forwardTo}
+                    onChange={(e) =>
+                      setFormData({ ...formData, forwardTo: e.target.value })
+                    }
+                    disabled={isSubmitting}
+                    autoComplete="off"
+                  />
+                  <p className="text-sm text-gray-500">
+                    Welcome email and all future messages will be sent here
+                  </p>
+                </div>
+              ) : formData.mode === 'mailbox' ? (
+                <div className="space-y-2">
+                  <Label htmlFor="mailboxId">Select Mailbox</Label>
+                  {mailboxes.length === 0 ? (
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                      No mailboxes available for this domain. Create a mailbox first.
+                    </div>
+                  ) : (
+                    <select
+                      id="mailboxId"
+                      value={formData.mailboxId}
+                      onChange={(e) => setFormData({ ...formData, mailboxId: e.target.value })}
+                      disabled={isSubmitting}
+                      className="w-full px-3 py-2 border rounded-md"
+                    >
+                      <option value="">Select a mailbox...</option>
+                      {mailboxes.map((mailbox) => (
+                        <option key={mailbox.id} value={mailbox.id}>
+                          {mailbox.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <p className="text-sm text-gray-500">
+                    Emails will be stored in the selected mailbox (not forwarded)
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="forwardTo">Forward To Email</Label>
+                    <Label htmlFor="mailboxName">Mailbox Name</Label>
                     <Input
-                      id="forwardTo"
-                      type="email"
-                      placeholder="your-email@gmail.com"
-                      value={formData.forwardTo}
-                      onChange={(e) =>
-                        setFormData({ ...formData, forwardTo: e.target.value })
-                      }
+                      id="mailboxName"
+                      type="text"
+                      placeholder="Support"
+                      value={formData.mailboxName}
+                      onChange={(e) => {
+                        setMailboxNameTouched(true)
+                        setFormData({ ...formData, mailboxName: e.target.value })
+                      }}
                       disabled={isSubmitting}
                       autoComplete="off"
                     />
                     <p className="text-sm text-gray-500">
-                      Emails will be forwarded to this address
+                      Defaults to alias name and can be changed
                     </p>
                   </div>
-                ) : formData.mode === 'mailbox' ? (
+
                   <div className="space-y-2">
-                    <Label htmlFor="mailboxId">Select Mailbox</Label>
-                    {mailboxes.length === 0 ? (
-                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                        No mailboxes available for this domain. Create a mailbox first.
-                      </div>
-                    ) : (
-                      <select
-                        id="mailboxId"
-                        value={formData.mailboxId}
-                        onChange={(e) => setFormData({ ...formData, mailboxId: e.target.value })}
-                        disabled={isSubmitting}
-                        className="w-full px-3 py-2 border rounded-md"
-                      >
-                        <option value="">Select a mailbox...</option>
-                        {mailboxes.map((mailbox) => (
-                          <option key={mailbox.id} value={mailbox.id}>
-                            {mailbox.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    <p className="text-sm text-gray-500">
-                      Emails will be stored in the selected mailbox (not forwarded)
-                    </p>
+                    <Label htmlFor="senderName">Sender Name</Label>
+                    <Input
+                      id="senderName"
+                      type="text"
+                      placeholder="Melme"
+                      value={formData.senderName}
+                      onChange={(e) => setFormData({ ...formData, senderName: e.target.value })}
+                      disabled={isSubmitting}
+                      autoComplete="off"
+                    />
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="mailboxName">Mailbox Name</Label>
-                      <Input
-                        id="mailboxName"
-                        type="text"
-                        placeholder="Support"
-                        value={formData.mailboxName}
-                        onChange={(e) => {
-                          setMailboxNameTouched(true)
-                          setFormData({ ...formData, mailboxName: e.target.value })
-                        }}
-                        disabled={isSubmitting}
-                        autoComplete="off"
-                      />
-                      <p className="text-sm text-gray-500">
-                        Defaults to alias name and can be changed
-                      </p>
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="senderName">Sender Name</Label>
-                      <Input
-                        id="senderName"
-                        type="text"
-                        placeholder="Melme"
-                        value={formData.senderName}
-                        onChange={(e) => setFormData({ ...formData, senderName: e.target.value })}
-                        disabled={isSubmitting}
-                        autoComplete="off"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="mailboxPassword">Mailbox Password</Label>
+                    <Input
+                      id="mailboxPassword"
+                      type="password"
+                      placeholder="At least 8 characters"
+                      value={formData.mailboxPassword}
+                      onChange={(e) => setFormData({ ...formData, mailboxPassword: e.target.value })}
+                      disabled={isSubmitting}
+                      autoComplete="new-password"
+                    />
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="mailboxPassword">Mailbox Password</Label>
-                      <Input
-                        id="mailboxPassword"
-                        type="password"
-                        placeholder="At least 8 characters"
-                        value={formData.mailboxPassword}
-                        onChange={(e) => setFormData({ ...formData, mailboxPassword: e.target.value })}
-                        disabled={isSubmitting}
-                        autoComplete="new-password"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmMailboxPassword">Confirm Password</Label>
+                    <Input
+                      id="confirmMailboxPassword"
+                      type="password"
+                      placeholder="Confirm mailbox password"
+                      value={formData.confirmMailboxPassword}
+                      onChange={(e) => setFormData({ ...formData, confirmMailboxPassword: e.target.value })}
+                      disabled={isSubmitting}
+                      autoComplete="new-password"
+                    />
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmMailboxPassword">Confirm Password</Label>
-                      <Input
-                        id="confirmMailboxPassword"
-                        type="password"
-                        placeholder="Confirm mailbox password"
-                        value={formData.confirmMailboxPassword}
-                        onChange={(e) => setFormData({ ...formData, confirmMailboxPassword: e.target.value })}
-                        disabled={isSubmitting}
-                        autoComplete="new-password"
-                      />
-                    </div>
+                  <p className="text-sm text-gray-500">
+                    Mailbox access details will be sent to the personal email above.
+                  </p>
+                </div>
+              )}
 
-                    <p className="text-sm text-gray-500">
-                      Mailbox access details will be sent to the personal email above.
-                    </p>
+              {/* Domain Status Info */}
+              <div className="flex items-center gap-4 mt-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-foreground-dim">Status:</span>
+                  <Badge
+                    variant={domain.verificationStatus === 'verified' ? 'default' : 'secondary'}
+                    className={
+                      domain.verificationStatus === 'verified'
+                        ? 'bg-[#22c55e]/10 text-[#22c55e] hover:bg-[#22c55e]/10'
+                        : 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/10'
+                    }
+                  >
+                    {domain.verificationStatus === 'verified' ? 'Connected' : 'Disconnected'}
+                  </Badge>
+                </div>
+                <div className="text-sm text-foreground-dim">
+                  Last checked: {formatDate(domain.lastCheckedAt)}
+                </div>
+                {domain.pendingEmailCount > 0 && (
+                  <div className="flex items-center gap-1 text-sm text-amber-600">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>{domain.pendingEmailCount} pending emails</span>
                   </div>
                 )}
+              </div>
 
-                {/* Domain Status Info */}
-                <div className="flex items-center gap-4 mt-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-foreground-dim">Status:</span>
-                    <Badge
-                      variant={domain.verificationStatus === 'verified' ? 'default' : 'secondary'}
-                      className={
-                        domain.verificationStatus === 'verified'
-                          ? 'bg-[#22c55e]/10 text-[#22c55e] hover:bg-[#22c55e]/10'
-                          : 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/10'
-                      }
-                    >
-                      {domain.verificationStatus === 'verified' ? 'Connected' : 'Disconnected'}
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-foreground-dim">
-                    Last checked: {formatDate(domain.lastCheckedAt)}
-                  </div>
-                  {domain.pendingEmailCount > 0 && (
-                    <div className="flex items-center gap-1 text-sm text-amber-600">
-                      <AlertCircle className="w-4 h-4" />
-                      <span>{domain.pendingEmailCount} pending emails</span>
-                    </div>
-                  )}
+              {/* Warning Message */}
+              {domain.verificationStatus === 'pending' && domain.pendingEmailCount > 0 && (
+                <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                  <p className="text-sm text-amber-700">
+                    Emails were paused because the domain connection was lost.
+                    Recheck the domain to resume delivery and process pending emails.
+                  </p>
                 </div>
+              )}
 
-                {/* Warning Message */}
-                {domain.verificationStatus === 'pending' && domain.pendingEmailCount > 0 && (
-                  <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                    <p className="text-sm text-amber-700">
-                      Emails were paused because the domain connection was lost.
-                      Recheck the domain to resume delivery and process pending emails.
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsCreateDialogOpen(false)
-                      setFormData(buildInitialAliasFormData(session?.user?.email || ''))
-                      setMailboxNameTouched(false)
-                    }}
-                    disabled={isSubmitting}
-                    className="px-4 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-surface-raised transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    {isSubmitting ? 'Creating...' : 'Create Alias'}
-                  </button>
-                </div>
-              </form>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreateDialogOpen(false)
+                    setFormData(buildInitialAliasFormData(session?.user?.email || ''))
+                    setMailboxNameTouched(false)
+                  }}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-surface-raised transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                >
+                  {isSubmitting ? 'Creating...' : 'Create Alias'}
+                </button>
+              </div>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -764,11 +765,10 @@ const DomainAliasesPage = () => {
                         </span>
                       )}
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          alias.isActive
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${alias.isActive
                             ? 'bg-[#22c55e]/10 text-[#22c55e]'
                             : 'bg-muted/20 text-muted'
-                        }`}
+                          }`}
                       >
                         {alias.isActive ? 'Active' : 'Inactive'}
                       </span>

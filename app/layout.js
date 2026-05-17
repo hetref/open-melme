@@ -1,6 +1,7 @@
 import { Bricolage_Grotesque, DM_Sans } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
+import { RootProvider } from 'fumadocs-ui/provider/next';
 
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
@@ -83,8 +84,8 @@ export default function RootLayout({ children }) {
           }}
         />
       </head>
-      <body className={`${bricolage.variable} ${dmSans.variable} font-sans antialiased bg-background text-foreground`}>
-        {children}
+      <body className={`${bricolage.variable} ${dmSans.variable} font-sans flex flex-col min-h-screen antialiased bg-background text-foreground`}>
+        <RootProvider>{children}</RootProvider>
         <Toaster />
       </body>
     </html>

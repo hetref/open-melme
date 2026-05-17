@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+import { createMDX } from 'fumadocs-mdx/next';
+
 const nextConfig = {
   images: {
     remotePatterns: [
@@ -14,4 +16,9 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+const withMDX = createMDX({
+  // customize the config file path
+  configPath: "source.config.js"
+});
+
+export default withMDX(nextConfig);

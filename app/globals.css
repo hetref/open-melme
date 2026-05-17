@@ -1,4 +1,20 @@
 @import 'tailwindcss';
+
+/* Tailwind v4 lacks logical inset utilities used by fumadocs; define them here. */
+@utility inset-s-2.5 {
+  inset-inline-start: 0.625rem;
+}
+
+@utility inset-s-4 {
+  inset-inline-start: 1rem;
+}
+
+@utility -inset-s-4 {
+  inset-inline-start: -1rem;
+}
+
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
 @import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
@@ -55,7 +71,7 @@
   /* Text colors */
   --foreground: #f0eeff;
   --foreground-dim: #9b96b8;
-  --muted: #5c5880;
+  --muted: #7a7888;
 
   /* Semantic mappings for shadcn compatibility */
   --card: #0f0f1a;
