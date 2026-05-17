@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server'
 import { revokeMailboxSession } from '@/lib/mailbox'
+import { extractSessionId } from '@/lib/mailboxAuth'
 import { cookies } from 'next/headers'
 
 export async function POST(req) {
   try {
-    // Get session ID from cookie
     const cookieStore = await cookies()
-    const sessionId = cookieStore.get('melme_mailbox_session')?.value
+
+    // Accept session from Bearer token (React Native) or cookie (web)
+    const sessionId = extractSessionId(req, cookieStore)
 
     if (sessionId) {
-      // Revoke session in database
       await revokeMailboxSession(sessionId)
     }
 
-    // Clear cookie
+    // Clear cookie (no-op for React Native, but cleans up web sessions)
     cookieStore.delete('melme_mailbox_session')
 
     return NextResponse.json({

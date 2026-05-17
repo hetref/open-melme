@@ -1,21 +1,15 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import prisma from '@/lib/prisma'
-import { validateMailboxSession } from '@/lib/mailbox'
+import { getValidatedMailboxSession } from '@/lib/mailboxAuth'
 import { generatePresignedDownloadUrl } from '@/lib/s3'
 
 // GET /api/my-mailbox/attachments/[attachmentId]/download
 export async function GET(request, { params }) {
   try {
-    // Validate mailbox session
+    // Validate mailbox session (accepts Bearer token or cookie)
     const cookieStore = await cookies()
-    const sessionToken = cookieStore.get('melme_mailbox_session')?.value
-
-    if (!sessionToken) {
-      return NextResponse.json({ error: 'No mailbox session' }, { status: 401 })
-    }
-
-    const mailboxSession = await validateMailboxSession(sessionToken)
+    const mailboxSession = await getValidatedMailboxSession(request, cookieStore)
 
     if (!mailboxSession) {
       return NextResponse.json({ error: 'Invalid or expired mailbox session' }, { status: 401 })

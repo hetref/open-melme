@@ -306,6 +306,14 @@ export async function POST(req) {
 
       console.log('Email stored in mailbox:', toEmail);
 
+      await sendMailboxPushNotification({
+        mailboxId: alias.mailboxId,
+        emailId: emailLog?.id,
+        conversationId: emailLog?.conversationId,
+        fromEmail,
+        subject,
+      })
+
       return Response.json({
         received: true,
         status: 'received',
@@ -324,6 +332,42 @@ export async function POST(req) {
 
     // Never crash - always return success to SES
     return Response.json({ received: true, ignored: 'internal_error' });
+  }
+}
+
+async function sendMailboxPushNotification({ mailboxId, emailId, conversationId, fromEmail, subject }) {
+  if (!mailboxId || !emailId) return
+  try {
+    const tokens = await prisma.mailboxPushToken.findMany({
+      where: { mailboxId },
+      select: { expoPushToken: true },
+    })
+
+    if (!tokens.length) return
+
+    const messages = tokens.map((token) => ({
+      to: token.expoPushToken,
+      title: fromEmail || 'New email',
+      body: subject || 'You have a new email',
+      data: {
+        emailId,
+        // conversationId allows the app to navigate directly to the thread.
+        conversationId: conversationId || emailId,
+      },
+      sound: 'default',
+      channelId: 'mailbox',
+    }))
+
+    await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(messages),
+    })
+  } catch (error) {
+    console.error('Failed to send mailbox push notification:', error?.message || error)
   }
 }
 

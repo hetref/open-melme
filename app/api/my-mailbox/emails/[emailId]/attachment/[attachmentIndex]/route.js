@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { validateMailboxSession } from '@/lib/mailbox'
+import { getValidatedMailboxSession } from '@/lib/mailboxAuth'
 import prisma from '@/lib/prisma'
 import { fetchEmailFromS3, generatePresignedDownloadUrl } from '@/lib/s3'
 import { simpleParser } from 'mailparser'
@@ -7,11 +7,9 @@ import { cookies } from 'next/headers'
 
 export async function GET(req, { params }) {
   try {
-    // Get and validate mailbox session
+    // Get and validate mailbox session (accepts Bearer token or cookie)
     const cookieStore = await cookies()
-    const sessionId = cookieStore.get('melme_mailbox_session')?.value
-
-    const mailboxSession = await validateMailboxSession(sessionId)
+    const mailboxSession = await getValidatedMailboxSession(req, cookieStore)
 
     if (!mailboxSession) {
       return NextResponse.json(

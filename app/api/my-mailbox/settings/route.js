@@ -1,21 +1,13 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { cookies } from 'next/headers'
-import { validateMailboxSession } from '@/lib/mailbox'
+import { getValidatedMailboxSession } from '@/lib/mailboxAuth'
 
 // GET /api/my-mailbox/settings - Get current mailbox settings and stats
 export async function GET(request) {
   try {
-    // Get mailbox session from cookie
     const cookieStore = await cookies()
-    const sessionId = cookieStore.get('melme_mailbox_session')?.value
-
-    if (!sessionId) {
-      return NextResponse.json({ error: 'No mailbox session found' }, { status: 401 })
-    }
-
-    // Validate mailbox session
-    const mailboxSession = await validateMailboxSession(sessionId)
+    const mailboxSession = await getValidatedMailboxSession(request, cookieStore)
 
     if (!mailboxSession) {
       return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 })

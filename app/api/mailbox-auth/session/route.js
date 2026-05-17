@@ -1,27 +1,15 @@
 import { NextResponse } from 'next/server'
-import { validateMailboxSession } from '@/lib/mailbox'
 import { cookies } from 'next/headers'
+import { getValidatedMailboxSession } from '@/lib/mailboxAuth'
 
 export async function GET(req) {
   try {
-    // Get session ID from cookie
     const cookieStore = await cookies()
-    const sessionId = cookieStore.get('melme_mailbox_session')?.value
-
-    if (!sessionId) {
-      return NextResponse.json(
-        { error: 'No mailbox session found' },
-        { status: 404 }
-      )
-    }
-
-    // Validate session
-    const mailboxSession = await validateMailboxSession(sessionId)
+    const mailboxSession = await getValidatedMailboxSession(req, cookieStore)
 
     if (!mailboxSession) {
-      // Clear invalid cookie
+      // Clear the cookie if it exists (web cleanup only)
       cookieStore.delete('melme_mailbox_session')
-
       return NextResponse.json(
         { error: 'Invalid or expired session' },
         { status: 401 }

@@ -166,6 +166,10 @@ export async function POST(req) {
 
     return NextResponse.json({
       message: 'Login successful',
+      // Return the session ID as accessToken so React Native can send it
+      // as "Authorization: Bearer <sessionId>" on subsequent requests.
+      accessToken: mailboxSession.id,
+      expiresIn: 3600, // seconds – matches the 1-hour cookie maxAge above
       mailbox: {
         id: mailbox.id,
         name: mailbox.name,

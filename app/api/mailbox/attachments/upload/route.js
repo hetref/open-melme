@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { validateMailboxSession } from '@/lib/mailbox'
+import { getValidatedMailboxSession } from '@/lib/mailboxAuth'
 import { uploadAttachmentToS3, sanitizeFilename } from '@/lib/s3'
 import { cookies } from 'next/headers'
 import { randomUUID } from 'crypto'
@@ -23,10 +23,9 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024
  */
 export async function POST(req) {
   try {
-    // Validate mailbox session
+    // Validate mailbox session (accepts Bearer token or cookie)
     const cookieStore = await cookies()
-    const sessionId = cookieStore.get('melme_mailbox_session')?.value
-    const mailboxSession = await validateMailboxSession(sessionId)
+    const mailboxSession = await getValidatedMailboxSession(req, cookieStore)
 
     if (!mailboxSession) {
       return NextResponse.json(
