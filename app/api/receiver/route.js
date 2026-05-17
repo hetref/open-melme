@@ -304,9 +304,9 @@ export async function POST(req) {
         references,
       });
 
-      console.log('Email stored in mailbox:', toEmail);
+      console.log(`[Receiver] Email stored in mailbox: ${toEmail} | emailId: ${emailLog?.id} | mailboxId: ${alias.mailboxId}`);
 
-      await sendMailboxPushNotification({
+      const pushResult = await sendMailboxPushNotification({
         mailboxId: alias.mailboxId,
         emailId: emailLog?.id,
         conversationId: emailLog?.conversationId,
@@ -314,11 +314,31 @@ export async function POST(req) {
         subject,
       })
 
+      // Log the push notification outcome so it's visible in server logs
+      if (pushResult.tokenCount === 0) {
+        console.log(`[Push] No registered tokens for mailboxId: ${alias.mailboxId} — notification not sent`);
+      } else {
+        console.log(`[Push] Sent to ${pushResult.tokenCount} token(s) for mailboxId: ${alias.mailboxId}`);
+        console.log(`[Push] Tokens: ${pushResult.tokens.join(', ')}`);
+        if (pushResult.error) {
+          console.error(`[Push] Expo API error: ${pushResult.error}`);
+        } else {
+          console.log(`[Push] Expo API response: ${JSON.stringify(pushResult.expoResponse)}`);
+        }
+      }
+
       return Response.json({
         received: true,
         status: 'received',
         mode: 'mailbox',
         emailId: emailLog?.id,
+        push: {
+          tokenCount: pushResult.tokenCount,
+          tokens: pushResult.tokens,
+          sent: pushResult.tokenCount > 0 && !pushResult.error,
+          error: pushResult.error ?? null,
+          expoResponse: pushResult.expoResponse ?? null,
+        },
       });
     }
 
@@ -336,29 +356,36 @@ export async function POST(req) {
 }
 
 async function sendMailboxPushNotification({ mailboxId, emailId, conversationId, fromEmail, subject }) {
-  if (!mailboxId || !emailId) return
+  // Always return a result object — never throws
+  const result = { tokenCount: 0, tokens: [], expoResponse: null, error: null }
+
+  if (!mailboxId || !emailId) return result
+
   try {
-    const tokens = await prisma.mailboxPushToken.findMany({
+    const rows = await prisma.mailboxPushToken.findMany({
       where: { mailboxId },
       select: { expoPushToken: true },
     })
 
-    if (!tokens.length) return
+    result.tokenCount = rows.length
+    result.tokens = rows.map((r) => r.expoPushToken)
 
-    const messages = tokens.map((token) => ({
-      to: token.expoPushToken,
+    if (!rows.length) return result
+
+    const messages = rows.map((row) => ({
+      to: row.expoPushToken,
       title: fromEmail || 'New email',
       body: subject || 'You have a new email',
       data: {
         emailId,
-        // conversationId allows the app to navigate directly to the thread.
+        // conversationId lets the app navigate directly to the right thread
         conversationId: conversationId || emailId,
       },
       sound: 'default',
       channelId: 'mailbox',
     }))
 
-    await fetch('https://exp.host/--/api/v2/push/send', {
+    const res = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -366,9 +393,22 @@ async function sendMailboxPushNotification({ mailboxId, emailId, conversationId,
       },
       body: JSON.stringify(messages),
     })
+
+    const json = await res.json().catch(() => null)
+    result.expoResponse = json
+
+    // Check for Expo-level errors in the response tickets
+    const tickets = json?.data ?? []
+    const failed = tickets.filter((t) => t.status === 'error')
+    if (failed.length) {
+      result.error = failed.map((t) => t.message).join('; ')
+    }
   } catch (error) {
-    console.error('Failed to send mailbox push notification:', error?.message || error)
+    result.error = error?.message || String(error)
+    console.error('[Push] Failed to send mailbox push notification:', result.error)
   }
+
+  return result
 }
 
 /**
