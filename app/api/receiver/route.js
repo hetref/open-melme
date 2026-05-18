@@ -357,14 +357,14 @@ export async function POST(req) {
 
 async function sendMailboxPushNotification({ mailboxId, emailId, conversationId, fromEmail, subject }) {
   // Always return a result object — never throws
-  const result = { tokenCount: 0, tokens: [], expoResponse: null, error: null }
+  const result = { tokenCount: 0, tokens: [], tickets: [], error: null, expoResponse: null }
 
   if (!mailboxId || !emailId) return result
 
   try {
     const rows = await prisma.mailboxPushToken.findMany({
       where: { mailboxId },
-      select: { expoPushToken: true },
+      select: { id: true, expoPushToken: true },
     })
 
     result.tokenCount = rows.length
@@ -372,8 +372,7 @@ async function sendMailboxPushNotification({ mailboxId, emailId, conversationId,
 
     if (!rows.length) return result
 
-    const messages = rows.map((row) => ({
-      to: row.expoPushToken,
+    const messageData = {
       title: fromEmail || 'New email',
       body: subject || 'You have a new email',
       data: {
@@ -383,26 +382,64 @@ async function sendMailboxPushNotification({ mailboxId, emailId, conversationId,
       },
       sound: 'default',
       channelId: 'mailbox',
-    }))
-
-    const res = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(messages),
-    })
-
-    const json = await res.json().catch(() => null)
-    result.expoResponse = json
-
-    // Check for Expo-level errors in the response tickets
-    const tickets = json?.data ?? []
-    const failed = tickets.filter((t) => t.status === 'error')
-    if (failed.length) {
-      result.error = failed.map((t) => t.message).join('; ')
     }
+
+    // Send ONE request per token to avoid PUSH_TOO_MANY_EXPERIENCE_IDS.
+    // Expo rejects batches that mix tokens from different Expo projects.
+    const staleTokenIds = []
+
+    for (const row of rows) {
+      try {
+        const res = await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify([{ to: row.expoPushToken, ...messageData }]),
+        })
+
+        const json = await res.json().catch(() => null)
+
+        // Top-level error (wrong project, malformed request, etc.)
+        if (json?.errors?.length) {
+          const errMsg = json.errors.map((e) => e.message).join('; ')
+          console.error(`[Push] ❌ Token ${row.expoPushToken}: ${errMsg}`)
+          result.tickets.push({ token: row.expoPushToken, status: 'error', message: errMsg })
+
+          // Token belongs to a different Expo project — stale, remove it
+          const isWrongProject = json.errors.some((e) => e.code === 'PUSH_TOO_MANY_EXPERIENCE_IDS')
+          if (isWrongProject) staleTokenIds.push(row.id)
+          continue
+        }
+
+        // Per-ticket error (DeviceNotRegistered, InvalidCredentials, etc.)
+        const ticket = json?.data?.[0]
+        if (ticket?.status === 'error') {
+          console.error(`[Push] ❌ Token ${row.expoPushToken}: ${ticket.message} (${ticket.details?.error})`)
+          result.tickets.push({ token: row.expoPushToken, status: 'error', message: ticket.message })
+          if (ticket.details?.error === 'DeviceNotRegistered') {
+            staleTokenIds.push(row.id)
+          }
+        } else {
+          console.log(`[Push] ✅ Token ${row.expoPushToken}: sent (ticketId: ${ticket?.id})`)
+          result.tickets.push({ token: row.expoPushToken, status: 'ok', id: ticket?.id })
+        }
+      } catch (tokenErr) {
+        console.error(`[Push] ❌ Token ${row.expoPushToken}: fetch error: ${tokenErr?.message}`)
+        result.tickets.push({ token: row.expoPushToken, status: 'error', message: tokenErr?.message })
+      }
+    }
+
+    // Auto-clean stale tokens so they don't clog future sends
+    if (staleTokenIds.length) {
+      await prisma.mailboxPushToken.deleteMany({ where: { id: { in: staleTokenIds } } })
+      console.log(`[Push] 🗑 Deleted ${staleTokenIds.length} stale/wrong-project token(s) from DB`)
+    }
+
+    result.expoResponse = result.tickets
+    const failedCount = result.tickets.filter((t) => t.status === 'error').length
+    if (failedCount) result.error = `${failedCount}/${result.tokenCount} token(s) failed`
   } catch (error) {
     result.error = error?.message || String(error)
     console.error('[Push] Failed to send mailbox push notification:', result.error)
