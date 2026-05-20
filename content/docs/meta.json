@@ -1,0 +1,15 @@
+{
+  "pages": [
+    "index",
+    "introduction",
+    "getting-started",
+    "domains",
+    "aliases",
+    "mailboxes",
+    "my-mailbox",
+    "sending-emails",
+    "security",
+    "troubleshooting",
+    "faq"
+  ]
+}

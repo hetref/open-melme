@@ -1,0 +1,53 @@
+---
+title: Deleting a Domain
+description: Important instructions on how to safely delete a domain from MelMe and what happens to your data.
+---
+
+## 1. Overview
+
+If you no longer wish to manage emails for a particular custom domain, or if you are transitioning the domain to another system, you can delete it from your MelMe dashboard. 
+
+---
+
+## 2. Why This Matters
+
+<Callout type="warning">
+  **Warning:** Deleting a domain is a destructive and permanent action. Once deleted, all active aliases associated with that domain will stop working immediately, and incoming messages sent to those addresses will be rejected.
+</Callout>
+
+Understanding the consequences of domain deletion prevents accidental data loss and ensures a clean transition of your digital communication assets.
+
+---
+
+## 3. How to Use It
+
+### Step 1: Prepare for Deletion
+Before deleting a domain, make sure to:
+* Inform anyone who uses aliases on this domain that their addresses will be turned off.
+* Check if there are any active, critical subscriptions or logins tied to aliases on this domain.
+* Export or save any important email conversations stored in mailboxes linked to this domain.
+
+### Step 2: Delete the Domain in MelMe
+1. Log in to the MelMe Admin Panel and go to the **Domains** tab.
+2. Find the domain you want to delete and click the **Delete** button (trash can icon).
+3. A confirmation dialog will appear, reminding you of the consequences.
+4. Confirm the deletion. The domain, its associated aliases, and its active routing settings will be deleted from your MelMe database.
+
+### Step 3: Remove DNS Records
+1. Log in to your domain registrar's DNS panel.
+2. Delete the MX, TXT, and CNAME records pointing to MelMe to clean up your domain configuration.
+
+---
+
+## 4. Common Mistakes
+
+* **Accidental Deletion:** Deleting a domain deletes its aliases permanently. If a mailbox alias is deleted, the emails sent to that alias may become inaccessible or deleted (depending on your mailbox retention policies).
+* **Forgetting to Remove DNS Records:** If you delete the domain in MelMe but forget to remove the MX records at your registrar, mail servers will still attempt to send mail to MelMe, resulting in delivery errors instead of a clean bounce.
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Temporary Alternative:** If you just want to temporarily block emails from arriving on your domain without losing your records, go to the **Aliases** tab and deactivate the individual aliases instead of deleting the entire domain!
+</Callout>

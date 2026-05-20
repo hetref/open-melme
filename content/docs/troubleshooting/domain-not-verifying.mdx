@@ -1,0 +1,49 @@
+---
+title: Domain Not Verifying
+description: Troubleshoot issues when verifying your custom domain DNS records in MelMe.
+---
+
+## 1. Problem
+
+You have added your domain to MelMe and copied the DNS records to your registrar, but the status remains **Pending** or changes to **Failed** after you click verify.
+
+---
+
+## 2. Common Causes
+
+* **DNS Propagation Delay:** DNS records can take anywhere from 10 minutes to 24 hours to update across the internet.
+* **Typing or Copy-Paste Errors:** Long text strings for DKIM or TXT keys have minor spelling errors or missing symbols.
+* **Duplicate Domain Suffixes:** Entering the host name as `verification.yourdomain.com` inside a registrar that automatically appends your domain, causing a duplicate entry (`verification.yourdomain.com.yourdomain.com`).
+* **Cloudflare Proxy Settings:** Enabling the Cloudflare proxy (orange cloud) on verification CNAME records.
+
+---
+
+## 3. How to Fix It
+
+### Step 1: Wait for Propagation
+If you just updated your DNS records, wait at least **15–30 minutes** before testing verification again to allow the records to propagate globally.
+
+### Step 2: Verify Host Names
+Double-check how your registrar handles host names:
+* If the registrar automatically appends your domain, you should only enter the sub-part in the name/host field. For example, enter `@` instead of `yourdomain.com`, or `verification` instead of `verification.yourdomain.com`.
+
+### Step 3: Set Cloudflare CNAMEs to DNS Only
+If you manage your domain via Cloudflare:
+1. Log in to your Cloudflare DNS panel.
+2. Locate the CNAME (DKIM) records you added for MelMe.
+3. Edit each record and toggle the Proxy status to **DNS Only** (grey cloud icon).
+4. Save the changes and verify again in MelMe.
+
+---
+
+## 4. Common Mistakes
+
+* **Manually typing verification keys:** Avoid manual typing; always click the **Copy** button next to each value in the MelMe panel to ensure characters are matched perfectly.
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **DNS Lookup Tools:** You can use free web tools (like `dnschecker.org` or `dig`) to check if your DNS TXT and MX records are publicly visible before verifying in MelMe.
+</Callout>

@@ -1,0 +1,65 @@
+---
+title: Frequently Asked Questions (FAQ)
+description: Quick answers to the most common questions about domains, aliases, mailboxes, and email delivery in MelMe.
+---
+
+## 1. Overview
+
+This page collects frequently asked questions from MelMe users. Whether you're trying to figure out how mailboxes differ from aliases or wondering why a domain status is pending, you'll find the answer here.
+
+---
+
+## 2. Why This Matters
+
+Having a quick-reference guide prevents configuration errors, saves you time, and ensures that your custom domain email system runs smoothly.
+
+---
+
+## 3. Frequently Asked Questions
+
+### 💬 General Concepts
+
+#### What is an email alias?
+An alias is an email address (like `newsletter@yourdomain.com`) that acts as a router. It does not have its own login credentials. Instead, it instantly directs any incoming mail to a destination—either forwarding it to your personal Gmail/Yahoo account or storing it in a MelMe Mailbox.
+
+#### What is the difference between forwarding and a mailbox?
+* **Forwarding:** The email is rerouted immediately to another email provider (e.g., `yourname@gmail.com`). MelMe does not store the content of this email permanently in an inbox.
+* **Mailbox:** The email is securely stored inside MelMe. You or your team members log in to MelMe's **My Mailbox** app using a distinct mailbox login to view, compose, and reply to these emails.
+
+#### Can multiple aliases share a single mailbox?
+Yes! You can route multiple aliases (e.g., `contact@yourdomain.com` and `sales@yourdomain.com`) to the exact same Mailbox. This lets you manage multiple business functions from one single inbox.
+
+---
+
+### 🌐 Domains & DNS
+
+#### Why is my domain status still showing as "Pending"?
+When you add a domain, you must configure DNS records (DKIM, MX, and Verification records) with your domain provider (e.g., GoDaddy, Namecheap). It can take up to 24–48 hours for domain registrars to distribute these changes worldwide. You can click "Check DNS Status" on the Domains dashboard to manually trigger a re-check.
+
+#### Why am I not receiving any emails?
+The most common cause is missing or incorrect **MX (Mail Exchanger) records** on your domain. Double-check your DNS provider settings to ensure that the MX record points exactly to the values provided in your MelMe dashboard.
+
+---
+
+### 🔒 Aliases & Mailboxes
+
+#### Can I temporarily turn off an alias without deleting it?
+Yes! MelMe allows you to activate and deactivate aliases with a single click. When deactivated, any email sent to that alias will be rejected, protecting your primary account from spam.
+
+#### Why do attachments require "processing" when they arrive?
+For security and performance, MelMe uploads all incoming email attachments to a secure, isolated cloud storage container (AWS S3) and scans them. Once completed, you can view and download them safely. This ensures that large files do not crash your mailbox and protects your devices from potential email-borne malware.
+
+---
+
+## 4. Common Mistakes
+
+* **Creating duplicate MX records:** If you have active MX records from a previous email provider (like Google or Zoho) alongside MelMe's MX records, email delivery will fail or be highly unpredictable. Remove any old MX records before verifying your domain.
+* **Attempting to log in with an alias:** You cannot log in to MelMe with an alias. Logins are only for **Admin Accounts** or specific **Mailboxes** (using their respective slugs/passwords).
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Pro Tip:** If you're setting up a team, create one Mailbox for each employee (e.g., `john-mailbox`) and route their specific alias (`john@yourdomain.com`) to it. This keeps their logins isolated and secure.
+</Callout>

@@ -1,0 +1,50 @@
+---
+title: Alias Not Working
+description: Troubleshoot issues when a specific email alias fails to route or receive emails.
+---
+
+## 1. Problem
+
+You have created a specific email alias (e.g. `billing@yourdomain.com`), but sending emails to it results in bounce messages, or the emails fail to deliver entirely.
+
+---
+
+## 2. Common Causes
+
+* **Alias is Inactive:** The active toggle is switched off.
+* **Orphaned Alias:** The mailbox assigned to the alias was deleted, leaving the alias without a target container.
+* **Unverified Domain:** The alias belongs to a domain whose status is pending or failed.
+* **Typo in Forward Destination:** The forward routing address (e.g. `myname@gamil.com` instead of `gmail.com`) contains a typo.
+
+---
+
+## 3. How to Fix It
+
+### Step 1: Check Alias Status
+1. Log in to the Admin Dashboard and go to **Aliases**.
+2. Make sure the toggle switch next to your alias is turned **On** (green).
+
+### Step 2: Edit and Verify Routing Target
+1. Click the **Edit** (pencil) icon next to your alias.
+2. Confirm the destination details:
+   - If in **Forward Mode**: Ensure the personal destination email has no spelling errors.
+   - If in **Mailbox Mode**: Ensure a valid, active mailbox is selected from the list.
+3. Save changes.
+
+### Step 3: Check Domain Status
+Ensure the domain is fully verified. If your domain is unverified, all aliases created on it are temporarily paused.
+
+---
+
+## 4. Common Mistakes
+
+* **Creating a new alias before domain verification is fully complete:** Wait for the domain verification check to succeed before relying on aliases created on it.
+* **Spelling typos in the local part:** Double-check that you did not accidentally type a typo in the prefix (e.g., creating `suporrt@` instead of `support@`).
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Rename Alternative:** If you made a spelling mistake in your alias prefix, delete the misspelled alias and create a fresh one with the correct spelling.
+</Callout>

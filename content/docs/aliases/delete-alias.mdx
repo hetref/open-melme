@@ -1,0 +1,53 @@
+---
+title: Deleting an Alias
+description: Learn how to permanently delete an email alias from your account and understand what happens to your historical emails.
+---
+
+## 1. Overview
+
+If you no longer need an email alias, you can delete it from your MelMe dashboard. Deleting an alias permanently removes the address and stops all future routing rules for it.
+
+---
+
+## 2. Why This Matters
+
+<Callout type="warning">
+  **Important Note:** Deleting an alias is a permanent action. Any future emails sent to a deleted alias will bounce immediately as undeliverable.
+</Callout>
+
+It is crucial to understand what happens to your existing emails when you delete an alias, so you do not accidentally lose important data.
+
+---
+
+## 3. How to Use It (What Happens to My Data?)
+
+The deletion behavior depends entirely on the routing mode of the alias:
+
+### 1. Mailbox Aliases (Secure Inbox Storage)
+* **What happens to your emails:** Deleting a mailbox alias removes the address routing, but **does not** delete the Mailbox container itself.
+* **Email Safety:** The emails previously received through that alias remain safe and accessible inside your Mailbox dashboard. 
+* **Clean Cleanup:** You can safely delete the alias, and all historically stored messages will remain untouched unless you choose to delete the entire Mailbox itself.
+
+### 2. Forward Aliases (Forwarding Mode)
+* **What happens to your emails:** Since forward aliases do not store emails inside MelMe, deleting a forward alias will permanently delete its associated delivery history and logs from MelMe's database.
+* **Email Safety:** Any emails already forwarded to your personal Gmail or Yahoo inbox remain perfectly safe in your personal account; MelMe cannot delete emails from your personal external provider.
+
+### How to Delete:
+1. Log in to your MelMe Admin Dashboard and select **Aliases**.
+2. Find the alias you wish to remove and click the **Delete** button (trash can icon).
+3. Confirm your choice in the popup window.
+
+---
+
+## 4. Common Mistakes
+
+* **Deleting an alias used for active customer accounts:** Before deleting an alias, ensure it is not registered as the recovery or login email for online business accounts (like bank portals, hosting services, or SaaS subscriptions). If you delete the alias, you will not be able to receive password reset links.
+* **Not letting clients know:** If you delete a client-facing alias like `quotes@yourdomain.com`, clients will receive a confusing delivery failure notice if they attempt to write to you.
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Safety Switch:** If you aren't 100% sure whether you want to delete an alias, turn off the **Active** switch instead! Toggling it to Inactive blocks emails immediately but preserves the address and settings for easy retrieval later.
+</Callout>

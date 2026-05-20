@@ -1,0 +1,44 @@
+---
+title: Email Status Meanings
+description: Understand the different statuses assigned to your sent and received emails in MelMe.
+---
+
+## 1. Overview
+
+Every email that passes through MelMe is logged and assigned a tracking **Status** (visible in your Admin Panel's logs and mailbox lists). This status lets you know exactly where your email is in its lifecycle.
+
+---
+
+## 2. Why This Matters
+
+Tracking statuses is critical for verifying that your emails were successfully delivered to recipients, diagnosing delivery blocks, and confirming that forwarding rules are executing correctly.
+
+---
+
+## 3. Email Status Reference Table
+
+Below is a breakdown of all the email statuses in MelMe:
+
+| Status | Type | What it means | Actions required |
+| :--- | :--- | :--- | :--- |
+| 🟢 **Sent** | Outbound | The email was successfully delivered to the recipient's mail provider. | None. Delivery is complete! |
+| 🟢 **Received** | Inbound | The email was successfully received by MelMe and stored in your Mailbox. | Open **My Mailbox** to read the message. |
+| 🔵 **Forwarded** | Inbound | The email arrived at a forward alias and was redirected to your personal inbox. | Check your personal Gmail/Yahoo inbox. |
+| 🟡 **Pending** | Inbound / Outbound | The email is currently queued and waiting for processing or security checks. | None. MelMe will automatically attempt delivery. |
+| 🔴 **Failed** | Inbound / Outbound | The email failed to deliver, either due to a spam bounce, incorrect credentials, or DNS errors. | Read the error message next to the log for details. |
+| 🔴 **Invalid** | Inbound | The email arrived on an inactive, missing, or unverified alias. | Ensure your alias is configured and turned on! |
+
+---
+
+## 4. Common Mistakes
+
+* **Assuming "Sent" means "Read":** The `Sent` status means the recipient's email server (e.g. Gmail) accepted the letter successfully. It does not track whether the actual human recipient opened or read your email.
+* **Ignoring "Invalid" status logs:** If you see "Invalid" logs in your Admin Dashboard, it means people are trying to write to an address you deactivated or spelled wrong. Check your Active switch on the Aliases tab!
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Checking Failures:** If an email fails, click on the log entry in your Admin Dashboard. MelMe will display a detailed explanation (like "Inbound MX records mismatched" or "Spam filter bounce") to help you fix it.
+</Callout>

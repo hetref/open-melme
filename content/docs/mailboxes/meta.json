@@ -1,0 +1,12 @@
+{
+  "title": "Mailboxes",
+  "pages": [
+    "overview",
+    "create-mailbox",
+    "assigning-aliases",
+    "shared-inboxes",
+    "mailbox-security",
+    "mailbox-settings",
+    "delete-mailbox"
+  ]
+}

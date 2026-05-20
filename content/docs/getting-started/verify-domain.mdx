@@ -1,0 +1,58 @@
+---
+title: Verifying Your Domain
+description: Step-by-step guide to configuring your DNS records so MelMe can safely send and receive emails on your behalf.
+---
+
+## 1. Overview
+
+Adding a domain to MelMe is only the first step. To ensure you actually own the domain and to authorize MelMe to manage emails for it, you must copy the generated DNS records from MelMe and add them to your domain registrar's settings.
+
+---
+
+## 2. Why This Matters
+
+Without verification:
+* **Receiving Fails:** Other email servers won't know where to send mail addressed to your domain.
+* **Sending Fails:** Spam filters (like Gmail's or Yahoo's) will block emails you try to send from your domain because MelMe isn't officially authorized to send mail for you yet.
+
+---
+
+## 3. How to Use It
+
+### Step 1: Copy DNS Records from MelMe
+1. Go to the **Domains** tab in MelMe.
+2. Select your newly added domain to view its **DNS Records** table.
+3. You will see three types of records that must be created:
+   * **TXT (Verification) Record:** Proves domain ownership.
+   * **MX (Mail Exchange) Record:** Routes incoming emails to MelMe.
+   * **DKIM (CNAME) Records:** Authenticates your outgoing emails to prevent them from landing in spam folders.
+
+### Step 2: Log in to Your Domain Provider
+1. Log in to the website where you bought your domain (e.g., Cloudflare, Namecheap, GoDaddy).
+2. Find the **DNS Settings**, **DNS Management**, or **Advanced DNS** area for your domain.
+
+### Step 3: Add the Records
+Create new DNS entries matching the details shown in MelMe:
+1. **MX Record:** Add a new MX record. Set host/name to `@` (or leave blank), enter the MelMe MX server address, and set priority to `10`.
+2. **TXT Record:** Add a new TXT record. Enter the Host name and TXT value exactly as provided.
+3. **CNAME (DKIM) Records:** Add CNAME records for authentication. Copy the hostnames and values.
+
+### Step 4: Click Verify in MelMe
+1. Return to MelMe's **Domains** tab.
+2. Click **Check Status** or **Verify**. 
+3. The verification status will change to **Verified** once DNS changes propagate.
+
+---
+
+## 4. Common Mistakes
+
+* **Duplicate MX Records:** If you have active MX records from an older host (e.g., GoDaddy Workspace, Zoho), delete them. Keeping multiple conflicting MX records causes random, failed email deliveries.
+* **DNS Propagation Delay:** DNS changes are not always instant. It can take anywhere from 5 minutes to 24 hours to verify depending on your registrar. Don't panic if it shows "Failed" or "Pending" on your first click!
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Pro Tip:** If you use **Cloudflare** for DNS, make sure your CNAME records are set to **DNS Only** (grey cloud icon) instead of **Proxied** (orange cloud icon). Proxied records will prevent DKIM validation.
+</Callout>

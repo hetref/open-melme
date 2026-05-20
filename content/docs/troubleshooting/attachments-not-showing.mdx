@@ -1,0 +1,45 @@
+---
+title: Attachments Not Showing
+description: Troubleshoot issues when email file attachments fail to load, scan, or download inside My Mailbox.
+---
+
+## 1. Problem
+
+An email has arrived inside **My Mailbox** containing file attachments, but the files show up as **Processing**, **Failed**, or do not allow you to click download.
+
+---
+
+## 2. Common Causes
+
+* **Security Scan In Progress:** MelMe is currently running security scans on the file to protect your local device from malware.
+* **Scan Failures:** The attachment scanning engine blocked the file because it detected suspicious contents or dangerous executable files.
+* **Large File Delay:** Large files take a few extra moments to secure and process.
+* **Browser Blocks:** Your local web browser blocked the download pop-up window.
+
+---
+
+## 3. How to Fix It
+
+### Step 1: Wait for Processing to Complete
+If the file status indicator is yellow (**Processing**), wait 10–30 seconds and click **Refresh** or reopen the thread. Large attachments or busy server periods can slightly prolong scanning.
+
+### Step 2: Check Browser Blocked Downloads
+Some browsers block downloads triggered from web apps. Look at your browser address bar: if you see a small blocked-download icon, click it and select **Allow downloads from MelMe**.
+
+### Step 3: Check File Type Rules
+If the attachment is flagged as **Failed**, contact the sender. Ensure they did not send executable files (like `.exe`, `.bat`, or raw scripts). Request them to send standard documents (PDF, Word, or images) instead.
+
+---
+
+## 4. Common Mistakes
+
+* **Interrupting the download:** Navigating away or logging out of your mailbox while a large attachment is downloading can corrupt the file. Let the download complete fully.
+* **Expecting zip files to open instantly:** If someone sent a highly compressed `.zip` or `.rar` folder, MelMe's security scans take slightly longer to unpack and inspect the files inside the archive.
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Exporting to Cloud:** If an attachment regularly fails, have the sender upload it to a secure cloud platform (like Google Drive) and email you the sharing link instead of attaching the file directly.
+</Callout>

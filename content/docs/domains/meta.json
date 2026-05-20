@@ -1,0 +1,11 @@
+{
+  "title": "Domains",
+  "pages": [
+    "overview",
+    "add-domain",
+    "dns-records",
+    "subdomains",
+    "domain-status",
+    "delete-domain"
+  ]
+}

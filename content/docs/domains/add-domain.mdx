@@ -1,0 +1,48 @@
+---
+title: Adding a Domain in Detail
+description: A comprehensive guide on how to add root domains or subdomains to your MelMe workspace.
+---
+
+## 1. Overview
+
+Adding a domain to MelMe tells our systems to expect emails addressed to that domain. MelMe supports adding both **Root Domains** (e.g., `brand.com`) and **Subdomains** (e.g., `mail.brand.com` or `mg.brand.com`).
+
+---
+
+## 2. Why This Matters
+
+Depending on your business needs, you may want to separate your primary business emails from your transactional logs, customer service threads, or marketing campaigns. Understanding how to structure your domains enables clean deliverability and better organization.
+
+---
+
+## 3. How to Use It
+
+### Root Domain vs Subdomain Setup
+
+| Domain Type | Example | Best Used For |
+| :--- | :--- | :--- |
+| **Root Domain** | `company.com` | Primary professional business communications and personal branding. |
+| **Subdomain** | `support.company.com` | Segmented environments, support tickets, newsletters, or high-volume automated logs. |
+
+### How to Add:
+1. Log in to the MelMe Admin Panel and navigate to **Domains**.
+2. Click **Add Domain**.
+3. In the text field, enter your domain name:
+   - For a root domain: enter `mycompany.com`
+   - For a subdomain: enter `support.mycompany.com`
+4. Click **Submit** to generate your custom DNS records.
+
+---
+
+## 4. Common Mistakes
+
+* **Adding Domain Path Prefixes:** Do not type `https://mycompany.com` or `mycompany.com/blog`. Only type the actual domain name.
+* **Adding a domain without admin access:** If you are trying to verify a client's domain, you must make sure they can give you access to their domain DNS settings or add the records on your behalf.
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Deliverability Tip:** If you already use your root domain (e.g., `mybrand.com`) on an email provider like Google Workspace, adding a subdomain like `inbox.mybrand.com` to MelMe allows you to use MelMe's custom inboxes without disturbing your existing Google Workspace mail setup.
+</Callout>

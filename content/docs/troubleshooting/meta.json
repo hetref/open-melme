@@ -1,0 +1,11 @@
+{
+  "title": "Troubleshooting & Support",
+  "pages": [
+    "domain-not-verifying",
+    "emails-not-receiving",
+    "alias-not-working",
+    "mailbox-empty",
+    "forwarding-not-working",
+    "attachments-not-showing"
+  ]
+}

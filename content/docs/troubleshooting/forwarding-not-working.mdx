@@ -1,0 +1,46 @@
+---
+title: Email Forwarding Not Working
+description: Troubleshoot issues when forward-mode aliases fail to redirect emails to your personal inbox.
+---
+
+## 1. Problem
+
+Emails sent to your forward-mode alias (e.g. `newsletter@yourdomain.com`) are not arriving in your external personal inbox (e.g. your Gmail, Yahoo, or Outlook address).
+
+---
+
+## 2. Common Causes
+
+* **Typo in Forward Destination:** The forward email address is spelled incorrectly in the MelMe settings.
+* **Spam Filters:** The external email provider (Gmail, Yahoo) routed the forwarded email directly into your **Spam** or **Junk** folder.
+* **Sender SPF/DKIM Restrictions:** Some external mail providers block forwarded emails if they suspect them to be spam or if the original sender's security signature is highly strict (DMARC alignment checks).
+* **MX Records Mismatch:** The domain's MX records are not pointed to MelMe.
+
+---
+
+## 3. How to Fix It
+
+### Step 1: Check Your Personal Spam Folder
+1. Open your personal email inbox (Gmail, Yahoo, etc.).
+2. Go to the **Spam**, **Junk**, or **Promotions** folder.
+3. If the test email is there, mark it as **Not Spam** or **Add to Safe Senders** to ensure future forwarded emails arrive directly in your primary inbox.
+
+### Step 2: Verify the Destination Spelling
+1. Log in to the MelMe Admin Panel and go to **Aliases**.
+2. Click **Edit** next to your alias.
+3. Look closely at the destination email. Confirm that every character, domain, and dot is perfect.
+4. Save any corrections.
+
+---
+
+## 4. Common Mistakes
+
+* **Replying directly to a forwarded email:** If you reply to a forwarded email in Gmail, your personal Gmail address will show as the sender, revealing your real identity. If this happens regularly, switch the alias to **Mailbox Mode** to handle your professional replies cleanly inside MelMe!
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Inbox Filters:** In Gmail, you can create a filter to "Never send to spam" for all emails sent to your custom alias (e.g. `to:alias@yourdomain.com`), ensuring perfect delivery.
+</Callout>

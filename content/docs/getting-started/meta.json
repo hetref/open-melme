@@ -1,0 +1,12 @@
+{
+  "title": "Getting Started",
+  "pages": [
+    "create-account",
+    "add-domain",
+    "verify-domain",
+    "create-first-alias",
+    "create-mailbox",
+    "receive-first-email",
+    "send-first-email"
+  ]
+}

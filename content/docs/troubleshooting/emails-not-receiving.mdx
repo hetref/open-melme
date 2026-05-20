@@ -1,0 +1,50 @@
+---
+title: Emails Not Receiving
+description: Diagnose and resolve issues when you are unable to receive incoming emails on your custom aliases.
+---
+
+## 1. Problem
+
+Other people are sending emails to your verified custom domain aliases (e.g. `hello@yourdomain.com`), but they never show up in your personal inbox (forwarding) or inside your MelMe Mailbox.
+
+---
+
+## 2. Common Causes
+
+* **Incorrect MX DNS Records:** The most common issue is that your MX (Mail Exchange) record is missing, inactive, or pointing to a different email provider.
+* **Alias is Set to Inactive:** The target alias status is toggled off in the **Aliases** panel.
+* **Misconfigured Routing Destination:** The alias is set to forward to a misspelled personal email or routed to the wrong mailbox.
+* **Verification Issues:** The domain is not yet verified in your Admin Panel.
+
+---
+
+## 3. How to Fix It
+
+### Step 1: Check MX Records
+1. Go to your domain registrar's DNS management page.
+2. Confirm that there is a **single** MX record pointing to the MelMe server.
+3. If you see old MX records from Zoho, Google Workspace, or Yandex, delete them completely. Only MelMe MX records must remain.
+
+### Step 2: Verify Alias Active Status
+1. Log in to the Admin Panel and open **Aliases**.
+2. Locate the target address.
+3. Confirm that the status toggle is green (**Active**). If it is off, toggle it back on.
+
+### Step 3: Inspect Admin Logs
+1. Go to your Admin Panel and check the transaction logs.
+2. If you see emails logged as **Failed** or **Invalid**, look at the error details next to the entry to understand what blocked the delivery.
+
+---
+
+## 4. Common Mistakes
+
+* **Adding multiple conflicting MX records:** Having multiple active MX records from different email providers causes incoming emails to fail randomly. Always stick to one provider.
+* **Testing from the same mailbox:** When testing delivery, always send the test email from an entirely external email account (like a personal Gmail address) to get an accurate test.
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Bounce Messages:** Check if the sender received a "Bounce Back" email. Read the bounce message text—it usually provides a detailed description of why the email was rejected.
+</Callout>

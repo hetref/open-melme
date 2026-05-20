@@ -1,0 +1,10 @@
+{
+  "title": "Security & Protection",
+  "pages": [
+    "account-security",
+    "mailbox-security",
+    "two-factor-authentication",
+    "passkeys",
+    "sessions"
+  ]
+}

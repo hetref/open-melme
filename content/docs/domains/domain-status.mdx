@@ -1,0 +1,41 @@
+---
+title: Domain Verification Statuses
+description: Understand what each verification status means and how to transition a domain to the fully verified state.
+---
+
+## 1. Overview
+
+Every domain added to MelMe goes through a verification check. You can track this process directly from the dashboard under the **Verification Status** column. There are three statuses: **Pending**, **Verified**, and **Failed**.
+
+---
+
+## 2. Why This Matters
+
+Understanding what each status represents helps you diagnose and solve DNS issues quickly, ensuring your email traffic remains active and uninterrupted.
+
+---
+
+## 3. What the Statuses Mean
+
+Below is a breakdown of the three statuses and their implications:
+
+| Status | What it means | Actions required |
+| :--- | :--- | :--- |
+| 🟡 **Pending** | The domain is newly added. MelMe has not yet successfully read the required DNS records from your registrar. | Add the DNS records at your registrar and click **Check Status** in MelMe. |
+| 🟢 **Verified** | All TXT, CNAME, and MX records are perfectly matched. The domain is fully active and ready to handle email traffic. | None! You can now create unlimited aliases on this domain. |
+| 🔴 **Failed** | MelMe checked your DNS records, but the values were incorrect, missing, or mismatched. | Double-check the DNS records in your domain registrar against the values provided in MelMe and verify again. |
+
+---
+
+## 4. Common Mistakes
+
+* **Giving Up Too Quickly:** Many users see a `Failed` or `Pending` status and assume something is broken. Remember that DNS servers globally take time to sync. Give it at least 1–2 hours after adding records before assuming a configuration error.
+* **Typing Errors:** The DKIM and TXT values are very long, complicated strings of characters. Do not type them manually; always use the **Copy** buttons next to each record in the MelMe panel to prevent typos.
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Checking Manually:** If your domain registrar has a TTL (Time To Live) setting for DNS entries, set it to the lowest possible value (e.g., 5 minutes or 300 seconds) while verifying. This forces the DNS servers to refresh faster!
+</Callout>

@@ -1,0 +1,13 @@
+{
+  "title": "My Mailbox App",
+  "pages": [
+    "inbox",
+    "sent",
+    "conversations",
+    "compose-email",
+    "replying",
+    "attachments",
+    "search-filter",
+    "mailbox-settings"
+  ]
+}

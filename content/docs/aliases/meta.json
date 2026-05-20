@@ -1,0 +1,12 @@
+{
+  "title": "Aliases",
+  "pages": [
+    "overview",
+    "create-alias",
+    "forward-aliases",
+    "mailbox-aliases",
+    "activate-deactivate",
+    "managing-aliases",
+    "delete-alias"
+  ]
+}

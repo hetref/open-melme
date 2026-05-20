@@ -1,0 +1,45 @@
+---
+title: Adding a Domain
+description: Learn how to connect your custom web domain to MelMe to start creating personalized email addresses.
+---
+
+## 1. Overview
+
+Before you can create aliases (like `hello@yourdomain.com`), you must add your custom domain to MelMe. This tells MelMe which website addresses you own and allows the platform to prepare the necessary routing rules.
+
+---
+
+## 2. Why This Matters
+
+Having custom email addresses built on your own domain (e.g., `info@mycompany.com` instead of `mycompany@gmail.com`) builds immediate trust and credibility with clients, partners, and customers. It also ensures you are not locked into any single email provider forever.
+
+---
+
+## 3. How to Use It
+
+### Step 1: Access the Domains Page
+1. Log in to your MelMe dashboard.
+2. Click on **Domains** in the sidebar menu.
+
+### Step 2: Add Your Domain
+1. Click the **Add Domain** button.
+2. Choose between adding a **Root Domain** or a **Subdomain**:
+   - **Root Domain:** Use this if you want emails sent directly to your main address (e.g., `yourdomain.com` -> `contact@yourdomain.com`).
+   - **Subdomain:** Use this if you want to isolate emails to a specific branch (e.g., `mail.yourdomain.com` -> `contact@mail.yourdomain.com`).
+3. Type in your domain name (do not include `http://` or `www.`).
+4. Click **Submit**. MelMe will instantly generate custom DNS verification records for you.
+
+---
+
+## 4. Common Mistakes
+
+* **Adding "www" before the domain:** Do not enter `www.yourdomain.com`. Only enter `yourdomain.com`.
+* **Adding a domain you don't own:** You must be able to log in to the domain registrar (e.g., GoDaddy, Namecheap, Cloudflare) where you bought the domain to complete setup.
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Subdomain recommendation:** If you already use your root domain (e.g., `company.com`) for Google Workspace or Office 365, but want to use MelMe for marketing or transactional logs, add a subdomain like `mg.company.com` or `inbox.company.com` to avoid any conflicts!
+</Callout>

@@ -1,0 +1,47 @@
+---
+title: Mailbox is Empty
+description: Troubleshoot issues when your secure mailbox does not display any incoming email messages.
+---
+
+## 1. Problem
+
+You log in to the **My Mailbox** app, but your Inbox tab is completely empty, even though you are expecting emails or have sent test messages.
+
+---
+
+## 2. Common Causes
+
+* **Alias Mode is Set to Forward:** The custom alias is set to **Forward** mode instead of **Mailbox** mode. Emails are being forwarded out rather than stored in MelMe.
+* **Alias is Not Connected to the Mailbox:** You created a mailbox, but forgot to go to the **Aliases** tab to link the email address to it.
+* **Domain DNS is Pending:** The custom domain has not completed its verification step yet.
+* **Mailbox is Suspended:** The mailbox status in the Admin Dashboard is toggled to Inactive.
+
+---
+
+## 3. How to Fix It
+
+### Step 1: Verify the Alias Routing Mode
+1. Log in to the Admin Dashboard and go to **Aliases**.
+2. Locate the alias you are testing.
+3. Check the **Mode** column:
+   - If it says **Forward**: Click Edit, change the Mode to **Mailbox**, select your mailbox, and save changes. 
+   - If it says **Mailbox**: Verify it is pointed to the correct mailbox container.
+
+### Step 2: Check Mailbox Status
+1. Open the **Mailboxes** tab in the Admin Panel.
+2. Confirm that the mailbox is set to **Active** (green toggle). If it is inactive, turn it back on.
+
+---
+
+## 4. Common Mistakes
+
+* **Logging into the wrong mailbox:** If you have multiple mailboxes (e.g. `support` and `sales`), make sure you logged into the correct mailbox using its specific slug. Logging into `sales` will not show emails sent to the `support` alias.
+* **Forgetting to link the domain:** Ensure that the domain the alias is built on is fully verified in the admin settings.
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Real-Time Arrival:** Once you correct the routing mode to Mailbox, any new emails sent to that alias will deliver instantly. Note that emails forwarded *before* correcting this setting cannot be retrieved from the mailbox, as they were forwarded directly to your personal email and never stored in MelMe.
+</Callout>

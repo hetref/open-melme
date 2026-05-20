@@ -1,0 +1,56 @@
+---
+title: Creating a Mailbox
+description: Step-by-step instructions to create an isolated, secure inbox container within MelMe.
+---
+
+## 1. Overview
+
+A **Mailbox** is a secure, isolated digital storage box inside MelMe. Unlike an alias, which only routes mail, a mailbox has its own storage, unique credentials, and dedicated inbox interface.
+
+---
+
+## 2. Why This Matters
+
+Creating isolated mailboxes allows you to store emails directly inside MelMe instead of forwarding them out. This is critical for:
+* **Business Operations:** Keeping professional business emails separate from your personal mailbox.
+* **Team Delegation:** Creating a custom inbox for an employee (e.g., `support@yourdomain.com`) with their own login, keeping your administrative dashboard private.
+
+---
+
+## 3. How to Use It
+
+### Step 1: Open the Mailboxes Page
+1. Log in to your MelMe admin dashboard.
+2. Click **Mailboxes** in the sidebar.
+
+### Step 2: Create a Mailbox
+1. Click the **Create Mailbox** button.
+2. Fill in the required fields:
+   * **Mailbox Name:** A internal name to identify the mailbox (e.g., "Customer Support").
+   * **Mailbox Slug:** A unique URL-friendly text identifier (e.g., `support-inbox`). This will be used to log in.
+   * **Sender Name:** The display name recipients will see when you send emails from this mailbox (e.g., "MelMe Support Team").
+   * **Mailbox Password:** Set a strong password. This is what you or your team will use to access the mailbox.
+3. Click **Create Mailbox**.
+
+### Step 3: Connect Your Alias to the Mailbox
+Now that your mailbox is created, link an alias to it so it starts receiving mail:
+1. Go back to the **Aliases** tab.
+2. Create or edit an alias (e.g., `support@yourdomain.com`).
+3. Set the Mode to **Mailbox**.
+4. Select your new Mailbox from the list.
+5. Save changes. Any email sent to this alias will now land directly in this mailbox!
+
+---
+
+## 4. Common Mistakes
+
+* **Confusing the Mailbox Slug with an Email Address:** When logging in to the **My Mailbox** app, you do not log in with an email address. You log in using your unique **Mailbox Slug** and the **Mailbox Password** you set.
+* **Weak Mailbox Passwords:** Because mailboxes can be accessed directly from the web, ensure you set a strong, unique password for each mailbox.
+
+---
+
+## 5. Tips
+
+<Callout type="info">
+  **Multiple Aliases:** You can route as many aliases as you want to a single mailbox. For example, you can route `help@yourdomain.com`, `billing@yourdomain.com`, and `info@yourdomain.com` all to the same "Support Inbox" mailbox.
+</Callout>
