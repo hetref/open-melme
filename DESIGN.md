@@ -591,45 +591,6 @@ const prefersReducedMotion = useReducedMotion()
 
 ---
 
-## File Structure
-
-```
-├── app/
-│   ├── globals.css          # Theme tokens, custom utilities
-│   ├── layout.tsx           # Fonts, metadata, theme script
-│   └── page.tsx             # Landing page assembly
-│
-├── components/
-│   ├── landing/
-│   │   ├── navigation.tsx   # Floating navbar with scroll progress
-│   │   ├── hero.tsx         # Hero section with animations
-│   │   ├── trust-marquee.tsx
-│   │   ├── pain-solution.tsx
-│   │   ├── feature-grid.tsx
-│   │   ├── how-it-works.tsx # Horizontal scroll with GSAP
-│   │   ├── mailbox-showcase.tsx
-│   │   ├── security.tsx
-│   │   ├── pricing.tsx
-│   │   ├── final-cta.tsx
-│   │   └── footer.tsx
-│   │
-│   └── ui/
-│       ├── animated-theme-toggler.tsx
-│       ├── encrypted-text.tsx
-│       ├── text-animate.tsx
-│       ├── morphing-text.tsx
-│       ├── spinning-text.tsx
-│       ├── smooth-cursor.tsx
-│       ├── progressive-blur.tsx
-│       ├── scroll-progress.tsx
-│       └── [shadcn components...]
-│
-└── lib/
-    └── utils.ts             # cn() utility function
-```
-
----
-
 ## Usage Examples
 
 ### Creating a New Section
@@ -798,6 +759,3 @@ font-sans (DM Sans), font-[var(--font-display)] (Bricolage Grotesque)
 ```
 
 ---
-
-*Last updated: May 2025*
-*Version: 1.0.0*

@@ -1,12 +1,12 @@
-# 📬 MelMe - Your Personal & Professional Email Management System
+# Open MelMe - Your Personal & Professional Email Management System
 
-Welcome to **MelMe**! Whether you are a business owner, a freelancer, or someone who just loves keeping their digital life organized, MelMe is built to give you complete control over your custom emails, domains, and private mailboxes. 
+Welcome to **Open MelMe** or **MelMe**! Whether you are a business owner, a freelancer, or someone who just loves keeping their digital life organized, MelMe is built to give you complete control over your custom emails, domains, and private mailboxes. 
 
 ---
 
-## 🤔 What is MelMe?
+## What is Open MelMe?
 
-MelMe is a modern, all-in-one email routing and mailbox management platform. Imagine having your own personal digital post office:
+Open MelMe is a modern, all-in-one email routing and mailbox management platform. Imagine having your own personal digital post office:
 - You can bring your own custom web addresses (like `hello@yourwebsite.com`).
 - You can create multiple "aliases" (like `support@`, `sales@`, `newsletter@`) and decide exactly where those emails should go.
 - You can either **forward** these emails directly to your everyday personal email (like Gmail or Yahoo), OR you can route them into dedicated **Mailboxes** inside MelMe.
@@ -16,7 +16,7 @@ In simple terms, MelMe helps you look professional with custom email addresses w
 
 ---
 
-## 🎯 Why was this system built?
+## Why was this system built?
 
 Managing custom domain emails often requires paying for expensive monthly subscriptions for every single user or inbox (like Google Workspace or Office 365). On top of that, setting up email forwarding and keeping track of multiple alias addresses across different platforms can be incredibly technical, confusing, and messy. 
 
@@ -28,7 +28,7 @@ MelMe was built to solve this by providing:
 
 ---
 
-## 💻 Tech Stack
+## Tech Stack
 
 While MelMe is designed to be incredibly easy for anyone to use, under the hood it is powered by cutting-edge, enterprise-grade technology to ensure it is fast, secure, and highly reliable:
 
@@ -41,7 +41,22 @@ While MelMe is designed to be incredibly easy for anyone to use, under the hood 
 
 ---
 
-## 🗺️ Platform Overview & Features
+## Core Features
+- Domain management and verification (including DNS verification flow)
+- Alias management for forwarding or mailbox routing
+- Shared inboxes with multi-alias mailbox support
+- Email receiving, forwarding, sending, and replies
+- Gmail-style conversation threading
+- Inbox and sent mailboxes
+- Attachment handling and processing
+- Safe HTML email rendering
+- Search and filtering
+- Mailbox sessions
+- Open-source documentation
+
+---
+
+## Platform Overview
 
 MelMe is divided into a few key areas. Here is a breakdown of all the pages and what you can do on them:
 
@@ -58,7 +73,7 @@ The command center for the account owner.
 * **`/mailboxes` (Mailboxes):** Create standalone inboxes. For example, you can create a "Support Team" mailbox with its own unique password, entirely separate from your admin account.
 * **`/profile` (Profile):** Manage your personal details, turn on Two-Factor Authentication, and manage Passkeys (using your fingerprint or face to log in).
 
-### 3. 💌 My Mailbox (The Core Experience)
+### 3. My Mailbox (The Core Experience)
 This is the heart of MelMe for everyday use. A user or team member can log directly into a specific Mailbox to read and send emails, completely separated from the Admin Dashboard. 
 
 * **`/my-mailbox/inbox` (Inbox):** 
@@ -78,7 +93,7 @@ This is the heart of MelMe for everyday use. A user or team member can log direc
 
 ---
 
-### 🚀 Getting Started for Developers
+### Getting Started for Developers
 
 If you are a developer looking to run MelMe locally to contribute or test:
 
@@ -87,16 +102,37 @@ If you are a developer looking to run MelMe locally to contribute or test:
    npm install
    ```
 2. Set up your `.env` file with your PostgreSQL database URL, AWS credentials, and Auth secrets.
-3. Run database migrations:
+3. Setup your AWS Lambda and IAM with the [CODE_TO_COPY.md](CODE_TO_COPY.md)
+4. Run database migrations:
    ```bash
    npx prisma generate
    npx prisma db push
    ```
-4. Start the development server:
+5. Start the development server:
    ```bash
    npm run dev
    ```
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+### Documentation
+Design system and UI guidelines live in [DESIGN.md](DESIGN.md). The in-app docs route is available at `/docs`.
+
+---
+
+### Contributing
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or PR.
+
+---
+
+### Security
+Report security issues privately as described in [SECURITY.md](SECURITY.md).
+
+---
+
+### License
+Open MelMe is released under the MIT License. See [LICENSE](LICENSE).
 
 ---
 *Built with ❤️ to make custom email management an absolute breeze.*
