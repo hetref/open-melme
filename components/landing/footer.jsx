@@ -4,12 +4,10 @@ import { motion } from "framer-motion"
 import { Twitter, Github, Linkedin, Instagram, Youtube } from "lucide-react"
 
 const footerLinks = {
-  Product: [
+  "Other Projects": [
     { label: "WaChat", href: "https://wachat.aryanshinde.in" },
     { label: "InvoiceGen", href: "https://invoicegen.aryanshinde.in" },
-    { label: "Business Portflio", href: "https://business.aryanshinde.in" },
     { label: "SMRL", href: "https://smrl.aryanshinde.in" },
-    { label: "Card Saver", href: "https://card-saver.aryanshinde.in" },
   ],
   Myself: [
     { label: "Portfolio", href: "https://aryanshinde.in" },
@@ -17,8 +15,7 @@ const footerLinks = {
     { label: "Agency", href: "https://devally.in" }
   ],
   Support: [
-    { label: "Documentation (Soon)", href: "#" },
-    { label: "API Reference (Soon)", href: "#" },
+    { label: "Documentation", href: "/docs" },
     { label: "Contact", href: "https://aryanshinde.in/contact" },
   ],
 }
@@ -66,11 +63,8 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="font-[var(--font-display)] text-lg font-bold text-foreground">
+            <span className="font-[var(--font-display)] text-2xl font-bold text-foreground">
               Mel<span className="text-primary">Me</span>
-            </span>
-            <span className="text-muted text-sm">
-              © {new Date().getFullYear()} MelMe. Open Source under MIT License.
             </span>
           </div>
 
