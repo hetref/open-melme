@@ -16,13 +16,14 @@ const footerLinks = {
   ],
   Support: [
     { label: "Documentation", href: "/docs" },
+    { label: "Open Source Repo", href: "https://github.com/hetref/open-melme" },
     { label: "Contact", href: "https://aryanshinde.in/contact" },
   ],
 }
 
 const socialLinks = [
   { icon: Instagram, href: "https://instagram.com/coder_aryu", label: "Instagram" },
-  { icon: Github, href: "https://github.com/hetref", label: "GitHub" },
+  { icon: Github, href: "https://github.com/hetref/open-melme", label: "GitHub" },
   { icon: Youtube, href: "https://www.youtube.com/@aryancodelab", label: "YouTube" },
   { icon: Linkedin, href: "https://www.linkedin.com/in/shindearyan", label: "LinkedIn" },
 ]

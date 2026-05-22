@@ -23,6 +23,7 @@ const navLinks = [
   { name: "Security", link: "#security", inpage: true },
   { name: "Docs", link: "/docs", inpage: false },
   { name: "My Mailbox", link: "/my-mailbox", inpage: false },
+  { name: "Visit Repo", link: "https://github.com/hetref/open-melme", inpage: false },
 ]
 
 const MotionLink = motion(Link)
@@ -59,7 +60,7 @@ export function Navigation() {
     event.preventDefault()
     if (!inpage) {
       setMobileMenuOpen(false)
-      router.push(href)
+      window.open(href, "_blank", "noopener,noreferrer")
       return
     }
     const id = href.replace("#", "")
@@ -230,7 +231,7 @@ export function Navigation() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.07 }}
-                  onClick={(event) => handleSectionClick(event, link.link)}
+                  onClick={(event) => handleSectionClick(event, link.link, link.inpage)}
                   className="text-foreground-dim hover:text-foreground transition-colors text-base font-medium py-3 px-4 rounded-lg hover:bg-surface-raised"
                 >
                   {link.name}
