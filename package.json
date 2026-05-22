@@ -3,8 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "db:backfill-alias-personal-email": "node scripts/backfill-alias-personal-email.mjs",
-    "db:ensure-mailbox-tags": "node scripts/ensure-mailbox-tags-column.mjs",
     "predev": "prisma generate",
     "dev": "next dev",
     "prebuild": "prisma generate",
