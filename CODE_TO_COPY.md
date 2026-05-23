@@ -74,3 +74,113 @@ def send_to_api(payload):
 PLATFORM_API_SECRET = random-api-secret-token
 PLATFORM_API_URL = https://<your-domain>/api/receiver
 ```
+
+
+# AWS IAM User Policies
+
+### Policy 1 - AWS_MelMe_User_Policy_S3_Restricted:
+
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "MelMeReadInboundEmailsAndAttachments",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:GetObjectAttributes"
+            ],
+            "Resource": [
+                "arn:aws:s3:::<bucket-name>/emails-receiver/*",
+                "arn:aws:s3:::<bucket-name>/email-attachments/*"
+            ]
+        },
+        {
+            "Sid": "MelMeDeleteInvalidInboundEmails",
+            "Effect": "Allow",
+            "Action": "s3:DeleteObject",
+            "Resource": "arn:aws:s3:::<bucket-name>/emails-receiver/*"
+        },
+        {
+            "Sid": "MelMeWriteInboundAttachments",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:DeleteObject"
+            ],
+            "Resource": "arn:aws:s3:::<bucket-name>/email-attachments/*"
+        },
+        {
+            "Sid": "MelMeWriteOutboundEmails",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:GetObjectAttributes",
+                "s3:DeleteObject"
+            ],
+            "Resource": "arn:aws:s3:::<bucket-name>/emails-sent/*"
+        },
+        {
+            "Sid": "MelMeWriteOutboundAttachments",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:GetObjectAttributes",
+                "s3:DeleteObject"
+            ],
+            "Resource": "arn:aws:s3:::<bucket-name>/sent-attachments/*"
+        },
+        {
+            "Sid": "MelMeListBucketScoped",
+            "Effect": "Allow",
+            "Action": "s3:ListBucket",
+            "Resource": "arn:aws:s3:::<bucket-name>",
+            "Condition": {
+                "StringLike": {
+                    "s3:prefix": [
+                        "emails-receiver/*",
+                        "email-attachments/*",
+                        "emails-sent/*",
+                        "sent-attachments/*"
+                    ]
+                }
+            }
+        }
+    ]
+}
+```
+
+### Policy 2 - AWS_MelMe_User_Policy_SES_Restricted:
+
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "SESIdentityManagement",
+            "Effect": "Allow",
+            "Action": [
+                "ses:CreateEmailIdentity",
+                "ses:DeleteEmailIdentity",
+                "ses:GetEmailIdentity",
+                "ses:ListEmailIdentities",
+                "ses:PutEmailIdentityDkimAttributes",
+                "ses:PutEmailIdentityDkimSigningAttributes"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "SESSendEmail",
+            "Effect": "Allow",
+            "Action": [
+                "ses:SendRawEmail",
+                "ses:SendEmail"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
